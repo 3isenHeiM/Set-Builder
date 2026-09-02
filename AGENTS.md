@@ -56,7 +56,7 @@ For a new repository, use this baseline:
 
 - React with TypeScript and Vite.
 - Strict TypeScript; avoid `any` except at a narrowly documented interoperability boundary.
-- npm with a repository-owned `package-lock.json`; create the file locally but do not commit it or anything else.
+- npm with a repository-owned `package-lock.json`.
 - IndexedDB through Dexie.js.
 - `vite-plugin-pwa` or an equivalently small Workbox-based integration.
 - Vitest and Testing Library for unit/component tests.
@@ -236,44 +236,25 @@ Use a seeded pseudo-random source injected into the pure generator. Store the se
 
 ## 12. Git, GitHub, and history guardrails
 
-These rules are absolute. Completing a task does **not** imply permission to commit, push, publish, deploy, or modify repository history.
+Codex has explicit authorization to run any local Git command whose effects are limited to inspection, the working tree, the index, repository configuration, or other non-history state. This includes commands that mutate the local working tree or index, such as `git add`, `git rm`, `git mv`, `git checkout`, `git switch`, `git restore`, `git reset` when it does not move a commit/ref, `git clean`, `git stash`, `git apply --index`, local worktree/configuration operations, and equivalent commands invoked through another program.
 
-### Permitted Git use
+Codex is also explicitly authorized to create ordinary new commits with `git commit` so that completed work is recorded in local history. A new commit may advance the current local branch to that newly created commit. This authorization supersedes narrower task-file limits on non-history Git operations and on creating new commits, subject to the owner-only file exception below.
 
-Git may be used only for local, read-only inspection. Examples:
+### Owner-only files
 
-```text
-git status --short
-git status --short --branch
-git diff
-git diff -- <paths>
-git diff --cached
-git log [read-only options]
-git show [read-only revision]
-git ls-files
-git branch --show-current
-git rev-parse --show-toplevel
-git remote -v
-```
+`AGENTS.md` and `TASKS.md` are excluded from every Git command available to Codex. Only the repository owner may version-control them. Codex may read these files and may edit them when the user explicitly requests an edit, but must never pass either file to Git or include either file in the effective scope of a Git command. Do not inspect, stage, unstage, commit, restore, check out, reset, clean, remove, or otherwise operate on these files with Git. Do not use a broad Git command such as `git add -A`, `git commit -a`, or a repository-wide restore/reset/clean when it would implicitly include either owner-only file. Use explicit pathspecs that exclude both files when a Git operation covers multiple paths.
 
-Prefer `rg` and ordinary filesystem reads over Git when either works.
+Inspect exact targets first and preserve unrelated user changes. Product scope, privacy, deployment, and destructive-action guardrails continue to apply to an otherwise permitted Git command.
 
-### Prohibited Git operations
+### Prohibited Git and GitHub operations
 
-Do not run, invoke through another program, or script any of the following:
+Do not amend, delete, replace, merge, reorder, or otherwise rewrite existing commits or commit history. Do not move, create, delete, or rewrite branches, tags, or other refs except for advancing the current branch through an authorized ordinary new commit. This prohibits `git commit --amend`, `git merge`, `git rebase`, `git cherry-pick`, `git revert`, `git am`, history-moving `git reset`, ref-changing `git branch`/`git tag`, filter-branch, filter-repo, and equivalent indirect actions.
 
-- `git add`, `git commit`, `git commit --amend`, or any operation that writes the index or creates a commit.
-- `git push`, `git pull`, `git fetch`, `git clone`, `git ls-remote`, or any other networked Git operation, including read-only remote queries.
-- `git checkout`, `git switch`, `git restore`, `git reset`, `git clean`, or commands that can overwrite working-tree changes.
-- `git merge`, `git rebase`, `git cherry-pick`, `git revert`, `git am`, or `git apply --index`.
-- `git branch` creation/deletion/rename, `git tag`, `git stash`, `git notes`, `git replace`, or ref manipulation.
-- `git init`, `git config`, remote modification, submodule operations, worktree operations, garbage collection, reflog expiration, filter-branch, or filter-repo.
-- Direct writes anywhere under `.git/`.
-- Changing history through an IDE, library, GitHub CLI, API, MCP connector, or other indirect mechanism.
+Do not perform any networked or remote Git operation, whether read-only or mutating. This includes `git push`, `git pull`, `git fetch`, `git clone`, `git ls-remote`, adding/changing remote repository configuration, deleting or force-updating remote refs, and sending a pull/merge request. Direct writes anywhere under `.git/` remain prohibited; use an authorized Git command for permitted local Git changes.
 
-Do not use `gh` or any GitHub API/connector. Do not create or edit issues, pull requests, releases, repository settings, deploy keys, secrets, branches, or tags. Do not open a browser to perform GitHub actions.
+Do not use `gh` or any GitHub API/connector to mutate GitHub. Do not create or edit issues, pull requests, releases, repository settings, deploy keys, secrets, branches, or tags. Do not open a browser to perform GitHub mutations.
 
-If requested work appears to require a prohibited operation, finish the safe local work, stop, and tell the user exactly which manual Git/GitHub action remains. Do not ask for credentials or attempt a workaround.
+If requested work appears to require mangling existing history or performing a remote operation, finish the safe local work, stop, and tell the user exactly which manual Git/GitHub action remains. Do not ask for credentials or attempt a workaround.
 
 ## 13. Deployment and external-action guardrails
 
@@ -298,7 +279,7 @@ The deployed app shell is public by default even though its source repository is
 - Inspect the repository and existing instructions before editing.
 - Preserve user changes and unrelated files.
 - Do not delete or mass-rewrite files outside the task.
-- Do not run destructive cleanup commands.
+- Keep any destructive cleanup within the explicit task scope and verify its exact targets first.
 - Keep dependency additions minimal and explain non-obvious additions.
 - Do not weaken tests, linting, TypeScript strictness, accessibility, or privacy behavior to make a check pass.
 - Do not change the chosen architecture without documenting the reason and obtaining user approval when it changes scope or data behavior.
