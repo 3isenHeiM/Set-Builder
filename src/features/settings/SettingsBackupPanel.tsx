@@ -86,7 +86,7 @@ export function SettingsBackupPanel({ scores, onImport }: SettingsBackupPanelPro
   return (
     <div className="info-card settings-backup">
       <h2>Back up settings</h2>
-      <p>Save piece names and their 80s, opener, hotness, drums-intro, and enabled settings as a readable JSON file.</p>
+      <p>Save piece names and their 80s, opener, hotness, goes-high, drums-intro, and enabled settings as a readable JSON file.</p>
       <div className="settings-actions">
         <button type="button" className="secondary-action" disabled={scores.length === 0} onClick={download}>Download app settings</button>
         <button type="button" className="secondary-action" onClick={() => fileInput.current?.click()}>Re-import app settings</button>

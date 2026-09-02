@@ -16,6 +16,7 @@ export interface Score {
   canStart: boolean | null
   hotness: Hotness | null
   drumsIntro: boolean | null
+  goesHigh: boolean | null
   enabled: boolean
   tags: string[]
   firstImportedAt: IsoTimestamp
@@ -27,6 +28,7 @@ export interface ScoreConfiguration {
   canStart: boolean | null
   hotness: Hotness | null
   drumsIntro: boolean | null
+  goesHigh: boolean | null
   enabled: boolean
   in80s: boolean
 }
@@ -132,6 +134,7 @@ export interface PerformanceScoreSnapshot {
   title: string
   hotness: Hotness
   drumsIntro: boolean
+  goesHigh: boolean
   canStart: boolean
 }
 

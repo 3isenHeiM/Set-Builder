@@ -11,7 +11,7 @@ function databaseName(): string {
 }
 
 describe('IndexedDB persistence', () => {
-  it('migrates a legacy score without configuration loss', async () => {
+  it('migrates legacy data without losing settings or a saved performance', async () => {
     const name = databaseName()
     const original = makeScore({ tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, enabled: false })
     const { configuration: _, ...legacyScore } = original
@@ -24,8 +24,8 @@ describe('IndexedDB persistence', () => {
 
     const database = new PieceSelectorDatabase(name)
     const migrated = await database.scores.get(original.id)
-    expect(migrated).toMatchObject({ configuration: 'complete', tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, enabled: false })
-    expect(await new PieceSelectorRepository(database).getLastPerformance()).toMatchObject({ sets: [{ scores: [{ hotness: 3 }] }] })
+    expect(migrated).toMatchObject({ configuration: 'pending', tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, goesHigh: null, enabled: false })
+    expect(await new PieceSelectorRepository(database).getLastPerformance()).toMatchObject({ sets: [{ scores: [{ hotness: 3, goesHigh: false }] }] })
     database.close()
     await Dexie.delete(name)
   })
@@ -40,8 +40,8 @@ describe('IndexedDB persistence', () => {
     expect((await repository.listScores()).map((score) => score.scoreNumber)).toEqual([2, 10])
     const score = (await repository.listScores())[0]
     if (!score) throw new Error('fixture not created')
-    expect(score).toMatchObject({ availability: 'active', enabled: true, configuration: 'pending', canStart: null, hotness: null, drumsIntro: null })
-    await repository.saveConfiguration(score.id, { canStart: true, hotness: 3, drumsIntro: false, enabled: true, in80s: true }, 'configured')
+    expect(score).toMatchObject({ availability: 'active', enabled: true, configuration: 'pending', canStart: null, hotness: null, drumsIntro: null, goesHigh: null })
+    await repository.saveConfiguration(score.id, { canStart: true, hotness: 3, drumsIntro: false, goesHigh: true, enabled: true, in80s: true }, 'configured')
     expect(await repository.getScore(score.id)).toMatchObject({ configuration: 'complete', hotness: 3, tags: ['80s'] })
     expect(await repository.getLastScan()).toMatchObject({ summary: { added: 2 } })
     database.close()

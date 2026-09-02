@@ -20,7 +20,7 @@ export function PerformanceScreen({ performance, onRegenerate }: PerformanceScre
           <section className="set-card" key={set.number} aria-labelledby={`set-${set.number}`}>
             <h2 id={`set-${set.number}`}><span>Set</span> {set.number}</h2>
             <ol>
-              {set.scores.map((score, index) => <li key={score.id}><span className="position">{index + 1}</span><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>Hotness {score.hotness}{score.drumsIntro ? ' · Drums intro' : ''}{index === 0 ? ' · Starter' : ''}</small></span></li>)}
+              {set.scores.map((score, index) => <li key={score.id}><span className="position">{index + 1}</span><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>Hotness {score.hotness}{score.goesHigh ? ' · Goes high' : ''}{score.drumsIntro ? ' · Drums intro' : ''}{index === 0 ? ' · Starter' : ''}</small></span></li>)}
             </ol>
           </section>
         ))}

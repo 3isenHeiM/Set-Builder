@@ -13,6 +13,7 @@ function pool(size: number, starters = size) {
       hotness: ((index % 3) + 1) as 1 | 2 | 3,
       canStart: index < starters,
       drumsIntro: index % 3 === 0,
+      goesHigh: index % 4 === 0,
       tags: index % 2 === 0 ? ['80s'] : [],
     }),
   )
@@ -87,6 +88,12 @@ describe('generator', () => {
     expect(generatePerformance(forced, { preset: 'mix', setCount: 1, scoresPerSet: 4, seed: 1 }, { now: 'now', createId: () => 'p' }).warnings).toContain(DRUMS_WARNING)
   })
 
+  it('places every goes-high piece before regular non-starters in its set', () => {
+    const result = generatePerformance(pool(6, 1), { preset: 'mix', setCount: 1, scoresPerSet: 6, seed: 4 }, { now: 'now', createId: () => 'p' })
+    const nonStarters = result.sets[0]?.scores.slice(1) ?? []
+    expect(nonStarters.map((score) => score.goesHigh)).toEqual([...nonStarters].sort((left, right) => Number(right.goesHigh) - Number(left.goesHigh)).map((score) => score.goesHigh))
+  })
+
   it('fails loudly for corrupt performance snapshots', () => {
     const valid = generatePerformance(pool(4), { preset: 'mix', setCount: 1, scoresPerSet: 2, seed: 1 }, { now: 'now', createId: () => 'p' })
     const first = valid.sets[0]?.scores[0]
@@ -98,5 +105,17 @@ describe('generator', () => {
       first.canStart = false
     }
     expect(() => assertPerformanceValid(valid)).toThrow('lacks a starter')
+
+    const invalidOrder = generatePerformance(pool(5), { preset: 'mix', setCount: 1, scoresPerSet: 3, seed: 1 }, { now: 'now', createId: () => 'p' })
+    const lateSet = invalidOrder.sets[0]
+    if (lateSet) {
+      const early = lateSet.scores[1]
+      const late = lateSet.scores[2]
+      if (early && late) {
+        early.goesHigh = false
+        late.goesHigh = true
+      }
+    }
+    expect(() => assertPerformanceValid(invalidOrder)).toThrow('goes-high piece is too late')
   })
 })

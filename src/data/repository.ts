@@ -31,7 +31,7 @@ export interface PerformanceRepository {
 }
 
 function configurationStatus(configuration: ScoreConfiguration): Score['configuration'] {
-  return configuration.canStart !== null && configuration.hotness !== null && configuration.drumsIntro !== null
+  return configuration.canStart !== null && configuration.hotness !== null && configuration.drumsIntro !== null && configuration.goesHigh !== null
     ? 'complete'
     : 'pending'
 }
@@ -55,6 +55,7 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
         canStart: configuration.canStart,
         hotness: configuration.hotness,
         drumsIntro: configuration.drumsIntro,
+        goesHigh: configuration.goesHigh,
         enabled: configuration.enabled,
         tags: configuration.in80s ? ['80s'] : [],
         configuration: configurationStatus(configuration),

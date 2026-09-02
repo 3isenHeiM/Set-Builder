@@ -42,7 +42,7 @@ describe('reconciliation', () => {
     const original = makeScore({ tags: ['80s'], hotness: 3, drumsIntro: true, canStart: false, enabled: false })
     const renamedPlan = classifyReconciliation(buildFolderSnapshot([{ name: '01 - New Name.mscz' }], firstTime), [original])
     const renamed = applyReconciliation([original], renamedPlan, {}, firstTime, () => 'new-id', 'scan-1').scores[0]
-    expect(renamed).toMatchObject({ id: original.id, title: 'New Name', tags: ['80s'], hotness: 3, drumsIntro: true, canStart: false, enabled: false })
+    expect(renamed).toMatchObject({ id: original.id, title: 'New Name', tags: ['80s'], hotness: 3, drumsIntro: true, goesHigh: false, canStart: false, enabled: false })
 
     const missingPlan = classifyReconciliation(buildFolderSnapshot([], secondTime), renamed ? [renamed] : [])
     const missing = applyReconciliation(renamed ? [renamed] : [], missingPlan, {}, secondTime, () => 'new-id', 'scan-2').scores[0]

@@ -4,13 +4,18 @@ import type { FolderScan, GeneratedPerformance, PerformanceScoreSnapshot, Perfor
 export const DATABASE_NAME = 'piece-selector'
 
 type LegacyHotness = Score['hotness'] | 4 | 5
-type LegacyScoreV1 = Omit<Score, 'configuration' | 'hotness'> & { hotness: LegacyHotness }
+type LegacyScoreV1 = Omit<Score, 'configuration' | 'hotness' | 'goesHigh'> & { hotness: LegacyHotness }
 type UpgradeScoreV1 = LegacyScoreV1 & Partial<Pick<Score, 'configuration'>>
-type UpgradeScoreV2 = Omit<Score, 'hotness'> & { hotness: LegacyHotness }
-type UpgradePerformanceScoreV2 = Omit<PerformanceScoreSnapshot, 'hotness'> & { hotness: LegacyHotness }
+type UpgradeScoreV2 = Omit<Score, 'hotness' | 'goesHigh'> & { hotness: LegacyHotness }
+type UpgradePerformanceScoreV2 = Omit<PerformanceScoreSnapshot, 'hotness' | 'goesHigh'> & { hotness: LegacyHotness }
 type UpgradePerformanceSetV2 = Omit<PerformanceSet, 'scores'> & { scores: UpgradePerformanceScoreV2[] }
 type UpgradePerformanceV2 = Omit<GeneratedPerformance, 'sets'> & { sets: UpgradePerformanceSetV2[] }
 type UpgradeStoredPerformanceV2 = Omit<StoredPerformance, 'performance'> & { performance: UpgradePerformanceV2 }
+type UpgradeScoreV3 = Omit<Score, 'goesHigh'> & Partial<Pick<Score, 'goesHigh'>>
+type UpgradePerformanceScoreV3 = Omit<PerformanceScoreSnapshot, 'goesHigh'> & Partial<Pick<PerformanceScoreSnapshot, 'goesHigh'>>
+type UpgradePerformanceSetV3 = Omit<PerformanceSet, 'scores'> & { scores: UpgradePerformanceScoreV3[] }
+type UpgradePerformanceV3 = Omit<GeneratedPerformance, 'sets'> & { sets: UpgradePerformanceSetV3[] }
+type UpgradeStoredPerformanceV3 = Omit<StoredPerformance, 'performance'> & { performance: UpgradePerformanceV3 }
 
 export class PieceSelectorDatabase extends Dexie {
   scores!: EntityTable<Score, 'id'>
@@ -60,6 +65,29 @@ export class PieceSelectorDatabase extends Dexie {
               for (const score of set.scores) {
                 if (score.hotness === 4 || score.hotness === 5) score.hotness = 3
               }
+            }
+          })
+      })
+    this.version(4)
+      .stores({
+        scores: 'id,scoreNumber,availability,configuration,enabled,*tags',
+        scans: 'id,appliedAt',
+        performances: 'key',
+      })
+      .upgrade(async (transaction: Transaction) => {
+        await transaction
+          .table<UpgradeScoreV3, string>('scores')
+          .toCollection()
+          .modify((score) => {
+            score.goesHigh = null
+            score.configuration = 'pending'
+          })
+        await transaction
+          .table<UpgradeStoredPerformanceV3, string>('performances')
+          .toCollection()
+          .modify((stored) => {
+            for (const set of stored.performance.sets) {
+              for (const score of set.scores) score.goesHigh = false
             }
           })
       })

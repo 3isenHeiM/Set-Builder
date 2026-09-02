@@ -15,7 +15,7 @@ describe('settings backup', () => {
     ], '2026-09-02T12:00:00.000Z')
     const json = settingsBackupToJson(backup)
 
-    expect(backup).toMatchObject({ format: SETTINGS_BACKUP_FORMAT, version: 2, pieces: [
+    expect(backup).toMatchObject({ format: SETTINGS_BACKUP_FORMAT, version: 3, pieces: [
       { scoreNumber: 2, name: 'Africa', settings: { in80s: true, hotness: 3, drumsIntro: true } },
       { scoreNumber: 8, name: 'Billie Jean', settings: { in80s: false } },
     ] })
@@ -36,17 +36,17 @@ describe('settings backup', () => {
     const absent = makeScore({ id: 'untouched', scoreNumber: 3, title: 'Not in backup', hotness: 2 })
     const backup = parseSettingsBackupJson(JSON.stringify({
       format: SETTINGS_BACKUP_FORMAT,
-      version: 1,
+      version: 3,
       exportedAt: '2026-09-01T12:00:00.000Z',
       pieces: [
-        { scoreNumber: 2, name: 'Africa', settings: { in80s: true, canStart: false, hotness: 3, drumsIntro: true, enabled: false } },
-        { scoreNumber: 9, name: 'No longer here', settings: { in80s: false, canStart: true, hotness: 1, drumsIntro: false, enabled: true } },
+        { scoreNumber: 2, name: 'Africa', settings: { in80s: true, canStart: false, hotness: 3, drumsIntro: true, goesHigh: true, enabled: false } },
+        { scoreNumber: 9, name: 'No longer here', settings: { in80s: false, canStart: true, hotness: 1, drumsIntro: false, goesHigh: false, enabled: true } },
       ],
     }))
 
     const result = applySettingsBackup([current, absent], backup, 'restored')
 
-    expect(result.scores[0]).toEqual({ ...current, tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, enabled: false, configuration: 'complete', updatedAt: 'restored' })
+    expect(result.scores[0]).toEqual({ ...current, tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, goesHigh: true, enabled: false, configuration: 'complete', updatedAt: 'restored' })
     expect(result.scores[1]).toBe(absent)
     expect(result.report).toEqual({
       matched: 1,
@@ -56,9 +56,9 @@ describe('settings backup', () => {
   })
 
   it('rejects duplicate numbers and malformed setting values', () => {
-    const piece = { scoreNumber: 2, name: 'Africa', settings: { in80s: true, canStart: false, hotness: 3, drumsIntro: true, enabled: true } }
-    expect(() => parseSettingsBackupJson(JSON.stringify({ format: SETTINGS_BACKUP_FORMAT, version: 2, exportedAt: 'now', pieces: [piece, piece] }))).toThrow('appears more than once')
-    expect(() => parseSettingsBackupJson(JSON.stringify({ format: SETTINGS_BACKUP_FORMAT, version: 2, exportedAt: 'now', pieces: [{ ...piece, settings: { ...piece.settings, hotness: 10 } }] }))).toThrow('malformed settings')
+    const piece = { scoreNumber: 2, name: 'Africa', settings: { in80s: true, canStart: false, hotness: 3, drumsIntro: true, goesHigh: false, enabled: true } }
+    expect(() => parseSettingsBackupJson(JSON.stringify({ format: SETTINGS_BACKUP_FORMAT, version: 3, exportedAt: 'now', pieces: [piece, piece] }))).toThrow('appears more than once')
+    expect(() => parseSettingsBackupJson(JSON.stringify({ format: SETTINGS_BACKUP_FORMAT, version: 3, exportedAt: 'now', pieces: [{ ...piece, settings: { ...piece.settings, hotness: 10 } }] }))).toThrow('malformed settings')
     expect(() => parseSettingsBackupJson('{}')).toThrow('not a Piece Selector settings file')
   })
 
@@ -69,6 +69,6 @@ describe('settings backup', () => {
       exportedAt: 'now',
       pieces: [{ scoreNumber: 2, name: 'Africa', settings: { in80s: false, canStart: true, hotness: 5, drumsIntro: false, enabled: true } }],
     }))
-    expect(restored).toMatchObject({ version: 2, pieces: [{ settings: { hotness: 3 } }] })
+    expect(restored).toMatchObject({ version: 3, pieces: [{ settings: { hotness: 3, goesHigh: null } }] })
   })
 })

@@ -6,6 +6,7 @@ function configurationFromScore(score: Score): ScoreConfiguration {
     canStart: score.canStart,
     hotness: score.hotness,
     drumsIntro: score.drumsIntro,
+    goesHigh: score.goesHigh,
     enabled: score.enabled,
     in80s: score.tags.includes('80s'),
   }
@@ -24,7 +25,7 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
   const [draft, setDraft] = useState(() => configurationFromScore(score))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
-  const valid = draft.canStart !== null && draft.hotness !== null && draft.drumsIntro !== null
+  const valid = draft.canStart !== null && draft.hotness !== null && draft.drumsIntro !== null && draft.goesHigh !== null
 
   const change = (configuration: ScoreConfiguration) => {
     setDraft(configuration)
@@ -75,10 +76,18 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
         </div>
       </fieldset>
 
+      <fieldset className="field-group">
+        <legend>Goes high?</legend>
+        <div className="segmented two">
+          {[true, false].map((value) => <label key={String(value)}><input type="radio" name="goes-high" checked={draft.goesHigh === value} onChange={() => change({ ...draft, goesHigh: value })} /><span>{value ? 'Yes' : 'No'}</span></label>)}
+        </div>
+        <p className="field-hint">Pieces that go high are placed near the beginning of their set.</p>
+      </fieldset>
+
       <label className="toggle-row"><input type="checkbox" checked={draft.in80s} onChange={(event) => change({ ...draft, in80s: event.target.checked })} /><span><strong>In the 80s repertoire</strong><small>Eligible for 80s performances once configured.</small></span></label>
       <label className="toggle-row"><input type="checkbox" checked={draft.enabled} onChange={(event) => change({ ...draft, enabled: event.target.checked })} /><span><strong>Enabled for generation</strong><small>Turn off to exclude manually without losing settings.</small></span></label>
 
-      {!valid && <p className="notice" role="status">Choose a starter value, hotness, and drums-intro value to complete configuration.</p>}
+      {!valid && <p className="notice" role="status">Choose a starter value, hotness, drums-intro value, and whether the piece goes high to complete configuration.</p>}
       {message && <p className={message.includes('saved') ? 'success' : 'error'} role="status">{message}</p>}
       <button type="button" className="primary-action sticky-action" onClick={() => void save()} disabled={saving || !valid}>{saving ? 'Saving…' : saveLabel}</button>
     </section>
