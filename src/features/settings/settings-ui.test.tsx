@@ -15,12 +15,12 @@ describe('settings import', () => {
 
     fireEvent.change(input, { target: { files: [{ name: 'piece-selector-settings.json', text: () => Promise.resolve(settingsBackupToJson(backup)) }] } })
 
-    expect(await screen.findByRole('heading', { name: 'Review settings restore' })).toBeVisible()
-    fireEvent.click(screen.getByText('Review changed names'))
+    expect(await screen.findByRole('heading', { name: 'Import preview' })).toBeVisible()
+    fireEvent.click(screen.getByText('Renamed pieces'))
     expect(screen.getByText((_content, element) => element?.tagName === 'LI' && element.textContent?.includes('Backup title → Current title') === true)).toBeVisible()
-    fireEvent.click(screen.getByRole('button', { name: 'Restore matched settings' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Import matched' }))
     await waitFor(() => expect(onImport).toHaveBeenCalledWith(backup))
-    expect(await screen.findByRole('status')).toHaveTextContent('1 piece settings restored.')
+    expect(await screen.findByRole('status')).toHaveTextContent('1 piece imported.')
   })
 
   it('reports an invalid settings file without applying anything', async () => {

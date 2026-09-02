@@ -42,7 +42,7 @@ export function SettingsBackupPanel({ scores, onImport }: SettingsBackupPanelPro
     anchor.remove()
     window.setTimeout(() => URL.revokeObjectURL(url), 1000)
     setError('')
-    setStatus(`${backup.pieces.length} piece settings downloaded.`)
+    setStatus(`${backup.pieces.length} ${backup.pieces.length === 1 ? 'piece' : 'pieces'} exported.`)
   }
 
   const selectFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -75,7 +75,7 @@ export function SettingsBackupPanel({ scores, onImport }: SettingsBackupPanelPro
     try {
       const report = await onImport(preview.backup)
       setPreview(undefined)
-      setStatus(`${report.matched} piece settings restored.`)
+      setStatus(`${report.matched} ${report.matched === 1 ? 'piece' : 'pieces'} imported.`)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No settings were changed.')
     } finally {
@@ -85,27 +85,27 @@ export function SettingsBackupPanel({ scores, onImport }: SettingsBackupPanelPro
 
   return (
     <div className="info-card settings-backup">
-      <h2>Back up settings</h2>
-      <p>Save piece names and their 80s, opener, hotness, goes-high, drums-intro, and enabled settings as a readable JSON file.</p>
+      <h2>Settings backup</h2>
+      <p>Browser storage can be cleared.</p>
       <div className="settings-actions">
-        <button type="button" className="secondary-action" disabled={scores.length === 0} onClick={download}>Download app settings</button>
-        <button type="button" className="secondary-action" onClick={() => fileInput.current?.click()}>Re-import app settings</button>
+        <button type="button" className="secondary-action" disabled={scores.length === 0} onClick={download}>Download settings</button>
+        <button type="button" className="secondary-action" onClick={() => fileInput.current?.click()}>Import settings</button>
         <input ref={fileInput} className="hidden-input" type="file" accept=".json,application/json" onChange={(event) => { void selectFile(event) }} />
       </div>
-      <p className="muted">A restore matches pieces by score number. It does not restore files, folder state, or generated sets.</p>
+      <details><summary>Backup details</summary><p>Names and settings only. Imports match by number; files and sets are excluded.</p></details>
 
       {preview && (
         <div className="settings-preview" aria-labelledby="settings-preview-title">
-          <h3 id="settings-preview-title">Review settings restore</h3>
+          <h3 id="settings-preview-title">Import preview</h3>
           <dl className="backup-summary">
-            <div><dt>Settings in file</dt><dd>{preview.backup.pieces.length}</dd></div>
-            <div><dt>Pieces matched</dt><dd>{preview.report.matched}</dd></div>
-            <div><dt>Not in this library</dt><dd>{preview.report.notFound}</dd></div>
-            <div><dt>Names changed</dt><dd>{preview.report.titleMismatches.length}</dd></div>
+            <div><dt>In file</dt><dd>{preview.backup.pieces.length}</dd></div>
+            <div><dt>Matched</dt><dd>{preview.report.matched}</dd></div>
+            <div><dt>Missing</dt><dd>{preview.report.notFound}</dd></div>
+            <div><dt>Renamed</dt><dd>{preview.report.titleMismatches.length}</dd></div>
           </dl>
           {preview.report.titleMismatches.length > 0 && (
             <details>
-              <summary>Review changed names</summary>
+              <summary>Renamed pieces</summary>
               <ul className="plain-list">
                 {preview.report.titleMismatches.map((item) => (
                   <li key={item.scoreNumber}><strong>{item.scoreNumber}</strong>: {item.backupName} → {item.currentName}</li>
@@ -115,7 +115,7 @@ export function SettingsBackupPanel({ scores, onImport }: SettingsBackupPanelPro
           )}
           <div className="action-row">
             <button type="button" className="secondary-action" disabled={applying} onClick={() => setPreview(undefined)}>Cancel</button>
-            <button type="button" className="primary-action" disabled={applying || preview.report.matched === 0} onClick={() => { void apply() }}>{applying ? 'Restoring…' : 'Restore matched settings'}</button>
+            <button type="button" className="primary-action" disabled={applying || preview.report.matched === 0} onClick={() => { void apply() }}>{applying ? 'Importing…' : 'Import matched'}</button>
           </div>
         </div>
       )}

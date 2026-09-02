@@ -21,7 +21,7 @@ function storedRepository(performance: GeneratedPerformance) {
 describe('application relaunch', () => {
   it('opens the most recently generated performance', async () => {
     render(<App repository={storedRepository(makePerformance())} />)
-    expect(await screen.findByRole('heading', { name: 'Current performance' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Tonight’s sets' })).toBeVisible()
     expect(screen.getByText('Take On Me')).toBeVisible()
   })
 })

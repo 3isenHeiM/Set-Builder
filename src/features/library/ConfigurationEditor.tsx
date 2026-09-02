@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Hotness, Score, ScoreConfiguration } from '../../domain/types'
+import { UiIcon } from '../../app/UiIcon'
 
 function configurationFromScore(score: Score): ScoreConfiguration {
   return {
@@ -29,7 +30,7 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
 
   const change = (configuration: ScoreConfiguration) => {
     setDraft(configuration)
-    if (onDraftChange) void onDraftChange(configuration).catch(() => setMessage('A change could not be saved. Try again before leaving.'))
+    if (onDraftChange) void onDraftChange(configuration).catch(() => setMessage('Save failed. Try again.'))
   }
 
   const save = async () => {
@@ -37,7 +38,7 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
     setMessage('')
     try {
       await onSave(draft)
-      setMessage('Score saved on this device.')
+      setMessage('Saved.')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not save the score.')
     } finally {
@@ -48,14 +49,14 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
   return (
     <section className="editor-panel" aria-labelledby="edit-score-title">
       {progress && <div className="progress-label" aria-live="polite">{progress}</div>}
-      <button type="button" className="text-button" onClick={onClose}>← Back to library</button>
+      <button type="button" className="text-button icon-text" onClick={onClose}><UiIcon name="back" />Back</button>
       <div className="score-heading">
         <span className="score-number">{score.displayNumber}</span>
         <h2 id="edit-score-title">{score.title}</h2>
       </div>
 
       <fieldset className="field-group">
-        <legend>Can start a set?</legend>
+        <legend>Can start?</legend>
         <div className="segmented two">
           {[true, false].map((value) => <label key={String(value)}><input type="radio" name="starter" checked={draft.canStart === value} onChange={() => change({ ...draft, canStart: value })} /><span>{value ? 'Yes' : 'No'}</span></label>)}
         </div>
@@ -66,7 +67,7 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
         <div className="segmented three">
           {([1, 2, 3] as Hotness[]).map((value) => <label key={value}><input type="radio" name="hotness" checked={draft.hotness === value} onChange={() => change({ ...draft, hotness: value })} /><span aria-label={`Hotness ${value} of 3`}>{value}</span></label>)}
         </div>
-        <p className="field-hint">Higher numbers make this score more likely to be selected.</p>
+        <p className="field-hint">Selection weight.</p>
       </fieldset>
 
       <fieldset className="field-group">
@@ -81,14 +82,14 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
         <div className="segmented two">
           {[true, false].map((value) => <label key={String(value)}><input type="radio" name="goes-high" checked={draft.goesHigh === value} onChange={() => change({ ...draft, goesHigh: value })} /><span>{value ? 'Yes' : 'No'}</span></label>)}
         </div>
-        <p className="field-hint">Pieces that go high are placed near the beginning of their set.</p>
+        <p className="field-hint">Placed early in the set.</p>
       </fieldset>
 
-      <label className="toggle-row"><input type="checkbox" checked={draft.in80s} onChange={(event) => change({ ...draft, in80s: event.target.checked })} /><span><strong>In the 80s repertoire</strong><small>Eligible for 80s performances once configured.</small></span></label>
-      <label className="toggle-row"><input type="checkbox" checked={draft.enabled} onChange={(event) => change({ ...draft, enabled: event.target.checked })} /><span><strong>Enabled for generation</strong><small>Turn off to exclude manually without losing settings.</small></span></label>
+      <label className="toggle-row"><input type="checkbox" checked={draft.in80s} onChange={(event) => change({ ...draft, in80s: event.target.checked })} /><span><strong>80s repertoire</strong><small>Include in 80s sets.</small></span></label>
+      <label className="toggle-row"><input type="checkbox" checked={draft.enabled} onChange={(event) => change({ ...draft, enabled: event.target.checked })} /><span><strong>Enabled</strong><small>Include in generated sets.</small></span></label>
 
-      {!valid && <p className="notice" role="status">Choose a starter value, hotness, drums-intro value, and whether the piece goes high to complete configuration.</p>}
-      {message && <p className={message.includes('saved') ? 'success' : 'error'} role="status">{message}</p>}
+      {!valid && <p className="notice" role="status">Complete the four fields to use this piece.</p>}
+      {message && <p className={message === 'Saved.' ? 'success' : 'error'} role="status">{message}</p>}
       <button type="button" className="primary-action sticky-action" onClick={() => void save()} disabled={saving || !valid}>{saving ? 'Saving…' : saveLabel}</button>
     </section>
   )
