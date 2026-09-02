@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Hotness, Score, ScoreConfiguration } from '../../domain/types'
 import { UiIcon } from '../../app/UiIcon'
 import { localizedError, useI18n } from '../../app/i18n'
+import { configurationStatus } from '../../domain/configuration'
 
 function configurationFromScore(score: Score): ScoreConfiguration {
   return {
@@ -42,7 +43,7 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
   const [draft, setDraft] = useState(() => configurationFromScore(score))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
-  const valid = draft.canStart !== null && draft.hotness !== null && draft.drumsIntro !== null && draft.goesHigh !== null
+  const valid = configurationStatus(draft) === 'complete'
   const hotnessLabels: Record<Hotness, string> = { 1: t('low'), 2: t('medium'), 3: t('high') }
 
   const change = (configuration: ScoreConfiguration) => {

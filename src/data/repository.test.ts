@@ -3,7 +3,7 @@ import { buildFolderSnapshot } from '../domain/filename'
 import { classifyReconciliation } from '../domain/reconciliation'
 import { createSettingsBackup } from '../domain/settingsBackup'
 import { makePerformance, makeScore } from '../test/fixtures'
-import { LegacyDatabaseV1, PieceSelectorDatabase } from './database'
+import { LegacyDatabaseV1, LegacyDatabaseV4, PieceSelectorDatabase } from './database'
 import { PieceSelectorRepository } from './repository'
 
 function databaseName(): string {
@@ -24,8 +24,27 @@ describe('IndexedDB persistence', () => {
 
     const database = new PieceSelectorDatabase(name)
     const migrated = await database.scores.get(original.id)
-    expect(migrated).toMatchObject({ configuration: 'pending', tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, goesHigh: null, enabled: false })
+    expect(migrated).toMatchObject({ configuration: 'complete', tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, goesHigh: null, enabled: false })
     expect(await new PieceSelectorRepository(database).getLastPerformance()).toMatchObject({ sets: [{ scores: [{ hotness: 3, goesHigh: false }] }] })
+    database.close()
+    await Dexie.delete(name)
+  })
+
+  it('migrates incomplete disabled pieces to ready without inventing settings', async () => {
+    const name = databaseName()
+    const legacy = new LegacyDatabaseV4(name)
+    await legacy.scores.add(makeScore({ enabled: false, configuration: 'pending', canStart: null, hotness: null, drumsIntro: null, goesHigh: null }))
+    legacy.close()
+
+    const database = new PieceSelectorDatabase(name)
+    expect(await database.scores.get('score-1')).toMatchObject({
+      enabled: false,
+      configuration: 'complete',
+      canStart: null,
+      hotness: null,
+      drumsIntro: null,
+      goesHigh: null,
+    })
     database.close()
     await Dexie.delete(name)
   })

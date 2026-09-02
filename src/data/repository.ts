@@ -10,6 +10,7 @@ import type {
   ScoreConfiguration,
 } from '../domain/types'
 import { PieceSelectorDatabase } from './database'
+import { configurationStatus } from '../domain/configuration'
 
 export interface ScoreRepository {
   listScores: () => Promise<Score[]>
@@ -28,12 +29,6 @@ export interface ScoreRepository {
 export interface PerformanceRepository {
   saveLastPerformance: (performance: GeneratedPerformance) => Promise<void>
   getLastPerformance: () => Promise<GeneratedPerformance | undefined>
-}
-
-function configurationStatus(configuration: ScoreConfiguration): Score['configuration'] {
-  return configuration.canStart !== null && configuration.hotness !== null && configuration.drumsIntro !== null && configuration.goesHigh !== null
-    ? 'complete'
-    : 'pending'
 }
 
 export class PieceSelectorRepository implements ScoreRepository, PerformanceRepository {

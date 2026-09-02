@@ -91,6 +91,33 @@ export class PieceSelectorDatabase extends Dexie {
             }
           })
       })
+    this.version(5)
+      .stores({
+        scores: 'id,scoreNumber,availability,configuration,enabled,*tags',
+        scans: 'id,appliedAt',
+        performances: 'key',
+      })
+      .upgrade((transaction: Transaction) =>
+        transaction
+          .table<Score, string>('scores')
+          .toCollection()
+          .modify((score) => {
+            if (!score.enabled) score.configuration = 'complete'
+          }),
+      )
+  }
+}
+
+export class LegacyDatabaseV4 extends Dexie {
+  scores!: EntityTable<Score, 'id'>
+
+  constructor(name: string) {
+    super(name)
+    this.version(4).stores({
+      scores: 'id,scoreNumber,availability,configuration,enabled,*tags',
+      scans: 'id,appliedAt',
+      performances: 'key',
+    })
   }
 }
 
