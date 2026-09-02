@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Piece Selector icon">
+  <rect width="512" height="512" rx="112" fill="#173f36"/>
+  <path d="M96 340c46-82 93 82 139 0s93 82 181 0" fill="none" stroke="#efb95e" stroke-width="42" stroke-linecap="round"/>
+  <circle cx="160" cy="202" r="57" fill="#fffdf8"/>
+  <circle cx="352" cy="202" r="57" fill="#fffdf8"/>
+  <path d="M160 202v-96h118" fill="none" stroke="#efb95e" stroke-width="31" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
