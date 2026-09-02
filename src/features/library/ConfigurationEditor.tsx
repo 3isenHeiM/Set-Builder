@@ -22,12 +22,24 @@ interface ConfigurationFieldsProps {
   onClose: () => void
 }
 
+function BinarySwitch({ name, value, onChange }: { name: string; value: boolean | null; onChange: (value: boolean) => void }) {
+  return (
+    <div className={`binary-switch ${value === null ? 'unset' : value ? 'on' : 'off'}`}>
+      {[false, true].map((option) => (
+        <label key={String(option)}>
+          <input type="radio" name={name} checked={value === option} onChange={() => onChange(option)} />
+          <span>{option ? 'Yes' : 'No'}</span>
+        </label>
+      ))}
+    </div>
+  )
+}
+
 export function ConfigurationEditor({ score, saveLabel = 'Save score', progress, onSave, onDraftChange, onClose }: ConfigurationFieldsProps) {
   const [draft, setDraft] = useState(() => configurationFromScore(score))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const valid = draft.canStart !== null && draft.hotness !== null && draft.drumsIntro !== null && draft.goesHigh !== null
-  const answered = [draft.canStart, draft.hotness, draft.drumsIntro, draft.goesHigh].filter((value) => value !== null).length
   const hotnessLabels = ['Low', 'Medium', 'High'] as const
 
   const change = (configuration: ScoreConfiguration) => {
@@ -57,45 +69,36 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
         <h1 id="edit-score-title">{score.title}</h1>
       </div>
 
-      <div className={`metric-progress ${valid ? 'complete' : ''}`} aria-live="polite">
-        <span>{valid ? 'Ready for sets' : `${answered} / 4 set`}</span>
-        <div className="metric-track" role="progressbar" aria-label="Score configuration" aria-valuemin={0} aria-valuemax={4} aria-valuenow={answered}><span style={{ width: `${answered * 25}%` }} /></div>
-      </div>
-
       <div className="metric-grid">
-        <fieldset className={`field-group metric-card metric-wide ${draft.canStart !== null ? 'answered' : ''}`}>
-          <legend><span className="metric-icon"><UiIcon name="start" /></span><span>Can start?</span>{draft.canStart !== null && <span className="metric-check"><UiIcon name="check" /></span>}</legend>
-          <div className="segmented two">
-            {[true, false].map((value) => <label key={String(value)}><input type="radio" name="starter" checked={draft.canStart === value} onChange={() => change({ ...draft, canStart: value })} /><span>{value ? 'Yes' : 'No'}</span></label>)}
+        <fieldset className={`field-group metric-card metric-wide metric-start ${draft.canStart !== null ? 'answered' : ''}`}>
+          <legend><span className="metric-icon"><UiIcon name="start" /></span><span>Can start?</span></legend>
+          <BinarySwitch name="starter" value={draft.canStart} onChange={(value) => change({ ...draft, canStart: value })} />
+        </fieldset>
+
+        <fieldset className={`field-group metric-card metric-wide metric-hotness ${draft.hotness !== null ? 'answered' : ''}`}>
+          <legend><span className="metric-icon"><UiIcon name="heat" /></span><span>Hotness</span></legend>
+          <div className="heat-scale">
+            {([1, 2, 3] as Hotness[]).map((value) => <label key={value}><input type="radio" name="hotness" checked={draft.hotness === value} onChange={() => change({ ...draft, hotness: value })} /><span className={`heat-choice heat-${value}`} aria-label={`Hotness ${hotnessLabels[value - 1]}, ${value} of 3`}><span className="heat-bars" aria-hidden="true">{([1, 2, 3] as const).map((step) => <i className={step <= value ? 'lit' : ''} key={step} />)}</span><strong>{hotnessLabels[value - 1]}</strong></span></label>)}
           </div>
         </fieldset>
 
-        <fieldset className={`field-group metric-card metric-wide ${draft.hotness !== null ? 'answered' : ''}`}>
-          <legend><span className="metric-icon"><UiIcon name="heat" /></span><span>Hotness</span>{draft.hotness !== null && <span className="metric-check"><UiIcon name="check" /></span>}</legend>
-          <div className="segmented three hotness-scale">
-            {([1, 2, 3] as Hotness[]).map((value) => <label key={value}><input type="radio" name="hotness" checked={draft.hotness === value} onChange={() => change({ ...draft, hotness: value })} /><span aria-label={`Hotness ${value} of 3`}><strong>{value}</strong><small>{hotnessLabels[value - 1]}</small></span></label>)}
-          </div>
-        </fieldset>
-
-        <fieldset className={`field-group metric-card ${draft.drumsIntro !== null ? 'answered' : ''}`}>
-          <legend><span className="metric-icon"><UiIcon name="drum" /></span><span>Drums intro</span>{draft.drumsIntro !== null && <span className="metric-check"><UiIcon name="check" /></span>}</legend>
-          <div className="segmented two">
-            {[true, false].map((value) => <label key={String(value)}><input type="radio" name="drums" checked={draft.drumsIntro === value} onChange={() => change({ ...draft, drumsIntro: value })} /><span>{value ? 'Yes' : 'No'}</span></label>)}
-          </div>
+        <fieldset className={`field-group metric-card metric-drums ${draft.drumsIntro !== null ? 'answered' : ''}`}>
+          <legend><span className="metric-icon"><UiIcon name="drum" /></span><span>Drums intro</span></legend>
+          <BinarySwitch name="drums" value={draft.drumsIntro} onChange={(value) => change({ ...draft, drumsIntro: value })} />
           <p className="field-hint">Spaced apart.</p>
         </fieldset>
 
-        <fieldset className={`field-group metric-card ${draft.goesHigh !== null ? 'answered' : ''}`}>
-          <legend><span className="metric-icon"><UiIcon name="high" /></span><span>Goes high?</span>{draft.goesHigh !== null && <span className="metric-check"><UiIcon name="check" /></span>}</legend>
-          <div className="segmented two">
-            {[true, false].map((value) => <label key={String(value)}><input type="radio" name="goes-high" checked={draft.goesHigh === value} onChange={() => change({ ...draft, goesHigh: value })} /><span>{value ? 'Yes' : 'No'}</span></label>)}
-          </div>
+        <fieldset className={`field-group metric-card metric-high ${draft.goesHigh !== null ? 'answered' : ''}`}>
+          <legend><span className="metric-icon"><UiIcon name="high" /></span><span>Goes high?</span></legend>
+          <BinarySwitch name="goes-high" value={draft.goesHigh} onChange={(value) => change({ ...draft, goesHigh: value })} />
           <p className="field-hint">Placed early.</p>
         </fieldset>
       </div>
 
-      <label className="toggle-row"><input type="checkbox" checked={draft.in80s} onChange={(event) => change({ ...draft, in80s: event.target.checked })} /><span><strong>80s repertoire</strong><small>Include in 80s sets.</small></span></label>
-      <label className="toggle-row"><input type="checkbox" checked={draft.enabled} onChange={(event) => change({ ...draft, enabled: event.target.checked })} /><span><strong>Enabled</strong><small>Include in generated sets.</small></span></label>
+      <div className="preference-stack">
+        <label className="toggle-row toggle-80s"><span className="toggle-copy"><strong>80s repertoire</strong><small>Include in 80s sets.</small></span><input role="switch" type="checkbox" checked={draft.in80s} onChange={(event) => change({ ...draft, in80s: event.target.checked })} /><span className="switch-control" aria-hidden="true"><span /></span></label>
+        <label className="toggle-row toggle-enabled"><span className="toggle-copy"><strong>Enabled</strong><small>Include in generated sets.</small></span><input role="switch" type="checkbox" checked={draft.enabled} onChange={(event) => change({ ...draft, enabled: event.target.checked })} /><span className="switch-control" aria-hidden="true"><span /></span></label>
+      </div>
 
       {!valid && <p className="notice" role="status">Complete the four fields to use this piece.</p>}
       {message && <p className={message === 'Saved.' ? 'success' : 'error'} role="status">{message}</p>}
