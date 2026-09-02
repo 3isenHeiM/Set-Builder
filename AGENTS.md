@@ -246,6 +246,10 @@ Codex is also explicitly authorized to create ordinary new commits with `git com
 
 Inspect exact targets first and preserve unrelated user changes. Product scope, privacy, deployment, and destructive-action guardrails continue to apply to an otherwise permitted Git command.
 
+### No-fast-forward merge policy
+
+Fast-forward branch integration is prohibited. If the user explicitly authorizes a merge that is otherwise prohibited below, Codex must create a merge commit by running `git merge --no-ff`. Never run `git merge` without `--no-ff`, use `--ff` or `--ff-only`, move a ref directly to the merged commit, or configure `merge.ff` to permit fast-forwards. This rule applies even when the branches could be fast-forwarded.
+
 ### Prohibited Git and GitHub operations
 
 Do not amend, delete, replace, merge, reorder, or otherwise rewrite existing commits or commit history. Do not move, create, delete, or rewrite branches, tags, or other refs except for advancing the current branch through an authorized ordinary new commit. This prohibits `git commit --amend`, `git merge`, `git rebase`, `git cherry-pick`, `git revert`, `git am`, history-moving `git reset`, ref-changing `git branch`/`git tag`, filter-branch, filter-repo, and equivalent indirect actions.
