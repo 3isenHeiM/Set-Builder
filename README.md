@@ -57,6 +57,8 @@ IndexedDB in the current browser profile is the source of truth for configuratio
 
 Open a successfully built app online at least once before relying on offline mode. Browser storage is not a backup: clearing site data, changing profiles, or uninstalling in some circumstances can erase it. Folder access remains manual, and availability of a Nextcloud-backed folder depends on the iOS Files provider.
 
+The interface follows the device’s light or dark appearance automatically. Dark appearance uses glare-controlled near-black surfaces and high-contrast controls for reading set lists during evening and indoor performances.
+
 ## Install on iPhone
 
 In Safari, open the deployed address, tap Share, choose **Add to Home Screen**, and enable **Open as Web App** if offered. Launch once while online. The in-app update notice provides a deliberate refresh path without replacing IndexedDB.

@@ -1,6 +1,7 @@
 :root {
   color: #1a2924;
   background: #f4efe5;
+  color-scheme: light;
   font-family: ui-rounded, "Avenir Next", Avenir, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -15,6 +16,7 @@
   --muted: #5e6b65;
   --danger: #8e3027;
   --success: #17634c;
+  --focus: #1479bd;
 }
 
 * { box-sizing: border-box; }
@@ -47,7 +49,7 @@ h2 { color: var(--forest); }
 .secondary-action { color: var(--forest); background: #fffaf0; border: 1px solid #a99f8c; }
 .pill-button { min-height: 44px; color: var(--forest); background: var(--amber-soft); border: 1px solid #d0a759; border-radius: 999px; font-size: 13px; }
 .text-button { justify-self: start; margin-left: -10px; color: var(--forest-light); background: transparent; }
-.primary-action:focus-visible, .secondary-action:focus-visible, .pill-button:focus-visible, .text-button:focus-visible, .score-row:focus-visible, .bottom-nav button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, .install-guide button:focus-visible, .update-banner button:focus-visible { outline: 3px solid #1479bd; outline-offset: 3px; }
+.primary-action:focus-visible, .secondary-action:focus-visible, .pill-button:focus-visible, .text-button:focus-visible, .score-row:focus-visible, .bottom-nav button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, .install-guide button:focus-visible, .update-banner button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 .folder-picker { display: grid; gap: 9px; }
 .folder-picker .picker-note { margin: 0; padding-inline: 4px; }
 .notice, .error, .success { margin: 0; padding: 12px 14px; border-radius: 12px; font-size: 14px; line-height: 1.45; }
@@ -102,7 +104,7 @@ details li strong { color: var(--forest); }
 .segmented input, .preset-grid input { position: absolute; opacity: 0; pointer-events: none; }
 .segmented span { min-height: 48px; display: grid; place-items: center; color: var(--forest); background: #fffaf0; border: 1px solid #b7ae9c; border-radius: 11px; cursor: pointer; font-weight: 800; }
 .segmented input:checked + span { color: #fff; background: var(--forest-light); border-color: var(--forest); box-shadow: inset 0 0 0 2px #fff8; }
-.segmented input:focus-visible + span, .preset-grid input:focus-visible + strong { outline: 3px solid #1479bd; outline-offset: 2px; }
+.segmented input:focus-visible + span, .preset-grid input:focus-visible + strong { outline: 3px solid var(--focus); outline-offset: 2px; }
 .field-hint { margin: 0; }
 .toggle-row { padding: 6px 10px; background: #fffaf0; border: 1px solid var(--border); border-radius: 12px; }
 .toggle-row + .toggle-row { margin-top: -10px; }
@@ -159,6 +161,71 @@ input[type="search"], input[type="number"], select { width: 100%; min-height: 48
   .folder-picker { grid-template-columns: minmax(260px, 1fr) 1fr; align-items: center; }
   .folder-picker .picker-note { margin: 0; }
   .folder-picker .notice { grid-column: 1 / -1; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #dce7e1;
+    background: #07100d;
+    color-scheme: dark;
+    --ink: #dce7e1;
+    --forest: #9ad8c3;
+    --forest-light: #82c7b0;
+    --cream: #07100d;
+    --paper: #101b17;
+    --amber: #d7a64c;
+    --amber-soft: #2b2818;
+    --border: #2e4038;
+    --muted: #a2b3aa;
+    --danger: #f3aca3;
+    --success: #92d5b8;
+    --focus: #59b9f2;
+  }
+
+  html, body { background: var(--cream); }
+  .app-header { color: #dfe9e4; background: #0b1512; border-bottom: 1px solid #22332c; }
+  .app-logo, .hero-mark { color: #12251e; border-color: #896923; box-shadow: 4px 4px 0 #42695b; }
+  .local-badge { color: #b9c9c1; border-color: #455d53; }
+  .primary-action { color: #06110d; background: #80cdb4; box-shadow: 0 4px 0 #416e5f; }
+  .primary-action:active { box-shadow: 0 2px 0 #416e5f; }
+  .primary-action:disabled { color: #93a19a; background: #32433c; }
+  .secondary-action { color: #c4e8db; background: #14241e; border-color: #49655a; }
+  .pill-button { color: #e2cb91; background: #2b2818; border-color: #68572e; }
+  .text-button { color: #a6dcc9; }
+  .notice { color: #e6cb8e; background: #2a2515; border-color: #64542d; }
+  .error { color: var(--danger); background: #2e1816; border-color: #673631; }
+  .success { color: var(--success); background: #10261f; border-color: #315b4a; }
+  .install-guide { color: #dce8e2; background: #152a23; border: 1px solid #334c42; }
+  .update-banner { color: #f0d9a4; background: #362915; border: 1px solid #6a5129; }
+  .empty-state p { color: #bbc9c2; }
+  .summary-grid li { background: #17231e; }
+  details { border-color: var(--border); }
+  details ul { color: #bdcbc4; }
+  .decision-card { background: #0e1a16; border-color: #3a5047; }
+  .choice + .choice, .toggle-row + .toggle-row { border-color: #31433b; }
+  .choice input, .toggle-row input { accent-color: #84d1b7; }
+  .segmented span { color: #cce4db; background: #14231e; border-color: #435b51; }
+  .segmented input:checked + span { color: #06110d; background: #82ceb5; border-color: #a6ead5; box-shadow: inset 0 0 0 1px #07100d; }
+  .toggle-row { background: #101d18; border-color: #354940; }
+  input[type="search"], input[type="number"], select { color: var(--ink); background: #0e1a16; border-color: #486158; }
+  input::placeholder { color: #778981; }
+  .score-row { background: #101b17; border-color: #2e4038; }
+  .status-dot { box-shadow: 0 0 8px #5fc49b66; }
+  .status-dot.pending { background: #d69f45; box-shadow: 0 0 8px #d69f4544; }
+  .status-dot.missing { background: #d1776e; box-shadow: 0 0 8px #d1776e44; }
+  .preset-grid label { background: #101b17; border-color: #34483f; }
+  .preset-grid label.selected { border-color: #8ed6bd; box-shadow: 0 3px 0 #3d6658; }
+  .availability-card { color: #e3cf9c; background: #272516; border-color: #62542e; }
+  .set-card { background: #101b17; border-color: #31453c; box-shadow: 0 5px 22px #0008; }
+  .set-card h2 { color: #e3eee9; background: #163b31; }
+  .set-card h2 span { color: #9fbfb3; }
+  .set-card li + li { border-color: #2d3e37; }
+  .position { color: #87978f; }
+  .info-card { background: #101b17; border-color: #31443c; }
+  .info-card p { color: #bdcbc4; }
+  .bottom-nav { background: #09120fef; border-color: #293b33; }
+  .bottom-nav button[aria-current="page"] { color: #e1cb93; background: #2b2818; }
+  .skip-link { color: #07100d; background: #65c2f4; }
 }
 
 @media (prefers-reduced-motion: reduce) {
