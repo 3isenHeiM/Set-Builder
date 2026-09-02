@@ -72,3 +72,20 @@ Owner-only deployment process:
 3. Trigger and verify the first deployment, then use the Cloudflare-provided `*.workers.dev` address.
 
 These are user-only GitHub and Cloudflare actions; this repository does not automate or claim a deployment. The deployed app shell is public by default even when the source repository is private. Each visitor still starts with a separate empty library that stays in that browser profile.
+
+## Cloudflare Pages alternative (user-only deployment)
+
+Cloudflare Pages can host the same static PWA without changing the application or adding Pages Functions. The existing `wrangler.toml` is for the Workers alternative and is not needed by a Pages Git build.
+
+1. Manually push the branch you want to publish. To deploy the current implementation directly, push `dev`; otherwise move it to your chosen production branch first.
+2. In the Cloudflare dashboard, open **Workers & Pages**, choose **Create application** → **Pages** → **Import an existing Git repository**, and select only the intended private repository.
+3. Configure the project:
+   - Framework preset: **React (Vite)**.
+   - Production branch: `dev` for the current implementation, or your chosen release branch.
+   - Build command: `npm run build`.
+   - Build output directory: `dist`.
+   - Root directory: leave blank (repository root).
+4. Do not configure Pages Functions, environment variables, credentials, or service bindings; this client-only app does not need them.
+5. Choose **Save and Deploy**, wait for the owner-triggered build, and open the resulting `*.pages.dev` address in Safari once while online.
+
+Pages treats a site without a top-level `404.html` as a single-page application and falls unmatched routes back to the root. Each pushed commit to the configured production branch triggers another deployment, while other pushed branches can produce preview deployments. These dashboard, push, and deployment actions are user-only. As with the Workers option, the built app shell is public while score metadata and performances stay local to each browser profile.
