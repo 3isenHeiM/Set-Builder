@@ -1,4 +1,6 @@
 import { applyReconciliation } from '../domain/reconciliation'
+import { applySettingsBackup } from '../domain/settingsBackup'
+import type { SettingsBackup, SettingsImportReport } from '../domain/settingsBackup'
 import type {
   FolderScan,
   GeneratedPerformance,
@@ -20,6 +22,7 @@ export interface ScoreRepository {
     createId: () => string,
   ) => Promise<FolderScan>
   getLastScan: () => Promise<FolderScan | undefined>
+  importSettings: (backup: SettingsBackup, updatedAt: string) => Promise<SettingsImportReport>
 }
 
 export interface PerformanceRepository {
@@ -78,6 +81,15 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
 
   async getLastScan(): Promise<FolderScan | undefined> {
     return this.database.scans.orderBy('appliedAt').last()
+  }
+
+  async importSettings(backup: SettingsBackup, updatedAt: string): Promise<SettingsImportReport> {
+    return this.database.transaction('rw', this.database.scores, async () => {
+      const existing = await this.database.scores.toArray()
+      const result = applySettingsBackup(existing, backup, updatedAt)
+      await this.database.scores.bulkPut(result.scores)
+      return result.report
+    })
   }
 
   async saveLastPerformance(performance: GeneratedPerformance): Promise<void> {

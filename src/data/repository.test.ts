@@ -1,6 +1,7 @@
 import Dexie from 'dexie'
 import { buildFolderSnapshot } from '../domain/filename'
 import { classifyReconciliation } from '../domain/reconciliation'
+import { createSettingsBackup } from '../domain/settingsBackup'
 import { makePerformance, makeScore } from '../test/fixtures'
 import { LegacyDatabaseV1, PieceSelectorDatabase } from './database'
 import { PieceSelectorRepository } from './repository'
@@ -68,6 +69,21 @@ describe('IndexedDB persistence', () => {
 
     const secondDatabase = new PieceSelectorDatabase(name)
     expect(await new PieceSelectorRepository(secondDatabase).getLastPerformance()).toEqual(makePerformance())
+    secondDatabase.close()
+  })
+
+  it('restores settings transactionally without changing folder metadata', async () => {
+    const name = databaseName()
+    const original = makeScore({ title: 'Renamed locally', fileName: '01 - Renamed locally.mscz', hotness: 2 })
+    const backup = createSettingsBackup([makeScore({ title: 'Old name', tags: ['80s'], canStart: false, hotness: 5, drumsIntro: true, enabled: false })], 'exported')
+    const firstDatabase = new PieceSelectorDatabase(name)
+    await firstDatabase.scores.add(original)
+    const report = await new PieceSelectorRepository(firstDatabase).importSettings(backup, 'restored')
+    firstDatabase.close()
+
+    const secondDatabase = new PieceSelectorDatabase(name)
+    expect(await secondDatabase.scores.get(original.id)).toEqual({ ...original, tags: ['80s'], canStart: false, hotness: 5, drumsIntro: true, enabled: false, updatedAt: 'restored' })
+    expect(report).toMatchObject({ matched: 1, titleMismatches: [{ backupName: 'Old name', currentName: 'Renamed locally' }] })
     secondDatabase.close()
   })
 })

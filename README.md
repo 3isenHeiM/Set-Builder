@@ -55,7 +55,9 @@ The latest performance contains independent score snapshots and opens automatica
 
 IndexedDB in the current browser profile is the source of truth for configuration, alignment records, and the last performance. Timestamps are UTC ISO-8601 strings. There is no account, server database, API, WebDAV access, telemetry, CDN, external font, or runtime third-party request. The production service worker caches only the same-origin app shell and static assets; selected `.mscz` files are never copied into the cache.
 
-Open a successfully built app online at least once before relying on offline mode. Browser storage is not a backup: clearing site data, changing profiles, or uninstalling in some circumstances can erase it. Folder access remains manual, and availability of a Nextcloud-backed folder depends on the iOS Files provider.
+Use **Download app settings** on the About screen to save a versioned, human-readable JSON file. Each entry contains the numeric score number, piece name, and its 80s, opener, hotness, drums-intro, and enabled settings. Files, relative paths, internal IDs, alignment state, and generated performances are deliberately excluded. **Re-import app settings** parses only an explicitly selected settings JSON, shows a preview, and updates matched pieces transactionally after confirmation. Matching uses the numeric score number; name differences are shown for review, pieces absent from the current library are skipped, and pieces absent from the backup keep their settings.
+
+Open a successfully built app online at least once before relying on offline mode. Keep a downloaded settings JSON outside the browser profile: clearing site data, changing profiles, or uninstalling in some circumstances can erase local app data. Folder access remains manual, and availability of a Nextcloud-backed folder depends on the iOS Files provider.
 
 The interface follows the device’s light or dark appearance automatically. Dark appearance uses glare-controlled near-black surfaces and high-contrast controls for reading set lists during evening and indoor performances.
 
