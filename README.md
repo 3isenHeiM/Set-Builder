@@ -89,3 +89,12 @@ Cloudflare Pages can host the same static PWA without changing the application o
 5. Choose **Save and Deploy**, wait for the owner-triggered build, and open the resulting `*.pages.dev` address in Safari once while online.
 
 Pages treats a site without a top-level `404.html` as a single-page application and falls unmatched routes back to the root. Each pushed commit to the configured production branch triggers another deployment, while other pushed branches can produce preview deployments. These dashboard, push, and deployment actions are user-only. As with the Workers option, the built app shell is public while score metadata and performances stay local to each browser profile.
+
+### Pages build reports a missing `package.json`
+
+An `ENOENT` for `/opt/buildhome/repo/package.json` means Pages checked out a commit that does not contain the application at its repository root; it occurs before npm or Vite can build anything. The “No Wrangler configuration file found” line is informational for this dashboard-configured Pages deployment.
+
+- Confirm the Pages **Production branch** is `dev`, not `main`, when deploying this implementation.
+- Leave **Root directory** blank. Do not enter the branch name as a directory.
+- Confirm the deployment log’s checked-out commit is the latest commit you pushed from `dev` and that the commit includes root `package.json`.
+- Keep **Build command** as `npm run build` and **Build output directory** as `dist`, then retry the latest `dev` deployment.
