@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { classifyReconciliation } from '../domain/reconciliation'
 import type { SettingsBackup } from '../domain/settingsBackup'
-import type { FolderScan, FolderSnapshot, GeneratedPerformance, ReconciliationPlan, RenumberingDecisions, Score, ScoreConfiguration } from '../domain/types'
+import type { FolderScan, FolderSnapshot, GeneratedPerformance, ReconciliationPlan, RenumberingDecisions, SavedSetList, Score, ScoreConfiguration } from '../domain/types'
+import { restoreSetList, type SetListBackup } from '../domain/setListBackup'
 import { repository as browserRepository } from '../data/client'
 import type { PerformanceRepository, ScoreRepository } from '../data/repository'
 import { createLocalId } from './id'
@@ -22,7 +23,8 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
   const { locale, t } = useI18n()
   const [scores, setScores] = useState<Score[]>([])
   const [lastScan, setLastScan] = useState<FolderScan>()
-  const [performance, setPerformance] = useState<GeneratedPerformance>()
+  const [setLists, setSetLists] = useState<SavedSetList[]>([])
+  const [currentSetList, setCurrentSetList] = useState<SavedSetList>()
   const [preview, setPreview] = useState<ReconciliationPlan>()
   const [applying, setApplying] = useState(false)
   const [previewError, setPreviewError] = useState('')
@@ -32,12 +34,24 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
   const [editingScore, setEditingScore] = useState(false)
 
   useEffect(() => {
-    void Promise.all([repository.listScores(), repository.getLastScan(), repository.getLastPerformance()])
-      .then(([loadedScores, scan, savedPerformance]) => {
+    void Promise.all([repository.listScores(), repository.getLastScan(), repository.getLastPerformance(), repository.listSetLists()])
+      .then(([loadedScores, scan, savedPerformance, savedSetLists]) => {
         setScores(loadedScores)
         setLastScan(scan)
-        setPerformance(savedPerformance)
-        if (savedPerformance) setPage('performance')
+        setSetLists(savedSetLists)
+        if (savedPerformance) {
+          setCurrentSetList(savedSetLists.find((saved) => saved.id === savedPerformance.id) ?? {
+            id: savedPerformance.id,
+            name: '',
+            createdAt: savedPerformance.generatedAt,
+            updatedAt: savedPerformance.generatedAt,
+            performance: savedPerformance,
+          })
+          setPage('performance')
+        } else if (savedSetLists[0]) {
+          setCurrentSetList(savedSetLists[0])
+          setPage('performance')
+        }
       })
       .catch((error: unknown) => setLoadError(localizedError(error, locale, t('localStorageUnavailable'))))
       .finally(() => setLoading(false))
@@ -71,8 +85,28 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
   }
 
   const savePerformance = async (generated: GeneratedPerformance) => {
-    await repository.saveLastPerformance(generated)
-    setPerformance(generated)
+    const saved: SavedSetList = { id: generated.id, name: '', createdAt: generated.generatedAt, updatedAt: generated.generatedAt, performance: generated }
+    await repository.saveSetList(saved)
+    setSetLists(await repository.listSetLists())
+    setCurrentSetList(saved)
+    setPage('performance')
+  }
+
+  const saveSetList = async (saved: SavedSetList) => {
+    await repository.saveSetList(saved)
+    setSetLists(await repository.listSetLists())
+    setCurrentSetList(saved)
+  }
+
+  const selectSetList = async (id: string) => {
+    const selected = setLists.find((saved) => saved.id === id)
+    if (!selected) return
+    await repository.saveLastPerformance(selected.performance)
+    setCurrentSetList(selected)
+  }
+
+  const importSetList = async (backup: SetListBackup) => {
+    await saveSetList(restoreSetList(backup, new Date().toISOString(), createLocalId))
     setPage('performance')
   }
 
@@ -92,7 +126,7 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
       <InstallGuide />
       <UpdateBanner />
       <main id="main-content">
-        {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} /> : page === 'library' ? <LibraryScreen scores={scores} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onEditingChange={setEditingScore} /> : page === 'generate' ? <GenerateScreen scores={scores} hasPerformance={Boolean(performance)} onGenerated={savePerformance} /> : page === 'performance' ? <PerformanceScreen performance={performance} onRegenerate={() => setPage('generate')} /> : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} /></AboutScreen>}
+        {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} /> : page === 'library' ? <LibraryScreen scores={scores} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onEditingChange={setEditingScore} /> : page === 'generate' ? <GenerateScreen scores={scores} hasPerformance={Boolean(currentSetList)} onGenerated={savePerformance} /> : page === 'performance' ? <PerformanceScreen setList={currentSetList} savedSetLists={setLists} onSave={saveSetList} onSelect={selectSetList} onImport={importSetList} onRegenerate={() => setPage('generate')} /> : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} /></AboutScreen>}
       </main>
       {!preview && !editingScore && <nav className="bottom-nav" aria-label={t('primaryNavigation')}>{([['library', t('library')], ['generate', t('build')], ['performance', t('sets')], ['about', t('about')]] as const).map(([target, label]) => <button type="button" key={target} aria-current={page === target ? 'page' : undefined} onClick={() => setPage(target)}><UiIcon name={target === 'library' ? 'library' : target === 'generate' ? 'sparkles' : target === 'performance' ? 'sets' : 'info'} />{label}</button>)}</nav>}
     </div>

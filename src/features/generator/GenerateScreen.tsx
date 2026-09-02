@@ -45,7 +45,7 @@ export function GenerateScreen({ scores, hasPerformance, onGenerated }: Generate
     <section className="screen-section" aria-labelledby="generate-title">
       <div className="eyebrow">{t('noRepeats')}</div>
       <h1 id="generate-title">{t('buildSets')}</h1>
-      {hasPerformance && <p className="notice">{t('replacesSavedSets')}</p>}
+      {hasPerformance && <p className="notice">{t('createsSavedSetList')}</p>}
       <fieldset className="preset-field">
         <legend>{t('repertoire')}</legend>
         <div className="preset-grid">
@@ -63,7 +63,7 @@ export function GenerateScreen({ scores, hasPerformance, onGenerated }: Generate
       </div>
       {!feasibility.ok && <p className="error" role="alert">{feasibilityMessage}</p>}
       {error && error !== feasibilityMessage && <p className="error" role="alert">{error}</p>}
-      <button type="button" className="primary-action sticky-action" onClick={() => void generate()} disabled={!feasibility.ok || saving}>{saving ? t('saving') : hasPerformance ? t('replaceSets') : t('generateSets')}</button>
+      <button type="button" className="primary-action sticky-action" onClick={() => void generate()} disabled={!feasibility.ok || saving}>{saving ? t('saving') : t('generateSets')}</button>
     </section>
   )
 }

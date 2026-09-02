@@ -140,6 +140,7 @@ export interface PerformanceScoreSnapshot {
 
 export interface PerformanceSet {
   number: number
+  name?: string
   scores: PerformanceScoreSnapshot[]
 }
 
@@ -156,5 +157,13 @@ export interface GeneratedPerformance {
 
 export interface StoredPerformance {
   key: 'last'
+  performance: GeneratedPerformance
+}
+
+export interface SavedSetList {
+  id: string
+  name: string
+  createdAt: IsoTimestamp
+  updatedAt: IsoTimestamp
   performance: GeneratedPerformance
 }

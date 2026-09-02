@@ -6,6 +6,7 @@ import type {
   GeneratedPerformance,
   ReconciliationPlan,
   RenumberingDecisions,
+  SavedSetList,
   Score,
   ScoreConfiguration,
 } from '../domain/types'
@@ -29,6 +30,8 @@ export interface ScoreRepository {
 export interface PerformanceRepository {
   saveLastPerformance: (performance: GeneratedPerformance) => Promise<void>
   getLastPerformance: () => Promise<GeneratedPerformance | undefined>
+  listSetLists: () => Promise<SavedSetList[]>
+  saveSetList: (setList: SavedSetList) => Promise<void>
 }
 
 export class PieceSelectorRepository implements ScoreRepository, PerformanceRepository {
@@ -94,5 +97,16 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
 
   async getLastPerformance(): Promise<GeneratedPerformance | undefined> {
     return (await this.database.performances.get('last'))?.performance
+  }
+
+  async listSetLists(): Promise<SavedSetList[]> {
+    return this.database.savedSetLists.orderBy('updatedAt').reverse().toArray()
+  }
+
+  async saveSetList(setList: SavedSetList): Promise<void> {
+    await this.database.transaction('rw', this.database.savedSetLists, this.database.performances, async () => {
+      await this.database.savedSetLists.put(setList)
+      await this.database.performances.put({ key: 'last', performance: setList.performance })
+    })
   }
 }

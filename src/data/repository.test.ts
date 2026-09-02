@@ -3,6 +3,7 @@ import { buildFolderSnapshot } from '../domain/filename'
 import { classifyReconciliation } from '../domain/reconciliation'
 import { createSettingsBackup } from '../domain/settingsBackup'
 import { makePerformance, makeScore } from '../test/fixtures'
+import type { SavedSetList } from '../domain/types'
 import { LegacyDatabaseV1, LegacyDatabaseV4, PieceSelectorDatabase } from './database'
 import { PieceSelectorRepository } from './repository'
 
@@ -25,7 +26,12 @@ describe('IndexedDB persistence', () => {
     const database = new PieceSelectorDatabase(name)
     const migrated = await database.scores.get(original.id)
     expect(migrated).toMatchObject({ configuration: 'complete', tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, goesHigh: null, enabled: false })
-    expect(await new PieceSelectorRepository(database).getLastPerformance()).toMatchObject({ sets: [{ scores: [{ hotness: 3, goesHigh: false }] }] })
+    const repository = new PieceSelectorRepository(database)
+    expect(await repository.getLastPerformance()).toMatchObject({ sets: [{ scores: [{ hotness: 3, goesHigh: false }] }] })
+    const migratedSetLists = await repository.listSetLists()
+    expect(migratedSetLists).toHaveLength(1)
+    expect(migratedSetLists[0]?.id).toBe(performance.id)
+    expect(migratedSetLists[0]?.performance.id).toBe(performance.id)
     database.close()
     await Dexie.delete(name)
   })
@@ -92,6 +98,24 @@ describe('IndexedDB persistence', () => {
     const secondDatabase = new PieceSelectorDatabase(name)
     expect(await new PieceSelectorRepository(secondDatabase).getLastPerformance()).toEqual(makePerformance())
     secondDatabase.close()
+  })
+
+  it('stores multiple named set lists and tracks the one most recently opened', async () => {
+    const name = databaseName()
+    const database = new PieceSelectorDatabase(name)
+    const repository = new PieceSelectorRepository(database)
+    const first: SavedSetList = { id: 'first', name: 'Afternoon', createdAt: '2026-09-01T10:00:00.000Z', updatedAt: '2026-09-01T10:00:00.000Z', performance: { ...makePerformance(), id: 'first' } }
+    const second: SavedSetList = { id: 'second', name: 'Evening', createdAt: '2026-09-01T11:00:00.000Z', updatedAt: '2026-09-01T11:00:00.000Z', performance: { ...makePerformance(), id: 'second' } }
+    await repository.saveSetList(first)
+    await repository.saveSetList(second)
+    expect((await repository.listSetLists()).map((saved) => saved.name)).toEqual(['Evening', 'Afternoon'])
+    expect(await repository.getLastPerformance()).toMatchObject({ id: 'second' })
+    database.close()
+
+    const reopened = new PieceSelectorDatabase(name)
+    expect((await new PieceSelectorRepository(reopened).listSetLists()).map((saved) => saved.id)).toEqual(['second', 'first'])
+    reopened.close()
+    await Dexie.delete(name)
   })
 
   it('restores settings transactionally without changing folder metadata', async () => {

@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
-import type { FolderScan, GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, Score, StoredPerformance } from '../domain/types'
+import type { FolderScan, GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, SavedSetList, Score, StoredPerformance } from '../domain/types'
 
 export const DATABASE_NAME = 'piece-selector'
 
@@ -21,6 +21,7 @@ export class PieceSelectorDatabase extends Dexie {
   scores!: EntityTable<Score, 'id'>
   scans!: EntityTable<FolderScan, 'id'>
   performances!: EntityTable<StoredPerformance, 'key'>
+  savedSetLists!: EntityTable<SavedSetList, 'id'>
 
   constructor(name = DATABASE_NAME) {
     super(name)
@@ -105,6 +106,24 @@ export class PieceSelectorDatabase extends Dexie {
             if (!score.enabled) score.configuration = 'complete'
           }),
       )
+    this.version(6)
+      .stores({
+        scores: 'id,scoreNumber,availability,configuration,enabled,*tags',
+        scans: 'id,appliedAt',
+        performances: 'key',
+        savedSetLists: 'id,updatedAt',
+      })
+      .upgrade(async (transaction: Transaction) => {
+        const stored = await transaction.table<StoredPerformance, string>('performances').get('last')
+        if (!stored) return
+        await transaction.table<SavedSetList, string>('savedSetLists').put({
+          id: stored.performance.id,
+          name: '',
+          createdAt: stored.performance.generatedAt,
+          updatedAt: stored.performance.generatedAt,
+          performance: stored.performance,
+        })
+      })
   }
 }
 
@@ -117,7 +136,7 @@ export class LegacyDatabaseV4 extends Dexie {
       scores: 'id,scoreNumber,availability,configuration,enabled,*tags',
       scans: 'id,appliedAt',
       performances: 'key',
-    })
+      })
   }
 }
 

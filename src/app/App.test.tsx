@@ -15,6 +15,8 @@ function storedRepository(performance: GeneratedPerformance) {
     importSettings: (): Promise<SettingsImportReport> => Promise.resolve({ matched: 0, notFound: 0, titleMismatches: [] }),
     saveLastPerformance: (): Promise<void> => Promise.resolve(),
     getLastPerformance: (): Promise<GeneratedPerformance | undefined> => Promise.resolve(performance),
+    listSetLists: () => Promise.resolve([]),
+    saveSetList: (): Promise<void> => Promise.resolve(),
   }
 }
 
