@@ -71,7 +71,7 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
 
       <div className="metric-grid">
         <fieldset className={`field-group metric-card metric-wide metric-start ${draft.canStart !== null ? 'answered' : ''}`}>
-          <legend><span className="metric-icon"><UiIcon name="start" /></span><span>Can start?</span></legend>
+          <legend><span className="metric-icon"><UiIcon name="start" /></span><span>Can start a set?</span></legend>
           <BinarySwitch name="starter" value={draft.canStart} onChange={(value) => change({ ...draft, canStart: value })} />
         </fieldset>
 

@@ -20,7 +20,7 @@ describe('library configuration UI', () => {
     render(<LibraryScreen scores={scores} lastScan={undefined} onFolder={vi.fn()} onSave={onSave} />)
     await user.click(screen.getByRole('button', { name: 'Configure 2' }))
     expect(screen.getByText('1 of 2')).toBeVisible()
-    await user.click(within(screen.getByRole('group', { name: 'Can start?' })).getByRole('radio', { name: 'Yes' }))
+    await user.click(within(screen.getByRole('group', { name: 'Can start a set?' })).getByRole('radio', { name: 'Yes' }))
     await user.click(within(screen.getByRole('group', { name: 'Hotness' })).getByRole('radio', { name: 'Hotness High, 3 of 3' }))
     await user.click(within(screen.getByRole('group', { name: 'Drums intro' })).getByRole('radio', { name: 'No' }))
     await user.click(within(screen.getByRole('group', { name: 'Goes high?' })).getByRole('radio', { name: 'Yes' }))
