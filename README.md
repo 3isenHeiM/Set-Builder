@@ -45,7 +45,7 @@ Applying a reviewed scan updates scores and its alignment record in one IndexedD
 
 ## Configuration and generation
 
-New scores start active, enabled, and pending. `can start`, hotness 1–5, and drums intro must each have an explicit value before a score becomes complete. `80s` membership is optional. Missing, disabled, and pending scores cannot be generated.
+New scores start active, enabled, and pending. `can start`, hotness 1–3, and drums intro must each have an explicit value before a score becomes complete. `80s` membership is optional. Missing, disabled, and pending scores cannot be generated.
 
 The **Mix** preset uses every active, enabled, complete score. **80s** adds the fixed `80s` tag requirement. The documented UI limits are 1–12 sets and 1–30 scores per set. Generation checks the requested score and distinct-starter counts before doing work, reserves all starters first, samples the remaining scores without replacement using hotness as weight, and avoids adjacent drums intros when possible. A non-blocking warning is retained when that soft preference must be relaxed. The seed is stored so a result can be reproduced in tests.
 

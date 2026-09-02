@@ -1,7 +1,7 @@
 import type { Hotness, Score } from './types'
 
 export const SETTINGS_BACKUP_FORMAT = 'piece-selector-settings'
-export const SETTINGS_BACKUP_VERSION = 1
+export const SETTINGS_BACKUP_VERSION = 2
 
 export interface BackedUpScoreSettings {
   scoreNumber: number
@@ -82,7 +82,8 @@ export function parseSettingsBackupJson(source: string): SettingsBackup {
   if (!isRecord(raw) || raw.format !== SETTINGS_BACKUP_FORMAT) {
     throw new Error('This is not a Piece Selector settings file.')
   }
-  if (raw.version !== SETTINGS_BACKUP_VERSION) {
+  const isLegacyVersion = raw.version === 1
+  if (!isLegacyVersion && raw.version !== SETTINGS_BACKUP_VERSION) {
     throw new Error('This settings file version is not supported.')
   }
   if (typeof raw.exportedAt !== 'string' || !Array.isArray(raw.pieces)) {
@@ -109,7 +110,7 @@ export function parseSettingsBackupJson(source: string): SettingsBackup {
     if (
       typeof settings.in80s !== 'boolean'
       || !isNullableBoolean(settings.canStart)
-      || !(settings.hotness === null || isHotness(settings.hotness))
+      || !(settings.hotness === null || isHotness(settings.hotness) || (isLegacyVersion && (settings.hotness === 4 || settings.hotness === 5)))
       || !isNullableBoolean(settings.drumsIntro)
       || typeof settings.enabled !== 'boolean'
     ) {
@@ -122,7 +123,7 @@ export function parseSettingsBackupJson(source: string): SettingsBackup {
       settings: {
         in80s: settings.in80s,
         canStart: settings.canStart,
-        hotness: settings.hotness,
+        hotness: settings.hotness === 4 || settings.hotness === 5 ? 3 : settings.hotness,
         drumsIntro: settings.drumsIntro,
         enabled: settings.enabled,
       },

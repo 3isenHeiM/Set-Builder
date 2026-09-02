@@ -39,23 +39,23 @@ describe('reconciliation', () => {
   })
 
   it('preserves configuration for rename, disappearance, reappearance and explicit renumbering', () => {
-    const original = makeScore({ tags: ['80s'], hotness: 5, drumsIntro: true, canStart: false, enabled: false })
+    const original = makeScore({ tags: ['80s'], hotness: 3, drumsIntro: true, canStart: false, enabled: false })
     const renamedPlan = classifyReconciliation(buildFolderSnapshot([{ name: '01 - New Name.mscz' }], firstTime), [original])
     const renamed = applyReconciliation([original], renamedPlan, {}, firstTime, () => 'new-id', 'scan-1').scores[0]
-    expect(renamed).toMatchObject({ id: original.id, title: 'New Name', tags: ['80s'], hotness: 5, drumsIntro: true, canStart: false, enabled: false })
+    expect(renamed).toMatchObject({ id: original.id, title: 'New Name', tags: ['80s'], hotness: 3, drumsIntro: true, canStart: false, enabled: false })
 
     const missingPlan = classifyReconciliation(buildFolderSnapshot([], secondTime), renamed ? [renamed] : [])
     const missing = applyReconciliation(renamed ? [renamed] : [], missingPlan, {}, secondTime, () => 'new-id', 'scan-2').scores[0]
     expect(missing?.availability).toBe('missing')
     const restoredPlan = classifyReconciliation(buildFolderSnapshot([{ name: '01 - New Name.mscz' }], secondTime), missing ? [missing] : [])
     const restored = applyReconciliation(missing ? [missing] : [], restoredPlan, {}, secondTime, () => 'new-id', 'scan-3').scores[0]
-    expect(restored).toMatchObject({ id: original.id, availability: 'active', tags: ['80s'], hotness: 5 })
+    expect(restored).toMatchObject({ id: original.id, availability: 'active', tags: ['80s'], hotness: 3 })
 
     const renumberPlan = classifyReconciliation(buildFolderSnapshot([{ name: '25 - New Name.mscz' }], secondTime), restored ? [restored] : [])
     const suggestion = renumberPlan.possibleRenumberings[0]
     expect(suggestion).toBeDefined()
     const changed = applyReconciliation(restored ? [restored] : [], renumberPlan, suggestion ? { [suggestion.id]: 'same-score' } : {}, secondTime, () => 'unused', 'scan-4').scores[0]
-    expect(changed).toMatchObject({ id: original.id, scoreNumber: 25, displayNumber: '25', tags: ['80s'], hotness: 5 })
+    expect(changed).toMatchObject({ id: original.id, scoreNumber: 25, displayNumber: '25', tags: ['80s'], hotness: 3 })
   })
 
   it('is idempotent across repeated snapshots and permits adding a suggested renumbering as new', () => {

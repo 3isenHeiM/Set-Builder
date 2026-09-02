@@ -1,10 +1,10 @@
-import type { PerformanceScoreSnapshot, Preset, Score } from './types'
+import type { Hotness, PerformanceScoreSnapshot, Preset, Score } from './types'
 
 export interface EligibleScore extends Score {
   configuration: 'complete'
   availability: 'active'
   canStart: boolean
-  hotness: 1 | 2 | 3 | 4 | 5
+  hotness: Hotness
   drumsIntro: boolean
 }
 

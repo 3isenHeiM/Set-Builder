@@ -10,7 +10,7 @@ function pool(size: number, starters = size) {
       scoreNumber: index + 1,
       displayNumber: String(index + 1).padStart(2, '0'),
       title: `Piece ${index + 1}`,
-      hotness: ((index % 5) + 1) as 1 | 2 | 3 | 4 | 5,
+      hotness: ((index % 3) + 1) as 1 | 2 | 3,
       canStart: index < starters,
       drumsIntro: index % 3 === 0,
       tags: index % 2 === 0 ? ['80s'] : [],
@@ -53,12 +53,12 @@ describe('generator', () => {
   })
 
   it('uses hotness as positive weighted-selection input', () => {
-    const scores = [makeScore({ id: 'low', hotness: 1 }), makeScore({ id: 'high', scoreNumber: 2, hotness: 5 })]
+    const scores = [makeScore({ id: 'low', hotness: 1 }), makeScore({ id: 'high', scoreNumber: 2, hotness: 3 })]
     const options = { preset: 'mix' as const, setCount: 1, scoresPerSet: 1, seed: 1 }
     const low = generatePerformance(scores, options, { now: 'now', createId: () => 'p', random: { next: () => 0 } })
     const high = generatePerformance(scores, options, { now: 'now', createId: () => 'p', random: { next: () => 0.999 } })
     expect(low.sets[0]?.scores[0]?.hotness).toBe(1)
-    expect(high.sets[0]?.scores[0]?.hotness).toBe(5)
+    expect(high.sets[0]?.scores[0]?.hotness).toBe(3)
   })
 
   it.each([

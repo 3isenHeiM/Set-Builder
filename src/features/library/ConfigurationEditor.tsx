@@ -62,8 +62,8 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
 
       <fieldset className="field-group">
         <legend>Hotness</legend>
-        <div className="segmented five">
-          {([1, 2, 3, 4, 5] as Hotness[]).map((value) => <label key={value}><input type="radio" name="hotness" checked={draft.hotness === value} onChange={() => change({ ...draft, hotness: value })} /><span aria-label={`Hotness ${value} of 5`}>{value}</span></label>)}
+        <div className="segmented three">
+          {([1, 2, 3] as Hotness[]).map((value) => <label key={value}><input type="radio" name="hotness" checked={draft.hotness === value} onChange={() => change({ ...draft, hotness: value })} /><span aria-label={`Hotness ${value} of 3`}>{value}</span></label>)}
         </div>
         <p className="field-hint">Higher numbers make this score more likely to be selected.</p>
       </fieldset>

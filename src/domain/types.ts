@@ -1,7 +1,7 @@
 export type IsoTimestamp = string
 export type Availability = 'active' | 'missing'
 export type ConfigurationStatus = 'pending' | 'complete'
-export type Hotness = 1 | 2 | 3 | 4 | 5
+export type Hotness = 1 | 2 | 3
 export type Preset = '80s' | 'mix'
 
 export interface Score {

@@ -99,7 +99,7 @@ details li strong { color: var(--forest); }
 .field-group { display: grid; gap: 8px; }
 .segmented { display: grid; gap: 5px; }
 .segmented.two { grid-template-columns: 1fr 1fr; }
-.segmented.five { grid-template-columns: repeat(5, 1fr); }
+.segmented.three { grid-template-columns: repeat(3, 1fr); }
 .segmented label { min-width: 0; }
 .segmented input, .preset-grid input { position: absolute; opacity: 0; pointer-events: none; }
 .segmented span { min-height: 48px; display: grid; place-items: center; color: var(--forest); background: #fffaf0; border: 1px solid #b7ae9c; border-radius: 11px; cursor: pointer; font-weight: 800; }

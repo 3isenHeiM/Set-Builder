@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { makeScore } from '../../test/fixtures'
 import { LibraryScreen } from './LibraryScreen'
@@ -20,10 +20,9 @@ describe('library configuration UI', () => {
     render(<LibraryScreen scores={scores} lastScan={undefined} onFolder={vi.fn()} onSave={onSave} />)
     await user.click(screen.getByRole('button', { name: 'Configure 2' }))
     expect(screen.getByText('1 of 2')).toBeVisible()
-    const radios = screen.getAllByRole('radio')
-    await user.click(radios[0]!)
-    await user.click(radios[4]!)
-    await user.click(radios[8]!)
+    await user.click(within(screen.getByRole('group', { name: 'Can start a set?' })).getByRole('radio', { name: 'Yes' }))
+    await user.click(within(screen.getByRole('group', { name: 'Hotness' })).getByRole('radio', { name: 'Hotness 3 of 3' }))
+    await user.click(within(screen.getByRole('group', { name: 'Drums intro?' })).getByRole('radio', { name: 'No' }))
     await user.click(screen.getByRole('button', { name: 'Save and next' }))
     expect(onSave).toHaveBeenCalledWith('one', expect.objectContaining({ canStart: true, hotness: 3, drumsIntro: false }))
     expect(screen.getByText('2 of 2')).toBeVisible()
