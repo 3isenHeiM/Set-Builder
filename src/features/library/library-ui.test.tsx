@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { makeScore } from '../../test/fixtures'
 import { LibraryScreen } from './LibraryScreen'
@@ -6,8 +6,8 @@ import { LibraryScreen } from './LibraryScreen'
 describe('library configuration UI', () => {
   it('shows empty onboarding with the filename contract', () => {
     render(<LibraryScreen scores={[]} lastScan={undefined} onFolder={vi.fn()} onSave={vi.fn(() => Promise.resolve())} />)
-    expect(screen.getByRole('heading', { name: /Turn a scores folder/ })).toBeVisible()
-    expect(screen.getByText(/01 - Take On Me.mscz/)).toBeVisible()
+    expect(screen.getByRole('heading', { name: /Build tonight’s sets/ })).toBeVisible()
+    expect(screen.getByText(/01 - Name.mscz/)).toBeVisible()
   })
 
   it('saves explicit configuration and advances the pending queue', async () => {
@@ -20,12 +20,14 @@ describe('library configuration UI', () => {
     render(<LibraryScreen scores={scores} lastScan={undefined} onFolder={vi.fn()} onSave={onSave} />)
     await user.click(screen.getByRole('button', { name: 'Configure 2' }))
     expect(screen.getByText('1 of 2')).toBeVisible()
-    const radios = screen.getAllByRole('radio')
-    await user.click(radios[0]!)
-    await user.click(radios[4]!)
-    await user.click(radios[8]!)
+    await user.click(within(screen.getByRole('group', { name: 'Can start a set?' })).getByRole('radio', { name: 'Yes' }))
+    await user.click(within(screen.getByRole('group', { name: 'Hotness' })).getByRole('radio', { name: 'Hotness High, 3 of 3' }))
+    await user.click(within(screen.getByRole('group', { name: 'Drums intro' })).getByRole('radio', { name: 'No' }))
+    await user.click(within(screen.getByRole('group', { name: 'Goes high?' })).getByRole('radio', { name: 'Yes' }))
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: /Enabled/ })).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Save and next' }))
-    expect(onSave).toHaveBeenCalledWith('one', expect.objectContaining({ canStart: true, hotness: 3, drumsIntro: false }))
+    expect(onSave).toHaveBeenCalledWith('one', expect.objectContaining({ canStart: true, hotness: 3, drumsIntro: false, goesHigh: true }))
     expect(screen.getByText('2 of 2')).toBeVisible()
   })
 })

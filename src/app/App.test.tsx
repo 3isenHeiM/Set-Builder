@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import type { FolderScan, GeneratedPerformance, Score } from '../domain/types'
+import type { SettingsImportReport } from '../domain/settingsBackup'
 import { makePerformance } from '../test/fixtures'
 import { App } from './App'
 
@@ -11,6 +12,7 @@ function storedRepository(performance: GeneratedPerformance) {
     saveConfiguration: (): Promise<void> => Promise.resolve(),
     applyReconciliation: (): Promise<FolderScan> => Promise.reject(new Error('unused')),
     getLastScan: (): Promise<FolderScan | undefined> => Promise.resolve(undefined),
+    importSettings: (): Promise<SettingsImportReport> => Promise.resolve({ matched: 0, notFound: 0, titleMismatches: [] }),
     saveLastPerformance: (): Promise<void> => Promise.resolve(),
     getLastPerformance: (): Promise<GeneratedPerformance | undefined> => Promise.resolve(performance),
   }
@@ -19,7 +21,7 @@ function storedRepository(performance: GeneratedPerformance) {
 describe('application relaunch', () => {
   it('opens the most recently generated performance', async () => {
     render(<App repository={storedRepository(makePerformance())} />)
-    expect(await screen.findByRole('heading', { name: 'Current performance' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Tonight’s sets' })).toBeVisible()
     expect(screen.getByText('Take On Me')).toBeVisible()
   })
 })

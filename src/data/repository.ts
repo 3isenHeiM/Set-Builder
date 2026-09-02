@@ -1,4 +1,6 @@
 import { applyReconciliation } from '../domain/reconciliation'
+import { applySettingsBackup } from '../domain/settingsBackup'
+import type { SettingsBackup, SettingsImportReport } from '../domain/settingsBackup'
 import type {
   FolderScan,
   GeneratedPerformance,
@@ -20,6 +22,7 @@ export interface ScoreRepository {
     createId: () => string,
   ) => Promise<FolderScan>
   getLastScan: () => Promise<FolderScan | undefined>
+  importSettings: (backup: SettingsBackup, updatedAt: string) => Promise<SettingsImportReport>
 }
 
 export interface PerformanceRepository {
@@ -28,7 +31,7 @@ export interface PerformanceRepository {
 }
 
 function configurationStatus(configuration: ScoreConfiguration): Score['configuration'] {
-  return configuration.canStart !== null && configuration.hotness !== null && configuration.drumsIntro !== null
+  return configuration.canStart !== null && configuration.hotness !== null && configuration.drumsIntro !== null && configuration.goesHigh !== null
     ? 'complete'
     : 'pending'
 }
@@ -52,6 +55,7 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
         canStart: configuration.canStart,
         hotness: configuration.hotness,
         drumsIntro: configuration.drumsIntro,
+        goesHigh: configuration.goesHigh,
         enabled: configuration.enabled,
         tags: configuration.in80s ? ['80s'] : [],
         configuration: configurationStatus(configuration),
@@ -78,6 +82,15 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
 
   async getLastScan(): Promise<FolderScan | undefined> {
     return this.database.scans.orderBy('appliedAt').last()
+  }
+
+  async importSettings(backup: SettingsBackup, updatedAt: string): Promise<SettingsImportReport> {
+    return this.database.transaction('rw', this.database.scores, async () => {
+      const existing = await this.database.scores.toArray()
+      const result = applySettingsBackup(existing, backup, updatedAt)
+      await this.database.scores.bulkPut(result.scores)
+      return result.report
+    })
   }
 
   async saveLastPerformance(performance: GeneratedPerformance): Promise<void> {

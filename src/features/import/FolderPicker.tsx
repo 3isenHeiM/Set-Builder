@@ -46,12 +46,11 @@ export function FolderPicker({ mode, onSnapshot, directorySupport = browserSuppo
         </>
       ) : (
         <>
-          <p className="notice">Folder selection is unavailable in this browser. Select the scores together instead; nested folder paths may be unavailable.</p>
+          <p className="notice">Folder selection is unavailable. Select multiple <strong>.mscz</strong> files.</p>
           <input ref={fallbackInput} id={inputId} className="hidden-input" type="file" accept=".mscz" multiple onChange={selected} />
           <button className="primary-action" type="button" onClick={() => fallbackInput.current?.click()}>{action}</button>
         </>
       )}
-      <p className="picker-note">Only `.mscz` filenames are inspected. Music files are never read or copied.</p>
       <p className="sr-only" aria-live="polite">{selectionStatus}</p>
     </section>
   )

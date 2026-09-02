@@ -1,7 +1,7 @@
 export type IsoTimestamp = string
 export type Availability = 'active' | 'missing'
 export type ConfigurationStatus = 'pending' | 'complete'
-export type Hotness = 1 | 2 | 3 | 4 | 5
+export type Hotness = 1 | 2 | 3
 export type Preset = '80s' | 'mix'
 
 export interface Score {
@@ -16,6 +16,7 @@ export interface Score {
   canStart: boolean | null
   hotness: Hotness | null
   drumsIntro: boolean | null
+  goesHigh: boolean | null
   enabled: boolean
   tags: string[]
   firstImportedAt: IsoTimestamp
@@ -27,6 +28,7 @@ export interface ScoreConfiguration {
   canStart: boolean | null
   hotness: Hotness | null
   drumsIntro: boolean | null
+  goesHigh: boolean | null
   enabled: boolean
   in80s: boolean
 }
@@ -132,6 +134,7 @@ export interface PerformanceScoreSnapshot {
   title: string
   hotness: Hotness
   drumsIntro: boolean
+  goesHigh: boolean
   canStart: boolean
 }
 

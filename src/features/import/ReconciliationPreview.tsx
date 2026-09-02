@@ -32,8 +32,7 @@ export function ReconciliationPreview({ plan, applying, error, onApply, onCancel
 
   return (
     <section className="preview-panel" aria-labelledby="preview-title">
-      <div className="eyebrow">Review before applying</div>
-      <h2 id="preview-title">Folder comparison</h2>
+      <h1 id="preview-title">Folder review</h1>
       <ul className="summary-grid" aria-label="Comparison summary">
         <Count value={plan.added.length} label="new" />
         <Count value={plan.renamed.length} label="renamed" />
@@ -45,26 +44,23 @@ export function ReconciliationPreview({ plan, applying, error, onApply, onCancel
 
       {plan.possibleRenumberings.length > 0 && (
         <div className="renumbering-list">
-          <h3>Possible renumbering</h3>
-          <p className="secondary">These titles match, but their numbers changed. Choose explicitly.</p>
+          <h2>Number changed?</h2>
           {plan.possibleRenumberings.map((suggestion) => (
             <fieldset className="decision-card" key={suggestion.id}>
               <legend>{suggestion.oldDisplayNumber} → {suggestion.file.displayNumber} · {suggestion.file.title}</legend>
-              <label className="choice"><input type="radio" name={suggestion.id} checked={decisions[suggestion.id] === 'same-score'} onChange={() => decide(suggestion.id, 'same-score')} /><span><strong>Treat as same score</strong><small>Keep its configuration and internal history.</small></span></label>
-              <label className="choice"><input type="radio" name={suggestion.id} checked={decisions[suggestion.id] === 'add-new'} onChange={() => decide(suggestion.id, 'add-new')} /><span><strong>Add as new</strong><small>Keep the old score missing and create a pending score.</small></span></label>
+              <label className="choice"><input type="radio" name={suggestion.id} checked={decisions[suggestion.id] === 'same-score'} onChange={() => decide(suggestion.id, 'same-score')} /><span><strong>Treat as same score</strong><small>Keep settings.</small></span></label>
+              <label className="choice"><input type="radio" name={suggestion.id} checked={decisions[suggestion.id] === 'add-new'} onChange={() => decide(suggestion.id, 'add-new')} /><span><strong>Add as new</strong><small>Keep the old one missing.</small></span></label>
             </fieldset>
           ))}
         </div>
       )}
 
       {plan.added.length > 0 && <details><summary>New scores ({plan.added.length})</summary><ul>{plan.added.map(({ file }) => <li key={file.relativePath}><strong>{file.displayNumber}</strong> {file.title}</li>)}</ul></details>}
-      {plan.renamed.length > 0 && <details><summary>Renamed scores ({plan.renamed.length})</summary><ul>{plan.renamed.map(({ scoreId, file }) => <li key={scoreId}><strong>{file.displayNumber}</strong> becomes {file.title}</li>)}</ul></details>}
-      {plan.reappeared.length > 0 && <details><summary>Restored scores ({plan.reappeared.length})</summary><ul>{plan.reappeared.map(({ scoreId, file }) => <li key={scoreId}><strong>{file.displayNumber}</strong> {file.title}</li>)}</ul></details>}
-      {plan.missing.length > 0 && <details><summary>Will be marked missing ({plan.missing.length})</summary><ul>{plan.missing.map((score) => <li key={score.scoreId}><strong>{score.displayNumber}</strong> {score.title}</li>)}</ul></details>}
-      {plan.unchanged.length > 0 && <details><summary>Unchanged ({plan.unchanged.length})</summary><ul>{plan.unchanged.map(({ scoreId, file }) => <li key={scoreId}><strong>{file.displayNumber}</strong> {file.title}</li>)}</ul></details>}
-      {plan.duplicates.length > 0 && <details open><summary>Duplicate numbers — skipped ({duplicateFiles})</summary>{plan.duplicates.map((conflict) => <div key={conflict.scoreNumber}><strong>Number {conflict.scoreNumber}</strong><ul>{conflict.files.map((file) => <li key={file.relativePath}>{file.relativePath}</li>)}</ul></div>)}</details>}
-      {plan.malformed.length > 0 && <details open><summary>Malformed names — skipped ({plan.malformed.length})</summary><ul>{plan.malformed.map((file) => <li key={file.relativePath}><strong>{file.relativePath}</strong><br /><small>{reasonText[file.reason]}</small></li>)}</ul></details>}
-      {plan.ignoredCount > 0 && <p className="secondary">{plan.ignoredCount} non-`.mscz` {plan.ignoredCount === 1 ? 'file was' : 'files were'} ignored.</p>}
+      {plan.renamed.length > 0 && <details><summary>Renamed ({plan.renamed.length})</summary><ul>{plan.renamed.map(({ scoreId, file }) => <li key={scoreId}><strong>{file.displayNumber}</strong> {file.title}</li>)}</ul></details>}
+      {plan.reappeared.length > 0 && <details><summary>Restored ({plan.reappeared.length})</summary><ul>{plan.reappeared.map(({ scoreId, file }) => <li key={scoreId}><strong>{file.displayNumber}</strong> {file.title}</li>)}</ul></details>}
+      {plan.missing.length > 0 && <details><summary>Missing ({plan.missing.length})</summary><ul>{plan.missing.map((score) => <li key={score.scoreId}><strong>{score.displayNumber}</strong> {score.title}</li>)}</ul></details>}
+      {plan.duplicates.length > 0 && <details open><summary>Duplicates · skipped ({duplicateFiles})</summary>{plan.duplicates.map((conflict) => <div key={conflict.scoreNumber}><strong>Number {conflict.scoreNumber}</strong><ul>{conflict.files.map((file) => <li key={file.relativePath}>{file.relativePath}</li>)}</ul></div>)}</details>}
+      {plan.malformed.length > 0 && <details open><summary>Malformed · skipped ({plan.malformed.length})</summary><ul>{plan.malformed.map((file) => <li key={file.relativePath}><strong>{file.relativePath}</strong><br /><small>{reasonText[file.reason]}</small></li>)}</ul></details>}
       {unresolved > 0 && <p className="notice" role="status">Resolve {unresolved} possible {unresolved === 1 ? 'renumbering' : 'renumberings'} to continue.</p>}
       {error && <p className="error" role="alert">{error}</p>}
       <div className="action-row">

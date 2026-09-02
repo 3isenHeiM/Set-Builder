@@ -45,9 +45,9 @@ Applying a reviewed scan updates scores and its alignment record in one IndexedD
 
 ## Configuration and generation
 
-New scores start active, enabled, and pending. `can start`, hotness 1–5, and drums intro must each have an explicit value before a score becomes complete. `80s` membership is optional. Missing, disabled, and pending scores cannot be generated.
+New scores start active, enabled, and pending. `can start`, hotness 1–3, drums intro, and goes high must each have an explicit value before a score becomes complete. `80s` membership is optional. Missing, disabled, and pending scores cannot be generated.
 
-The **Mix** preset uses every active, enabled, complete score. **80s** adds the fixed `80s` tag requirement. The documented UI limits are 1–12 sets and 1–30 scores per set. Generation checks the requested score and distinct-starter counts before doing work, reserves all starters first, samples the remaining scores without replacement using hotness as weight, and avoids adjacent drums intros when possible. A non-blocking warning is retained when that soft preference must be relaxed. The seed is stored so a result can be reproduced in tests.
+The **Mix** preset uses every active, enabled, complete score. **80s** adds the fixed `80s` tag requirement. The documented UI limits are 1–12 sets and 1–30 scores per set. Generation checks the requested score and distinct-starter counts before doing work, reserves all starters first, samples the remaining scores without replacement using hotness as weight, places goes-high pieces at the beginning of their set immediately after its starter, and avoids adjacent drums intros when possible. A non-blocking warning is retained when that soft preference must be relaxed. The seed is stored so a result can be reproduced in tests.
 
 The latest performance contains independent score snapshots and opens automatically after the app is relaunched. Later folder alignment does not rewrite that historical output.
 
@@ -55,7 +55,11 @@ The latest performance contains independent score snapshots and opens automatica
 
 IndexedDB in the current browser profile is the source of truth for configuration, alignment records, and the last performance. Timestamps are UTC ISO-8601 strings. There is no account, server database, API, WebDAV access, telemetry, CDN, external font, or runtime third-party request. The production service worker caches only the same-origin app shell and static assets; selected `.mscz` files are never copied into the cache.
 
-Open a successfully built app online at least once before relying on offline mode. Browser storage is not a backup: clearing site data, changing profiles, or uninstalling in some circumstances can erase it. Folder access remains manual, and availability of a Nextcloud-backed folder depends on the iOS Files provider.
+Use **Download app settings** on the About screen to save a versioned, human-readable JSON file. Each entry contains the numeric score number, piece name, and its 80s, opener, hotness, goes-high, drums-intro, and enabled settings. Files, relative paths, internal IDs, alignment state, and generated performances are deliberately excluded. **Re-import app settings** parses only an explicitly selected settings JSON, shows a preview, and updates matched pieces transactionally after confirmation. Matching uses the numeric score number; name differences are shown for review, pieces absent from the current library are skipped, and pieces absent from the backup keep their settings.
+
+Open a successfully built app online at least once before relying on offline mode. Keep a downloaded settings JSON outside the browser profile: clearing site data, changing profiles, or uninstalling in some circumstances can erase local app data. Folder access remains manual, and availability of a Nextcloud-backed folder depends on the iOS Files provider.
+
+The interface follows the device’s light or dark appearance automatically. Dark appearance uses glare-controlled near-black surfaces and high-contrast controls for reading set lists during evening and indoor performances.
 
 ## Install on iPhone
 

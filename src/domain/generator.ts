@@ -68,6 +68,45 @@ function weightedTake(candidates: EligibleScore[], random: RandomSource): Eligib
   return fallback
 }
 
+function takeWithDrumsPreference(
+  pool: EligibleScore[],
+  previous: EligibleScore | undefined,
+  random: RandomSource,
+): { selected: EligibleScore; relaxed: boolean } {
+  let candidates = pool
+  let relaxed = false
+  if (previous?.drumsIntro) {
+    const withoutDrums = pool.filter((score) => !score.drumsIntro)
+    if (withoutDrums.length) candidates = withoutDrums
+    else relaxed = true
+  }
+  const selected = weightedTake(candidates, random)
+  if (candidates !== pool) {
+    const selectedIndex = pool.findIndex((score) => score.id === selected.id)
+    if (selectedIndex < 0) throw new Error('Generator invariant failed: candidate already consumed.')
+    pool.splice(selectedIndex, 1)
+  }
+  return { selected, relaxed }
+}
+
+function orderSet(set: EligibleScore[], random: RandomSource): { scores: EligibleScore[]; drumsRelaxed: boolean } {
+  const starter = set[0]
+  if (!starter) throw new Error('Generator invariant failed: set has no starter.')
+  const ordered = [starter]
+  let drumsRelaxed = false
+  const nonStarters = set.slice(1)
+  const groups = [nonStarters.filter((score) => score.goesHigh), nonStarters.filter((score) => !score.goesHigh)]
+
+  for (const group of groups) {
+    while (group.length) {
+      const result = takeWithDrumsPreference(group, ordered[ordered.length - 1], random)
+      ordered.push(result.selected)
+      drumsRelaxed ||= result.relaxed
+    }
+  }
+  return { scores: ordered, drumsRelaxed }
+}
+
 export function assertPerformanceValid(performance: GeneratedPerformance): void {
   if (performance.sets.length !== performance.setCount) throw new Error('Invalid generated performance: set count mismatch.')
   const ids = new Set<string>()
@@ -76,6 +115,13 @@ export function assertPerformanceValid(performance: GeneratedPerformance): void 
       throw new Error(`Invalid generated performance: Set ${set.number} has the wrong score count.`)
     }
     if (!set.scores[0]?.canStart) throw new Error(`Invalid generated performance: Set ${set.number} lacks a starter.`)
+    let regularPieceSeen = false
+    for (const score of set.scores.slice(1)) {
+      if (score.goesHigh && regularPieceSeen) {
+        throw new Error(`Invalid generated performance: a goes-high piece is too late in Set ${set.number}.`)
+      }
+      regularPieceSeen ||= !score.goesHigh
+    }
     for (const score of set.scores) {
       if (ids.has(score.id)) throw new Error(`Invalid generated performance: duplicate score ${score.id}.`)
       ids.add(score.id)
@@ -110,20 +156,18 @@ export function generatePerformance(
   for (const set of workingSets) {
     while (set.length < options.scoresPerSet) {
       const previous = set[set.length - 1]
-      let candidates = remaining
-      if (previous?.drumsIntro) {
-        const withoutDrums = remaining.filter((score) => !score.drumsIntro)
-        if (withoutDrums.length) candidates = withoutDrums
-        else drumsRelaxed = true
-      }
-      const selected = weightedTake(candidates, random)
-      if (candidates !== remaining) {
-        const selectedIndex = remaining.findIndex((score) => score.id === selected.id)
-        if (selectedIndex < 0) throw new Error('Generator invariant failed: candidate already consumed.')
-        remaining.splice(selectedIndex, 1)
-      }
-      set.push(selected)
+      const result = takeWithDrumsPreference(remaining, previous, random)
+      set.push(result.selected)
+      drumsRelaxed ||= result.relaxed
     }
+  }
+
+  for (let index = 0; index < workingSets.length; index += 1) {
+    const set = workingSets[index]
+    if (!set) continue
+    const ordered = orderSet(set, random)
+    workingSets[index] = ordered.scores
+    drumsRelaxed ||= ordered.drumsRelaxed
   }
 
   const sets = workingSets.map((set, index) => ({

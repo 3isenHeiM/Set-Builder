@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { classifyReconciliation } from '../domain/reconciliation'
+import type { SettingsBackup } from '../domain/settingsBackup'
 import type { FolderScan, FolderSnapshot, GeneratedPerformance, ReconciliationPlan, RenumberingDecisions, Score, ScoreConfiguration } from '../domain/types'
 import { repository as browserRepository } from '../data/client'
 import type { PerformanceRepository, ScoreRepository } from '../data/repository'
@@ -8,8 +9,10 @@ import { ReconciliationPreview } from '../features/import/ReconciliationPreview'
 import { GenerateScreen } from '../features/generator/GenerateScreen'
 import { LibraryScreen } from '../features/library/LibraryScreen'
 import { PerformanceScreen } from '../features/performance/PerformanceScreen'
+import { SettingsBackupPanel } from '../features/settings/SettingsBackupPanel'
 import { AboutScreen, InstallGuide } from '../pwa/InstallGuide'
 import { UpdateBanner } from '../pwa/UpdateBanner'
+import { UiIcon } from './UiIcon'
 
 type Page = 'library' | 'generate' | 'performance' | 'about'
 type AppRepository = ScoreRepository & PerformanceRepository
@@ -71,19 +74,25 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
     setPage('performance')
   }
 
-  if (loading) return <main id="main-content" className="loading-screen"><div className="hero-mark">♪</div><p>Opening your local library…</p></main>
+  const importSettings = async (backup: SettingsBackup) => {
+    const report = await repository.importSettings(backup, new Date().toISOString())
+    setScores(await repository.listScores())
+    return report
+  }
+
+  if (loading) return <main id="main-content" className="loading-screen"><div className="hero-mark"><UiIcon name="music" /></div><p>Opening library…</p></main>
   if (loadError) return <main id="main-content" className="loading-screen"><h1>Piece Selector</h1><p className="error" role="alert">{loadError}</p></main>
 
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Skip to content</a>
-      <header className="app-header"><span className="app-logo" aria-hidden="true">♪</span><strong>Piece Selector</strong><span className="local-badge">Local</span></header>
+      <header className="app-header"><span className="app-logo" aria-hidden="true"><UiIcon name="music" /></span><strong>Piece Selector</strong></header>
       <InstallGuide />
       <UpdateBanner />
       <main id="main-content">
-        {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} /> : page === 'library' ? <LibraryScreen scores={scores} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onEditingChange={setEditingScore} /> : page === 'generate' ? <GenerateScreen scores={scores} hasPerformance={Boolean(performance)} onGenerated={savePerformance} /> : page === 'performance' ? <PerformanceScreen performance={performance} onRegenerate={() => setPage('generate')} /> : <AboutScreen />}
+        {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} /> : page === 'library' ? <LibraryScreen scores={scores} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onEditingChange={setEditingScore} /> : page === 'generate' ? <GenerateScreen scores={scores} hasPerformance={Boolean(performance)} onGenerated={savePerformance} /> : page === 'performance' ? <PerformanceScreen performance={performance} onRegenerate={() => setPage('generate')} /> : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} /></AboutScreen>}
       </main>
-      {!preview && !editingScore && <nav className="bottom-nav" aria-label="Primary navigation">{([['library', 'Library'], ['generate', 'Generate'], ['performance', 'Sets'], ['about', 'About']] as const).map(([target, label]) => <button type="button" key={target} aria-current={page === target ? 'page' : undefined} onClick={() => setPage(target)}><span aria-hidden="true">{target === 'library' ? '♬' : target === 'generate' ? '✦' : target === 'performance' ? '☷' : 'i'}</span>{label}</button>)}</nav>}
+      {!preview && !editingScore && <nav className="bottom-nav" aria-label="Primary navigation">{([['library', 'Library'], ['generate', 'Build'], ['performance', 'Sets'], ['about', 'About']] as const).map(([target, label]) => <button type="button" key={target} aria-current={page === target ? 'page' : undefined} onClick={() => setPage(target)}><UiIcon name={target === 'library' ? 'library' : target === 'generate' ? 'sparkles' : target === 'performance' ? 'sets' : 'info'} />{label}</button>)}</nav>}
     </div>
   )
 }

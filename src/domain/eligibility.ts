@@ -1,11 +1,12 @@
-import type { PerformanceScoreSnapshot, Preset, Score } from './types'
+import type { Hotness, PerformanceScoreSnapshot, Preset, Score } from './types'
 
 export interface EligibleScore extends Score {
   configuration: 'complete'
   availability: 'active'
   canStart: boolean
-  hotness: 1 | 2 | 3 | 4 | 5
+  hotness: Hotness
   drumsIntro: boolean
+  goesHigh: boolean
 }
 
 export function isFullyConfigured(score: Score): score is EligibleScore {
@@ -15,7 +16,8 @@ export function isFullyConfigured(score: Score): score is EligibleScore {
     score.enabled &&
     score.canStart !== null &&
     score.hotness !== null &&
-    score.drumsIntro !== null
+    score.drumsIntro !== null &&
+    score.goesHigh !== null
   )
 }
 
@@ -35,6 +37,7 @@ export function toPerformanceSnapshot(score: EligibleScore): PerformanceScoreSna
     title: score.title,
     hotness: score.hotness,
     drumsIntro: score.drumsIntro,
+    goesHigh: score.goesHigh,
     canStart: score.canStart,
   }
 }

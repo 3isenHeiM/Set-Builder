@@ -1,6 +1,7 @@
 import Dexie from 'dexie'
 import { buildFolderSnapshot } from '../domain/filename'
 import { classifyReconciliation } from '../domain/reconciliation'
+import { createSettingsBackup } from '../domain/settingsBackup'
 import { makePerformance, makeScore } from '../test/fixtures'
 import { LegacyDatabaseV1, PieceSelectorDatabase } from './database'
 import { PieceSelectorRepository } from './repository'
@@ -10,18 +11,21 @@ function databaseName(): string {
 }
 
 describe('IndexedDB persistence', () => {
-  it('migrates a legacy score without configuration loss', async () => {
+  it('migrates legacy data without losing settings or a saved performance', async () => {
     const name = databaseName()
-    const original = makeScore({ tags: ['80s'], canStart: false, hotness: 5, drumsIntro: true, enabled: false })
+    const original = makeScore({ tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, enabled: false })
     const { configuration: _, ...legacyScore } = original
     void _
     const legacy = new LegacyDatabaseV1(name)
-    await legacy.scores.add(legacyScore)
+    await legacy.scores.add({ ...legacyScore, hotness: 5 })
+    const performance = makePerformance()
+    await legacy.performances.put({ key: 'last', performance: { ...performance, sets: performance.sets.map((set) => ({ ...set, scores: set.scores.map((score) => ({ ...score, hotness: 5 })) })) } })
     legacy.close()
 
     const database = new PieceSelectorDatabase(name)
     const migrated = await database.scores.get(original.id)
-    expect(migrated).toMatchObject({ configuration: 'complete', tags: ['80s'], canStart: false, hotness: 5, drumsIntro: true, enabled: false })
+    expect(migrated).toMatchObject({ configuration: 'pending', tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, goesHigh: null, enabled: false })
+    expect(await new PieceSelectorRepository(database).getLastPerformance()).toMatchObject({ sets: [{ scores: [{ hotness: 3, goesHigh: false }] }] })
     database.close()
     await Dexie.delete(name)
   })
@@ -36,9 +40,9 @@ describe('IndexedDB persistence', () => {
     expect((await repository.listScores()).map((score) => score.scoreNumber)).toEqual([2, 10])
     const score = (await repository.listScores())[0]
     if (!score) throw new Error('fixture not created')
-    expect(score).toMatchObject({ availability: 'active', enabled: true, configuration: 'pending', canStart: null, hotness: null, drumsIntro: null })
-    await repository.saveConfiguration(score.id, { canStart: true, hotness: 4, drumsIntro: false, enabled: true, in80s: true }, 'configured')
-    expect(await repository.getScore(score.id)).toMatchObject({ configuration: 'complete', hotness: 4, tags: ['80s'] })
+    expect(score).toMatchObject({ availability: 'active', enabled: true, configuration: 'pending', canStart: null, hotness: null, drumsIntro: null, goesHigh: null })
+    await repository.saveConfiguration(score.id, { canStart: true, hotness: 3, drumsIntro: false, goesHigh: true, enabled: true, in80s: true }, 'configured')
+    expect(await repository.getScore(score.id)).toMatchObject({ configuration: 'complete', hotness: 3, tags: ['80s'] })
     expect(await repository.getLastScan()).toMatchObject({ summary: { added: 2 } })
     database.close()
   })
@@ -68,6 +72,21 @@ describe('IndexedDB persistence', () => {
 
     const secondDatabase = new PieceSelectorDatabase(name)
     expect(await new PieceSelectorRepository(secondDatabase).getLastPerformance()).toEqual(makePerformance())
+    secondDatabase.close()
+  })
+
+  it('restores settings transactionally without changing folder metadata', async () => {
+    const name = databaseName()
+    const original = makeScore({ title: 'Renamed locally', fileName: '01 - Renamed locally.mscz', hotness: 2 })
+    const backup = createSettingsBackup([makeScore({ title: 'Old name', tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, enabled: false })], 'exported')
+    const firstDatabase = new PieceSelectorDatabase(name)
+    await firstDatabase.scores.add(original)
+    const report = await new PieceSelectorRepository(firstDatabase).importSettings(backup, 'restored')
+    firstDatabase.close()
+
+    const secondDatabase = new PieceSelectorDatabase(name)
+    expect(await secondDatabase.scores.get(original.id)).toEqual({ ...original, tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, enabled: false, updatedAt: 'restored' })
+    expect(report).toMatchObject({ matched: 1, titleMismatches: [{ backupName: 'Old name', currentName: 'Renamed locally' }] })
     secondDatabase.close()
   })
 })
