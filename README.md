@@ -43,6 +43,8 @@ Normal matching uses the numeric score number. A title change under the same num
 
 Applying a reviewed scan updates scores and its alignment record in one IndexedDB transaction. Scanning or cancelling does not mutate storage.
 
+On iPhone with Safari 18.4 or newer, tap the folder action, navigate inside the intended folder in Files, then tap **Open**. Do not select each document separately. The directory input intentionally has no file-type filter; Piece Selector filters the returned metadata to `.mscz` locally, which keeps third-party Files providers available. Older iOS versions and failed provider flows can use **Select .mscz files instead** for an explicit multi-file selection.
+
 ## Configuration and generation
 
 New scores start active, enabled, and pending. `can start`, hotness 1–3, drums intro, and goes high must each have an explicit value before an enabled score becomes complete; a disabled score may leave these values unset. `80s` membership is optional. Missing, disabled, and pending scores cannot be generated.
