@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: 'Piece Selector',
         short_name: 'Pieces',
-        description: 'Local-first set builder for street-band performances.',
+        description: 'Private set builder for street-band performances.',
         start_url: '/',
         display: 'standalone',
         background_color: '#07100d',
@@ -25,6 +25,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//, /^\/cdn-cgi\//],
       },
     }),
   ],

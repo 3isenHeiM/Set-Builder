@@ -1,10 +1,10 @@
 # Piece Selector
 
-Piece Selector is a mobile-first, local-first set builder for a street band. It turns a manually selected scores folder into a configurable on-device library, then generates complete performances with distinct pieces and a valid starter at the beginning of every set.
+Piece Selector is a mobile-first, authenticated set builder for a street band. It turns a manually selected scores folder into a configurable library, synchronizes it through Cloudflare D1, and generates complete performances with distinct pieces and a valid starter at the beginning of every set.
 
 ## What it reads
 
-Only the metadata exposed by the file picker is used: filename and, where available, relative path. The app never calls a content-reading method on a selected file, and it does not keep the selected `File` or `FileList` after the scan.
+Only the metadata exposed by the file picker is used: filename and, where available, relative path. The app never calls a content-reading method on a selected MuseScore file, and it does not keep the selected `File` or `FileList` after the scan. Accepted filenames and relative paths are synchronized to the authenticated user's D1 library; MuseScore contents are never uploaded.
 
 Candidate filenames end in `.mscz` (case-insensitive) and follow:
 
@@ -17,7 +17,7 @@ Whitespace and number width may vary. Leading zeroes are kept for display, while
 
 ## Local setup and scripts
 
-Node 20 or newer and npm are required.
+Node 22 or newer and npm are required.
 
 ```bash
 npm install
@@ -26,14 +26,15 @@ npm run dev
 
 The repository-owned scripts are:
 
-- `npm run dev` — start the local Vite development server.
+- `npm run dev` — start the local Vite UI using device storage, without the Cloud API.
 - `npm run lint` — run strict ESLint checks.
 - `npm run typecheck` — run strict TypeScript without emitting files.
 - `npm test` — run the Vitest unit and component suite once.
 - `npm run test:watch` — run Vitest in watch mode.
 - `npm run build` — typecheck and make the production PWA in `dist/`.
-- `npm run preview` — serve the production build locally through Vite.
-- `npm run preview:cf` — serve the already-built static assets locally through Wrangler; this command is local-only and must not be changed to a remote preview.
+- `npm run preview` — serve only the production static bundle; use the Cloudflare preview for API-backed testing.
+- `npm run db:migrate:local` — apply D1 migrations to Wrangler's local database.
+- `npm run preview:cf` — apply local D1 migrations and serve the already-built authenticated Worker locally. Wrangler's checked-in `access.dev` identity is a local simulation only.
 
 ## Import and manual re-alignment
 
@@ -41,7 +42,7 @@ The selected folder is the source of truth for which files currently exist. Ever
 
 Normal matching uses the numeric score number. A title change under the same number keeps the score’s immutable internal ID and configuration. Absent records become missing rather than being deleted; reappearing numbers restore them. A unique normalized-title match under a different number is only a suggestion. Choose **Treat as same score** to preserve identity while renumbering, or **Add as new** to keep the previous record missing and create a new pending record. Title normalization is Unicode NFKC followed by lower-casing and is never used to alter displayed text.
 
-Applying a reviewed scan updates scores and its alignment record in one IndexedDB transaction. Scanning or cancelling does not mutate storage.
+Applying a reviewed scan updates scores and its alignment record in one D1 state write when connected. Scanning or cancelling does not mutate storage.
 
 On iPhone with Safari 18.4 or newer, tap the folder action, navigate inside the intended folder in Files, then tap **Open**. Do not select each document separately. The directory input intentionally has no file-type filter; Piece Selector filters the returned metadata to `.mscz` locally, which keeps third-party Files providers available. Older iOS versions and failed provider flows can use **Select .mscz files instead** for an explicit multi-file selection.
 
@@ -53,15 +54,19 @@ The **Mix** preset uses every active, enabled, complete score. **80s** adds the 
 
 Every generated performance becomes a saved set list containing independent score snapshots, and the most recently opened list opens automatically after relaunch. Set-list and individual-set names are editable. Arrow controls can reorder whole sets and pieces; the starter remains first and goes-high placement stays valid. Later folder alignment does not rewrite this historical output.
 
-## Data, offline behavior, and limitations
+## Data, authentication, and offline behavior
 
-IndexedDB in the current browser profile is the source of truth for configuration, alignment records, and saved set lists. Timestamps are UTC ISO-8601 strings. There is no account, server database, API, WebDAV access, telemetry, CDN, external font, or runtime third-party request. The production service worker caches only the same-origin app shell and static assets; selected `.mscz` files are never copied into the cache.
+Authenticated D1 storage is the source of truth whenever the service is reachable. Each verified Cloudflare Access `sub` claim owns a separate D1 state document containing filenames, relative paths, settings, alignment summary, and saved set lists. This is authentication and private per-identity storage, not multi-user collaboration: allowing a second email creates a separate empty library.
 
-Use **Download app settings** on the About screen to save a versioned, human-readable JSON file. Each entry contains the numeric score number, piece name, and its 80s, opener, hotness, goes-high, drums-intro, and enabled settings. Files, relative paths, internal IDs, alignment state, and generated performances are deliberately excluded. **Re-import app settings** parses only an explicitly selected settings JSON, shows a preview, and updates matched pieces transactionally after confirmation. Matching uses the numeric score number; name differences are shown for review, pieces absent from the current library are skipped, and pieces absent from the backup keep their settings.
+IndexedDB holds a cache for installed/offline use and at most one latest deferred state write. When connectivity returns, that authenticated identity's deferred write is copied to D1. Avoid editing the same Access identity simultaneously on several devices: the last complete state received by D1 wins. An existing local-only installation is migrated automatically only when its D1 library is empty and that browser has never connected successfully; once D1 exists it wins over a stale browser cache.
+
+The Worker rejects unsigned, expired, wrong-issuer, and wrong-audience Access assertions before reading or changing D1. It stores the Access subject but does not log or persist email addresses. JWT verification fetches the rotating public keys from the configured Cloudflare Access team domain. There is no app password, account database, WebDAV access, telemetry, CDN, or external font. The production service worker caches only the same-origin app shell and static assets; selected `.mscz` files are never copied into the cache.
+
+Use **Download app settings** on the About screen to save a versioned, human-readable JSON file. Each entry contains the numeric score number, piece name, and its 80s, opener, hotness, goes-high, drums-intro, and enabled settings. Files, relative paths, internal IDs, alignment state, and generated performances are deliberately excluded. **Re-import app settings** parses only an explicitly selected settings JSON, shows a preview, and updates matched pieces after confirmation. Matching uses the numeric score number; name differences are shown for review, pieces absent from the current library are skipped, and pieces absent from the backup keep their settings.
 
 Use **Export set list** on the Sets screen to save the current named list as a separate, versioned JSON file. It includes set names, order, source generation details, score names and ordering, and the score metadata needed to display it independently of the library. **Import set list** validates an explicitly selected JSON file and saves it with fresh local IDs, so an import cannot overwrite another list. This set-list file remains separate from the app-settings backup.
 
-Open a successfully built app online at least once before relying on offline mode. Keep a downloaded settings JSON outside the browser profile: clearing site data, changing profiles, or uninstalling in some circumstances can erase local app data. Folder access remains manual, and availability of a Nextcloud-backed folder depends on the iOS Files provider.
+Open a successfully built app through Access at least once before relying on offline mode. Keep a downloaded settings JSON outside the browser profile as a recovery copy. Folder access remains manual, and availability of a Nextcloud-backed folder depends on the iOS Files provider.
 
 The interface follows the device’s light or dark appearance automatically. Dark appearance uses glare-controlled near-black surfaces and high-contrast controls for reading set lists during evening and indoor performances.
 
@@ -69,40 +74,15 @@ The interface follows the device’s light or dark appearance automatically. Dar
 
 In Safari, open the deployed address, tap Share, choose **Add to Home Screen**, and enable **Open as Web App** if offered. Launch once while online. The in-app update notice provides a deliberate refresh path without replacing IndexedDB.
 
-## Cloudflare Workers Static Assets (user-only deployment)
+## Cloudflare Access + D1 deployment (owner actions)
 
-`wrangler.toml` points at `dist/` and configures the SPA fallback; it defines no Worker request handler, API, D1, KV, R2, secret, custom domain, or authentication.
+`wrangler.toml` bundles the API Worker with the static PWA, routes every asset through the Worker, binds D1 as `DB`, and configures SPA fallback. The two checked-in Access values and D1 ID are deliberately non-working placeholders, not credentials. Replace all three before a production build.
 
-Owner-only deployment process:
+1. In Cloudflare's D1 dashboard, create a database named `piece-selector`. Copy its ID into `wrangler.toml` as `database_id`. The CLI equivalent is `npx wrangler d1 create piece-selector`.
+2. Apply `migrations/0001_cloud_state.sql` to that database. The CLI equivalent is `npx wrangler d1 migrations apply piece-selector --remote`.
+3. Create or connect the `piece-selector` Worker to the intended private repository. In Workers Builds use the production branch you intend to deploy, blank root directory, build command `npm run build`, and deploy command `npx wrangler deploy`.
+4. In Zero Trust, enable the One-time PIN login method. Protect this Worker and its `workers.dev` and preview URLs with Cloudflare Access. Create an **Allow** policy containing only the exact email address(es) approved to use the app; never use **Include everyone** or only **Login Methods: One-time PIN**.
+5. Copy the Access team URL (for example, `https://your-team.cloudflareaccess.com`) and this application's Audience tag into `TEAM_DOMAIN` and `POLICY_AUD` in `wrangler.toml`, then let the owner-controlled build deploy the corrected configuration.
+6. Open the Worker URL, complete the emailed OTP, and verify that a refresh reopens the same library. Export a recovery settings file after the old device cache has migrated.
 
-1. Manually commit and push the reviewed working tree to the intended private GitHub repository.
-2. In the Cloudflare dashboard, create a Workers Builds/Git integration for only that repository, using `npm run build` and `dist/` as the output.
-3. Trigger and verify the first deployment, then use the Cloudflare-provided `*.workers.dev` address.
-
-These are user-only GitHub and Cloudflare actions; this repository does not automate or claim a deployment. The deployed app shell is public by default even when the source repository is private. Each visitor still starts with a separate empty library that stays in that browser profile.
-
-## Cloudflare Pages alternative (user-only deployment)
-
-Cloudflare Pages can host the same static PWA without changing the application or adding Pages Functions. The existing `wrangler.toml` is for the Workers alternative and is not needed by a Pages Git build.
-
-1. Manually push the branch you want to publish. To deploy the current implementation directly, push `dev`; otherwise move it to your chosen production branch first.
-2. In the Cloudflare dashboard, open **Workers & Pages**, choose **Create application** → **Pages** → **Import an existing Git repository**, and select only the intended private repository.
-3. Configure the project:
-   - Framework preset: **React (Vite)**.
-   - Production branch: `dev` for the current implementation, or your chosen release branch.
-   - Build command: `npm run build`.
-   - Build output directory: `dist`.
-   - Root directory: leave blank (repository root).
-4. Do not configure Pages Functions, environment variables, credentials, or service bindings; this client-only app does not need them.
-5. Choose **Save and Deploy**, wait for the owner-triggered build, and open the resulting `*.pages.dev` address in Safari once while online.
-
-Pages treats a site without a top-level `404.html` as a single-page application and falls unmatched routes back to the root. Each pushed commit to the configured production branch triggers another deployment, while other pushed branches can produce preview deployments. These dashboard, push, and deployment actions are user-only. As with the Workers option, the built app shell is public while score metadata and performances stay local to each browser profile.
-
-### Pages build reports a missing `package.json`
-
-An `ENOENT` for `/opt/buildhome/repo/package.json` means Pages checked out a commit that does not contain the application at its repository root; it occurs before npm or Vite can build anything. The “No Wrangler configuration file found” line is informational for this dashboard-configured Pages deployment.
-
-- Confirm the Pages **Production branch** is `dev`, not `main`, when deploying this implementation.
-- Leave **Root directory** blank. Do not enter the branch name as a directory.
-- Confirm the deployment log’s checked-out commit is the latest commit you pushed from `dev` and that the commit includes root `package.json`.
-- Keep **Build command** as `npm run build` and **Build output directory** as `dist`, then retry the latest `dev` deployment.
+Cloudflare Pages static-only deployment is no longer compatible with this architecture because it cannot serve the `/api/state` Worker entry point and D1 binding. No command in this repository automatically creates or changes a Cloudflare or GitHub resource.

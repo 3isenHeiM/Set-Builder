@@ -4,6 +4,7 @@ import type { SettingsBackup } from '../domain/settingsBackup'
 import type { FolderScan, FolderSnapshot, GeneratedPerformance, ReconciliationPlan, RenumberingDecisions, SavedSetList, Score, ScoreConfiguration } from '../domain/types'
 import { restoreSetList, type SetListBackup } from '../domain/setListBackup'
 import { repository as browserRepository } from '../data/client'
+import { CloudApiError } from '../data/cloudRepository'
 import type { PerformanceRepository, ScoreRepository } from '../data/repository'
 import { createLocalId } from './id'
 import { ReconciliationPreview } from '../features/import/ReconciliationPreview'
@@ -31,6 +32,7 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
   const [page, setPage] = useState<Page>('library')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [accessRequired, setAccessRequired] = useState(false)
   const [editingScore, setEditingScore] = useState(false)
 
   useEffect(() => {
@@ -53,7 +55,10 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
           setPage('performance')
         }
       })
-      .catch((error: unknown) => setLoadError(localizedError(error, locale, t('localStorageUnavailable'))))
+      .catch((error: unknown) => {
+        setAccessRequired(error instanceof CloudApiError && error.message.startsWith('Cloudflare Access authentication'))
+        setLoadError(localizedError(error, locale, t('localStorageUnavailable')))
+      })
       .finally(() => setLoading(false))
   }, [locale, repository, t])
 
@@ -117,7 +122,7 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
   }
 
   if (loading) return <main id="main-content" className="loading-screen"><div className="hero-mark"><UiIcon name="music" /></div><p>{t('loadingLibrary')}</p></main>
-  if (loadError) return <main id="main-content" className="loading-screen"><h1>Piece Selector</h1><p className="error" role="alert">{loadError}</p></main>
+  if (loadError) return <main id="main-content" className="loading-screen"><h1>Piece Selector</h1><p className="error" role="alert">{loadError}</p>{accessRequired && <a className="primary-action" href="/cdn-cgi/access/login">{t('signInWithAccess')}</a>}</main>
 
   return (
     <div className="app-shell">

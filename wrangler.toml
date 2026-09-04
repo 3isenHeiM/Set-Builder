@@ -1,6 +1,25 @@
 name = "piece-selector"
 compatibility_date = "2026-09-01"
+main = "./src/server/worker.ts"
+
+[vars]
+TEAM_DOMAIN = "https://REPLACE_WITH_YOUR_TEAM.cloudflareaccess.com"
+POLICY_AUD = "REPLACE_WITH_YOUR_ACCESS_AUDIENCE_TAG"
 
 [assets]
 directory = "./dist/"
+binding = "ASSETS"
+run_worker_first = true
 not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "piece-selector"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+migrations_dir = "./migrations"
+
+[access.dev]
+aud = "piece-selector-local"
+
+  [access.dev.identity]
+  email = "local@piece-selector.invalid"
