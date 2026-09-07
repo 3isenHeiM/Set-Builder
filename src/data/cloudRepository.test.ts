@@ -42,12 +42,28 @@ describe('cloud repository', () => {
   it('uses authenticated D1 data instead of a stale device copy', async () => {
     const database = new PieceSelectorDatabase(databaseName())
     await database.scores.put(makeScore({ title: 'Old local title' }))
-    await database.cloudSync.put({ key: 'cloud', connected: true, revision: 1, pending: null })
+    await database.cloudSync.put({ key: 'cloud', connected: true, revision: 1, pending: null, backend: 'signed-cookie-v1' })
     const remote = { ...emptyCloudState(), scores: [makeScore({ title: 'D1 title' })] }
     const repository = new CloudRepository(database, new CloudStateTransport(() => Promise.resolve(response(2, remote))))
 
     expect(await repository.getScore('score-1')).toMatchObject({ title: 'D1 title' })
     expect(await database.scores.get('score-1')).toMatchObject({ title: 'D1 title' })
+    database.close()
+  })
+
+  it('migrates a connected Access-era device cache into the first shared-password state', async () => {
+    const database = new PieceSelectorDatabase(databaseName())
+    await database.scores.put(makeScore())
+    await database.cloudSync.put({ key: 'cloud', connected: true, revision: 5, pending: null })
+    const fetchRequest = vi.fn((_input: string, init?: RequestInit) => {
+      if (init?.method !== 'PUT') return Promise.resolve(response(0))
+      const upload = JSON.parse(bodySource(init.body)) as { state: ReturnType<typeof emptyCloudState> }
+      return Promise.resolve(response(1, upload.state))
+    })
+
+    expect(await new CloudRepository(database, new CloudStateTransport(fetchRequest)).listScores()).toHaveLength(1)
+    expect(fetchRequest).toHaveBeenCalledTimes(2)
+    expect(await database.cloudSync.get('cloud')).toMatchObject({ backend: 'signed-cookie-v1' })
     database.close()
   })
 
@@ -73,12 +89,12 @@ describe('cloud repository', () => {
     await Dexie.delete(name)
   })
 
-  it('does not silently fall back to browser state when Access rejects a request', async () => {
+  it('does not silently fall back to browser state when the session is rejected', async () => {
     const database = new PieceSelectorDatabase(databaseName())
     await database.scores.put(makeScore())
-    const repository = new CloudRepository(database, new CloudStateTransport(() => Promise.resolve(Response.json({ error: 'Access required' }, { status: 403 }))))
+    const repository = new CloudRepository(database, new CloudStateTransport(() => Promise.resolve(Response.json({ error: 'Authentication is required.' }, { status: 401 }))))
 
-    await expect(repository.listScores()).rejects.toThrow('Access required')
+    await expect(repository.listScores()).rejects.toMatchObject({ message: 'Authentication is required.', status: 401 })
     database.close()
   })
 

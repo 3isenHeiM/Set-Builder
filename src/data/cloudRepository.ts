@@ -18,7 +18,11 @@ import type { PerformanceRepository, ScoreRepository } from './repository'
 
 export type CloudFetch = (input: string, init?: RequestInit) => Promise<Response>
 
-export class CloudApiError extends Error {}
+export class CloudApiError extends Error {
+  constructor(message: string, readonly status: number | undefined = undefined) {
+    super(message)
+  }
+}
 
 function operationId(): string {
   return typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`
@@ -35,8 +39,8 @@ async function readError(response: Response): Promise<string> {
   } catch {
     // Access can return an HTML login response after a session expires.
   }
-  return response.status === 401 || response.status === 403
-    ? 'Cloudflare Access authentication is required.'
+  return response.status === 401
+    ? 'Authentication is required.'
     : `Cloud storage request failed (${response.status}).`
 }
 
@@ -45,8 +49,7 @@ export class CloudStateTransport {
 
   async read(): Promise<CloudStateEnvelope> {
     const response = await this.fetchRequest(this.path, { credentials: 'same-origin', headers: { accept: 'application/json' } })
-    if (response.redirected) throw new CloudApiError('Cloudflare Access authentication is required.')
-    if (!response.ok) throw new CloudApiError(await readError(response))
+    if (!response.ok) throw new CloudApiError(await readError(response), response.status)
     try {
       return parseCloudEnvelope(await response.json())
     } catch (error) {
@@ -61,8 +64,7 @@ export class CloudStateTransport {
       headers: { accept: 'application/json', 'content-type': 'application/json' },
       body: JSON.stringify({ operationId: operationId(), state }),
     })
-    if (response.redirected) throw new CloudApiError('Cloudflare Access authentication is required.')
-    if (!response.ok) throw new CloudApiError(await readError(response))
+    if (!response.ok) throw new CloudApiError(await readError(response), response.status)
     try {
       return parseCloudEnvelope(await response.json())
     } catch (error) {
@@ -110,7 +112,7 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
       let remote = await this.transport.read()
       if (sync?.pending) {
         remote = await this.transport.write(sync.pending)
-      } else if (cachedState && hasCloudData(cachedState) && remote.revision === 0 && !sync?.connected) {
+      } else if (cachedState && hasCloudData(cachedState) && remote.revision === 0 && sync?.backend !== 'signed-cookie-v1') {
         remote = await this.transport.write(cachedState)
       }
       this.state = remote.state
@@ -128,7 +130,7 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
 
   private async updateCache(state: CloudState, pending: CloudState | null, required: boolean): Promise<void> {
     try {
-      await replaceCachedState(this.database, state, { key: 'cloud', connected: this.connected, revision: this.revision, pending })
+      await replaceCachedState(this.database, state, { key: 'cloud', connected: this.connected, revision: this.revision, pending, backend: 'signed-cookie-v1' })
     } catch (error) {
       if (required) throw error
     }

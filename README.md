@@ -4,7 +4,7 @@ Piece Selector is a mobile-first, authenticated set builder for a street band. I
 
 ## What it reads
 
-Only the metadata exposed by the file picker is used: filename and, where available, relative path. The app never calls a content-reading method on a selected MuseScore file, and it does not keep the selected `File` or `FileList` after the scan. Accepted filenames and relative paths are synchronized to the authenticated user's D1 library; MuseScore contents are never uploaded.
+Only the metadata exposed by the file picker is used: filename and, where available, relative path. The app never calls a content-reading method on a selected MuseScore file, and it does not keep the selected `File` or `FileList` after the scan. Accepted filenames and relative paths are synchronized to the password-protected D1 library; MuseScore contents are never uploaded.
 
 Candidate filenames end in `.mscz` (case-insensitive) and follow:
 
@@ -34,7 +34,7 @@ The repository-owned scripts are:
 - `npm run build` — typecheck and make the production PWA in `dist/`.
 - `npm run preview` — serve only the production static bundle; use the Cloudflare preview for API-backed testing.
 - `npm run db:migrate:local` — apply D1 migrations to Wrangler's local database.
-- `npm run preview:cf` — apply local D1 migrations and serve the already-built authenticated Worker locally. Wrangler's checked-in `access.dev` identity is a local simulation only.
+- `npm run preview:cf` — apply local D1 migrations and serve the already-built Worker locally. Authentication fails closed until its two local secret bindings are supplied.
 
 ## Import and manual re-alignment
 
@@ -56,17 +56,17 @@ Every generated performance becomes a saved set list containing independent scor
 
 ## Data, authentication, and offline behavior
 
-Authenticated D1 storage is the source of truth whenever the service is reachable. Each verified Cloudflare Access `sub` claim owns a separate D1 state document containing filenames, relative paths, settings, alignment summary, and saved set lists. This is authentication and private per-identity storage, not multi-user collaboration: allowing a second email creates a separate empty library.
+Authenticated D1 storage is the source of truth whenever the service is reachable. The shared band password unlocks one shared D1 state document containing filenames, relative paths, settings, alignment summary, and saved set lists.
 
-IndexedDB holds a cache for installed/offline use and at most one latest deferred state write. When connectivity returns, that authenticated identity's deferred write is copied to D1. Avoid editing the same Access identity simultaneously on several devices: the last complete state received by D1 wins. An existing local-only installation is migrated automatically only when its D1 library is empty and that browser has never connected successfully; once D1 exists it wins over a stale browser cache.
+IndexedDB holds a cache for installed/offline use and at most one latest deferred state write. When connectivity returns, that deferred write is copied to D1. Avoid simultaneous edits on several devices: the last complete state received by D1 wins. An existing local-only installation is migrated automatically only when the shared D1 library is empty and that browser has never connected successfully; once D1 exists it wins over a stale browser cache.
 
-The Worker rejects unsigned, expired, wrong-issuer, and wrong-audience Access assertions before reading or changing D1. It stores the Access subject but does not log or persist email addresses. JWT verification fetches the rotating public keys from the configured Cloudflare Access team domain. There is no app password, account database, WebDAV access, telemetry, CDN, or external font. The production service worker caches only the same-origin app shell and static assets; selected `.mscz` files are never copied into the cache.
+The Worker accepts only a correctly signed, unexpired, 30-day session cookie before reading or changing D1. The login is protected by a per-network-location rate limit of ten attempts per minute. The password is represented only by its SHA-256 digest in an encrypted Worker Secret, and the independent session-signing key is another encrypted secret. The static application shell is public and contains no library data or credentials. There is no Zero Trust account, account database, WebDAV access, telemetry, CDN, external font, or runtime third-party request. The production service worker caches only the same-origin app shell and static assets; selected `.mscz` files are never copied into the cache.
 
 Use **Download app settings** on the About screen to save a versioned, human-readable JSON file. Each entry contains the numeric score number, piece name, and its 80s, opener, hotness, goes-high, drums-intro, and enabled settings. Files, relative paths, internal IDs, alignment state, and generated performances are deliberately excluded. **Re-import app settings** parses only an explicitly selected settings JSON, shows a preview, and updates matched pieces after confirmation. Matching uses the numeric score number; name differences are shown for review, pieces absent from the current library are skipped, and pieces absent from the backup keep their settings.
 
 Use **Export set list** on the Sets screen to save the current named list as a separate, versioned JSON file. It includes set names, order, source generation details, score names and ordering, and the score metadata needed to display it independently of the library. **Import set list** validates an explicitly selected JSON file and saves it with fresh local IDs, so an import cannot overwrite another list. This set-list file remains separate from the app-settings backup.
 
-Open a successfully built app through Access at least once before relying on offline mode. Keep a downloaded settings JSON outside the browser profile as a recovery copy. Folder access remains manual, and availability of a Nextcloud-backed folder depends on the iOS Files provider.
+Sign in successfully at least once before relying on offline mode. Use **Sign out** to remove the server session on that browser. Keep a downloaded settings JSON outside the browser profile as a recovery copy. Folder access remains manual, and availability of a Nextcloud-backed folder depends on the iOS Files provider.
 
 The interface follows the device’s light or dark appearance automatically. Dark appearance uses glare-controlled near-black surfaces and high-contrast controls for reading set lists during evening and indoor performances.
 
@@ -74,15 +74,15 @@ The interface follows the device’s light or dark appearance automatically. Dar
 
 In Safari, open the deployed address, tap Share, choose **Add to Home Screen**, and enable **Open as Web App** if offered. Launch once while online. The in-app update notice provides a deliberate refresh path without replacing IndexedDB.
 
-## Cloudflare Access + D1 deployment (owner actions)
+## Signed-cookie authentication + D1 deployment (owner actions)
 
-`wrangler.toml` bundles the API Worker with the static PWA, routes every asset through the Worker, binds D1 as `DB`, and configures SPA fallback. The two checked-in Access values and D1 ID are deliberately non-working placeholders, not credentials. Replace all three before a production build.
+`wrangler.toml` bundles the D1 API Worker with the static PWA, invokes it for `/api/*`, binds D1 as `DB`, and rate-limits login requests. It contains no authentication credentials.
 
-1. In Cloudflare's D1 dashboard, create a database named `piece-selector`. Copy its ID into `wrangler.toml` as `database_id`. The CLI equivalent is `npx wrangler d1 create piece-selector`.
+1. In Cloudflare's D1 dashboard, create a database named `piece-selector` and place its ID in `wrangler.toml` as `database_id`. The CLI equivalent is `npx wrangler d1 create piece-selector`.
 2. Apply `migrations/0001_cloud_state.sql` to that database. The CLI equivalent is `npx wrangler d1 migrations apply piece-selector --remote`.
-3. Create or connect the `piece-selector` Worker to the intended private repository. In Workers Builds use the production branch you intend to deploy, blank root directory, build command `npm run build`, and deploy command `npx wrangler deploy`.
-4. In Zero Trust, enable the One-time PIN login method. Protect this Worker and its `workers.dev` and preview URLs with Cloudflare Access. Create an **Allow** policy containing only the exact email address(es) approved to use the app; never use **Include everyone** or only **Login Methods: One-time PIN**.
-5. Copy the Access team URL (for example, `https://your-team.cloudflareaccess.com`) and this application's Audience tag into `TEAM_DOMAIN` and `POLICY_AUD` in `wrangler.toml`, then let the owner-controlled build deploy the corrected configuration.
-6. Open the Worker URL, complete the emailed OTP, and verify that a refresh reopens the same library. Export a recovery settings file after the old device cache has migrated.
+3. In **Workers & Pages → piece-selector → Settings → Variables and Secrets**, create encrypted secrets named `AUTH_PASSWORD_HASH` and `SESSION_SIGNING_KEY`. Do not create ordinary plaintext variables with these names.
+4. `AUTH_PASSWORD_HASH` must be the 64-character, lowercase SHA-256 digest of a password generated by a password manager. Use at least 20 random characters because this deliberately small scheme uses a fast hash. `SESSION_SIGNING_KEY` must be a different random value containing at least 32 bytes.
+5. Connect the `piece-selector` Worker to the intended private repository. In Workers Builds use the production branch you intend to deploy, blank root directory, build command `npm run build`, and deploy command `npx wrangler deploy`.
+6. Open the Worker URL, enter the band password, and verify that a refresh reopens the shared library. Sign in on the original browser first if it contains local-only data that must migrate.
 
 Cloudflare Pages static-only deployment is no longer compatible with this architecture because it cannot serve the `/api/state` Worker entry point and D1 binding. No command in this repository automatically creates or changes a Cloudflare or GitHub resource.

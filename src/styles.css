@@ -69,6 +69,13 @@ h2 { color: var(--forest); font-weight: 850; }
 .empty-state p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; }
 .hero-mark { width: 64px; height: 64px; border: 2px solid #ca9841; border-radius: 19px; box-shadow: 5px 5px 0 var(--forest); font-size: 35px; transform: rotate(-4deg); }
 .hero-mark .ui-icon { width: 34px; height: 34px; }
+.auth-screen { min-height: 100vh; max-width: 420px; display: grid; align-content: center; gap: 18px; }
+.auth-screen h1 { margin: 0; }
+.auth-screen .secondary { margin: 8px 0 0; }
+.auth-form, .auth-actions { display: grid; gap: 12px; }
+.auth-form { padding: 16px; background: var(--paper); border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 8px 24px #20284412; }
+.auth-form label { color: var(--forest); font-weight: 800; }
+.auth-form input { width: 100%; min-height: 52px; padding: 10px 12px; color: var(--ink); background: #fff; border: 1px solid #b7bdce; border-radius: 12px; }
 .title-row { display: flex; align-items: center; gap: 12px; }
 
 .preview-panel { padding: 18px; background: var(--paper); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 7px 22px #46554c12; }
@@ -272,7 +279,7 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
   .switch-control { background: #4a5066; }
   .toggle-enabled .switch-control { --switch-color: #8589ee; }
   .toggle-80s .switch-control { --switch-color: #da9950; }
-  input[type="search"], input[type="number"], select, .set-list-name input { color: var(--ink); background: #181b2b; border-color: #505873; }
+  input[type="search"], input[type="number"], select, .set-list-name input, .auth-form input { color: var(--ink); background: #181b2b; border-color: #505873; }
   input::placeholder { color: #858ca5; }
   .score-row { background: var(--paper); border-color: var(--border); }
   .status-dot { box-shadow: 0 0 8px #78d6ae55; }

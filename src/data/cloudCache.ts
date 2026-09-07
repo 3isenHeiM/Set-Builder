@@ -55,3 +55,21 @@ export async function replaceCachedState(database: PieceSelectorDatabase, state:
 export function readSyncRecord(database: PieceSelectorDatabase): Promise<CloudSyncRecord | undefined> {
   return database.cloudSync.get('cloud')
 }
+
+export async function clearCachedState(database: PieceSelectorDatabase): Promise<void> {
+  await database.transaction(
+    'rw',
+    database.scores,
+    database.scans,
+    database.performances,
+    database.savedSetLists,
+    database.cloudSync,
+    async () => Promise.all([
+      database.scores.clear(),
+      database.scans.clear(),
+      database.performances.clear(),
+      database.savedSetLists.clear(),
+      database.cloudSync.clear(),
+    ]).then(() => undefined),
+  )
+}

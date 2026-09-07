@@ -1,8 +1,12 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { emptyCloudState, parseCloudState, type CloudState, type CloudStateEnvelope } from '../data/cloudState'
+import { AuthenticationUnavailable, assertAuthenticationConfigured, clearSessionCookie, createSessionCookie, hasValidSession, passwordMatches } from './auth'
 
 const STATE_PATH = '/api/state'
+const LOGIN_PATH = '/api/login'
+const LOGOUT_PATH = '/api/logout'
+const SHARED_LIBRARY_ID = 'shared-band'
 const MAX_STATE_BYTES = 2_000_000
+const MAX_LOGIN_BYTES = 1_000
 
 interface D1PreparedStatement {
   bind: (...values: Array<string | number | null>) => D1PreparedStatement
@@ -17,22 +21,16 @@ interface AssetsBinding {
   fetch: (request: Request) => Promise<Response>
 }
 
-interface AccessIdentity {
-  email?: string
-}
-
-interface AccessContext {
-  access?: {
-    aud: string
-    getIdentity: () => Promise<AccessIdentity | null>
-  }
+interface RateLimiter {
+  limit: (options: { key: string }) => Promise<{ success: boolean }>
 }
 
 export interface WorkerEnvironment {
   ASSETS: AssetsBinding
   DB: D1Database
-  TEAM_DOMAIN?: string
-  POLICY_AUD?: string
+  LOGIN_RATE_LIMITER?: RateLimiter
+  AUTH_PASSWORD_HASH?: string
+  SESSION_SIGNING_KEY?: string
 }
 
 interface StoredState {
@@ -42,60 +40,59 @@ interface StoredState {
 
 class InvalidStateRequest extends Error {}
 
-function json(body: unknown, status = 200): Response {
+function json(body: unknown, status = 200, headers?: HeadersInit): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' },
+    headers: { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8', ...headers },
   })
+}
+
+function noContent(setCookie: string): Response {
+  return new Response(null, { status: 204, headers: { 'cache-control': 'no-store', 'set-cookie': setCookie } })
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function teamOrigin(teamDomain: string): string {
-  const origin = new URL(teamDomain).origin
-  const hostname = new URL(origin).hostname
-  if (!hostname.endsWith('.cloudflareaccess.com')) throw new Error('TEAM_DOMAIN must be a Cloudflare Access team domain.')
-  return origin
+function isSameOrigin(request: Request): boolean {
+  const origin = request.headers.get('origin')
+  return origin === null || origin === new URL(request.url).origin
 }
 
-const keySets = new Map<string, ReturnType<typeof createRemoteJWKSet>>()
+async function login(request: Request, environment: WorkerEnvironment): Promise<Response> {
+  if (!isSameOrigin(request)) return json({ error: 'Sign-in request came from an invalid origin.' }, 403)
+  const limiter = environment.LOGIN_RATE_LIMITER
+  if (!limiter) throw new AuthenticationUnavailable()
+  const rate = await limiter.limit({ key: request.headers.get('cf-connecting-ip') ?? 'local' })
+  if (!rate.success) return json({ error: 'Too many sign-in attempts. Try again in a minute.' }, 429, { 'retry-after': '60' })
 
-function keySet(teamDomain: string): ReturnType<typeof createRemoteJWKSet> {
-  let keys = keySets.get(teamDomain)
-  if (!keys) {
-    keys = createRemoteJWKSet(new URL(`${teamDomain}/cdn-cgi/access/certs`))
-    keySets.set(teamDomain, keys)
+  const claimedLength = Number(request.headers.get('content-length') ?? 0)
+  if (claimedLength > MAX_LOGIN_BYTES) return json({ error: 'Incorrect password.' }, 401)
+  const source = await request.text()
+  if (new TextEncoder().encode(source).byteLength > MAX_LOGIN_BYTES) return json({ error: 'Incorrect password.' }, 401)
+  let raw: unknown
+  try {
+    raw = JSON.parse(source)
+  } catch {
+    return json({ error: 'Incorrect password.' }, 401)
   }
-  return keys
-}
-
-export type AccessVerifier = (request: Request, environment: WorkerEnvironment, context: AccessContext) => Promise<string | undefined>
-
-export async function verifyAccess(request: Request, environment: WorkerEnvironment, context: AccessContext): Promise<string | undefined> {
-  if (context.access) {
-    const identity = await context.access.getIdentity()
-    return identity?.email?.trim().toLocaleLowerCase('en')
+  if (!isRecord(raw) || typeof raw.password !== 'string' || raw.password.length < 1 || raw.password.length > 200) {
+    return json({ error: 'Incorrect password.' }, 401)
   }
-
-  if (!environment.TEAM_DOMAIN || !environment.POLICY_AUD) return undefined
-  const token = request.headers.get('cf-access-jwt-assertion')
-  if (!token) return undefined
-  const issuer = teamOrigin(environment.TEAM_DOMAIN)
-  const { payload } = await jwtVerify(token, keySet(issuer), { issuer, audience: environment.POLICY_AUD })
-  return typeof payload.sub === 'string' && payload.sub !== '' ? payload.sub : undefined
+  if (!await passwordMatches(raw.password, environment)) return json({ error: 'Incorrect password.' }, 401)
+  return noContent(await createSessionCookie(environment))
 }
 
-async function readState(environment: WorkerEnvironment, ownerId: string): Promise<CloudStateEnvelope> {
+async function readState(environment: WorkerEnvironment): Promise<CloudStateEnvelope> {
   const stored = await environment.DB.prepare('SELECT revision, state_json FROM app_states WHERE owner_id = ?')
-    .bind(ownerId)
+    .bind(SHARED_LIBRARY_ID)
     .first<StoredState>()
   if (!stored) return { revision: 0, state: emptyCloudState() }
   return { revision: stored.revision, state: parseCloudState(JSON.parse(stored.state_json) as unknown) }
 }
 
-async function storeState(request: Request, environment: WorkerEnvironment, ownerId: string): Promise<CloudStateEnvelope> {
+async function storeState(request: Request, environment: WorkerEnvironment): Promise<CloudStateEnvelope> {
   const claimedLength = Number(request.headers.get('content-length') ?? 0)
   if (claimedLength > MAX_STATE_BYTES) throw new InvalidStateRequest('Cloud state is too large.')
   const source = await request.text()
@@ -123,40 +120,38 @@ async function storeState(request: Request, environment: WorkerEnvironment, owne
       state_json = excluded.state_json,
       updated_at = excluded.updated_at
     RETURNING revision`)
-    .bind(ownerId, raw.operationId, JSON.stringify(state), new Date().toISOString())
+    .bind(SHARED_LIBRARY_ID, raw.operationId, JSON.stringify(state), new Date().toISOString())
     .first<{ revision: number }>()
   if (!stored) throw new Error('D1 did not persist the library.')
   return { revision: stored.revision, state }
 }
 
-export async function handleRequest(
-  request: Request,
-  environment: WorkerEnvironment,
-  context: AccessContext,
-  authenticate: AccessVerifier = verifyAccess,
-): Promise<Response> {
+export async function handleRequest(request: Request, environment: WorkerEnvironment): Promise<Response> {
   const url = new URL(request.url)
   try {
-    let ownerId: string | undefined
-    try {
-      ownerId = await authenticate(request, environment, context)
-    } catch {
-      return json({ error: 'Cloudflare Access authentication is invalid.' }, 403)
+    if (!url.pathname.startsWith('/api/')) return environment.ASSETS.fetch(request)
+    assertAuthenticationConfigured(environment)
+    if (url.pathname === LOGIN_PATH) return request.method === 'POST' ? await login(request, environment) : json({ error: 'Method not allowed.' }, 405, { allow: 'POST' })
+    if (url.pathname === LOGOUT_PATH) {
+      if (request.method !== 'POST') return json({ error: 'Method not allowed.' }, 405, { allow: 'POST' })
+      if (!isSameOrigin(request)) return json({ error: 'Sign-out request came from an invalid origin.' }, 403)
+      return noContent(clearSessionCookie())
     }
-    if (!ownerId) return json({ error: 'Cloudflare Access authentication is required.' }, 403)
+    if (!await hasValidSession(request, environment)) return json({ error: 'Authentication is required.' }, 401)
+    if (!isSameOrigin(request)) return json({ error: 'Request came from an invalid origin.' }, 403)
 
-    if (url.pathname === STATE_PATH && request.method === 'GET') return json(await readState(environment, ownerId))
-    if (url.pathname === STATE_PATH && request.method === 'PUT') return json(await storeState(request, environment, ownerId))
-    if (url.pathname.startsWith('/api/')) return json({ error: 'Not found.' }, 404)
-    return environment.ASSETS.fetch(request)
+    if (url.pathname === STATE_PATH && request.method === 'GET') return json(await readState(environment))
+    if (url.pathname === STATE_PATH && request.method === 'PUT') return json(await storeState(request, environment))
+    return json({ error: 'Not found.' }, 404)
   } catch (error) {
+    if (error instanceof AuthenticationUnavailable) return json({ error: 'Authentication is unavailable.' }, 503)
     if (error instanceof InvalidStateRequest) return json({ error: error.message }, 400)
     return json({ error: 'Cloud storage is temporarily unavailable.' }, 503)
   }
 }
 
 export default {
-  fetch(request: Request, environment: WorkerEnvironment, context: AccessContext): Promise<Response> {
-    return handleRequest(request, environment, context)
+  fetch(request: Request, environment: WorkerEnvironment): Promise<Response> {
+    return handleRequest(request, environment)
   },
 }

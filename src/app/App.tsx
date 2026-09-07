@@ -3,8 +3,9 @@ import { classifyReconciliation } from '../domain/reconciliation'
 import type { SettingsBackup } from '../domain/settingsBackup'
 import type { FolderScan, FolderSnapshot, GeneratedPerformance, ReconciliationPlan, RenumberingDecisions, SavedSetList, Score, ScoreConfiguration } from '../domain/types'
 import { restoreSetList, type SetListBackup } from '../domain/setListBackup'
-import { repository as browserRepository } from '../data/client'
+import { authentication as cloudAuthentication, repository as browserRepository } from '../data/client'
 import { CloudApiError } from '../data/cloudRepository'
+import type { AuthenticationClient } from '../data/authentication'
 import type { PerformanceRepository, ScoreRepository } from '../data/repository'
 import { createLocalId } from './id'
 import { ReconciliationPreview } from '../features/import/ReconciliationPreview'
@@ -12,6 +13,7 @@ import { GenerateScreen } from '../features/generator/GenerateScreen'
 import { LibraryScreen } from '../features/library/LibraryScreen'
 import { PerformanceScreen } from '../features/performance/PerformanceScreen'
 import { SettingsBackupPanel } from '../features/settings/SettingsBackupPanel'
+import { LoginScreen, SignOutButton } from '../features/auth/AuthenticationScreens'
 import { AboutScreen, InstallGuide } from '../pwa/InstallGuide'
 import { UpdateBanner } from '../pwa/UpdateBanner'
 import { UiIcon } from './UiIcon'
@@ -20,7 +22,7 @@ import { localizedError, useI18n } from './i18n'
 type Page = 'library' | 'generate' | 'performance' | 'about'
 type AppRepository = ScoreRepository & PerformanceRepository
 
-export function App({ repository = browserRepository }: { repository?: AppRepository }) {
+export function App({ repository = browserRepository, authentication = cloudAuthentication }: { repository?: AppRepository; authentication?: AuthenticationClient }) {
   const { locale, t } = useI18n()
   const [scores, setScores] = useState<Score[]>([])
   const [lastScan, setLastScan] = useState<FolderScan>()
@@ -32,7 +34,7 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
   const [page, setPage] = useState<Page>('library')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [accessRequired, setAccessRequired] = useState(false)
+  const [loginRequired, setLoginRequired] = useState(false)
   const [editingScore, setEditingScore] = useState(false)
 
   useEffect(() => {
@@ -56,11 +58,11 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
         }
       })
       .catch((error: unknown) => {
-        setAccessRequired(error instanceof CloudApiError && error.message.startsWith('Cloudflare Access authentication'))
-        setLoadError(localizedError(error, locale, t('localStorageUnavailable')))
+        if (authentication && error instanceof CloudApiError && error.status === 401) setLoginRequired(true)
+        else setLoadError(localizedError(error, locale, t('localStorageUnavailable')))
       })
       .finally(() => setLoading(false))
-  }, [locale, repository, t])
+  }, [authentication, locale, repository, t])
 
   const rescan = (snapshot: FolderSnapshot) => {
     setPreviewError('')
@@ -122,7 +124,8 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
   }
 
   if (loading) return <main id="main-content" className="loading-screen"><div className="hero-mark"><UiIcon name="music" /></div><p>{t('loadingLibrary')}</p></main>
-  if (loadError) return <main id="main-content" className="loading-screen"><h1>Piece Selector</h1><p className="error" role="alert">{loadError}</p>{accessRequired && <a className="primary-action" href="/cdn-cgi/access/login">{t('signInWithAccess')}</a>}</main>
+  if (loginRequired && authentication) return <LoginScreen onLogin={async (password) => { await authentication.login(password); window.location.reload() }} />
+  if (loadError) return <main id="main-content" className="loading-screen"><h1>Piece Selector</h1><p className="error" role="alert">{loadError}</p></main>
 
   return (
     <div className="app-shell">
@@ -131,7 +134,7 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
       <InstallGuide />
       <UpdateBanner />
       <main id="main-content">
-        {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} /> : page === 'library' ? <LibraryScreen scores={scores} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onEditingChange={setEditingScore} /> : page === 'generate' ? <GenerateScreen scores={scores} hasPerformance={Boolean(currentSetList)} onGenerated={savePerformance} /> : page === 'performance' ? <PerformanceScreen setList={currentSetList} savedSetLists={setLists} onSave={saveSetList} onSelect={selectSetList} onImport={importSetList} onRegenerate={() => setPage('generate')} /> : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} /></AboutScreen>}
+        {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} /> : page === 'library' ? <LibraryScreen scores={scores} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onEditingChange={setEditingScore} /> : page === 'generate' ? <GenerateScreen scores={scores} hasPerformance={Boolean(currentSetList)} onGenerated={savePerformance} /> : page === 'performance' ? <PerformanceScreen setList={currentSetList} savedSetLists={setLists} onSave={saveSetList} onSelect={selectSetList} onImport={importSetList} onRegenerate={() => setPage('generate')} /> : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} />{authentication && <SignOutButton onLogout={async () => { await authentication.logout(); window.location.reload() }} />}</AboutScreen>}
       </main>
       {!preview && !editingScore && <nav className="bottom-nav" aria-label={t('primaryNavigation')}>{([['library', t('library')], ['generate', t('build')], ['performance', t('sets')], ['about', t('about')]] as const).map(([target, label]) => <button type="button" key={target} aria-current={page === target ? 'page' : undefined} onClick={() => setPage(target)}><UiIcon name={target === 'library' ? 'library' : target === 'generate' ? 'sparkles' : target === 'performance' ? 'sets' : 'info'} />{label}</button>)}</nav>}
     </div>

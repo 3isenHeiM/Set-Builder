@@ -133,6 +133,13 @@ export class PieceSelectorDatabase extends Dexie {
       savedSetLists: 'id,updatedAt',
       cloudSync: 'key',
     })
+    this.version(8).stores({
+      scores: 'id,scoreNumber,availability,configuration,enabled,*tags',
+      scans: 'id,appliedAt',
+      performances: 'key',
+      savedSetLists: 'id,updatedAt',
+      cloudSync: 'key',
+    })
   }
 }
 
@@ -141,6 +148,7 @@ export interface CloudSyncRecord {
   connected: boolean
   revision: number
   pending: CloudState | null
+  backend?: 'signed-cookie-v1'
 }
 
 export class LegacyDatabaseV4 extends Dexie {
