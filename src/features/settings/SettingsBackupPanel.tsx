@@ -8,6 +8,7 @@ import {
 } from '../../domain/settingsBackup'
 import type { SettingsBackup, SettingsImportReport } from '../../domain/settingsBackup'
 import type { Score } from '../../domain/types'
+import { localizedError, useI18n } from '../../app/i18n'
 
 interface SettingsBackupPanelProps {
   scores: Score[]
@@ -24,6 +25,7 @@ function downloadName(exportedAt: string): string {
 }
 
 export function SettingsBackupPanel({ scores, onImport }: SettingsBackupPanelProps) {
+  const { locale, t } = useI18n()
   const fileInput = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<ImportPreview>()
   const [error, setError] = useState('')
@@ -42,7 +44,7 @@ export function SettingsBackupPanel({ scores, onImport }: SettingsBackupPanelPro
     anchor.remove()
     window.setTimeout(() => URL.revokeObjectURL(url), 1000)
     setError('')
-    setStatus(`${backup.pieces.length} ${backup.pieces.length === 1 ? 'piece' : 'pieces'} exported.`)
+    setStatus(t('exportedPieces', { count: backup.pieces.length, pieces: t(backup.pieces.length === 1 ? 'piece' : 'pieces') }))
   }
 
   const selectFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -55,7 +57,7 @@ export function SettingsBackupPanel({ scores, onImport }: SettingsBackupPanelPro
     setPreview(undefined)
 
     if (!file.name.toLocaleLowerCase().endsWith('.json')) {
-      setError('Choose a Piece Selector .json settings file.')
+      setError(t('chooseSettingsFile'))
       return
     }
 
@@ -64,7 +66,7 @@ export function SettingsBackupPanel({ scores, onImport }: SettingsBackupPanelPro
       const backup = parseSettingsBackupJson(await file.text())
       setPreview({ backup, report: previewSettingsImport(scores, backup) })
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'The settings file could not be opened.')
+      setError(localizedError(caught, locale, t('settingsFileOpenFailed')))
     }
   }
 
@@ -75,9 +77,9 @@ export function SettingsBackupPanel({ scores, onImport }: SettingsBackupPanelPro
     try {
       const report = await onImport(preview.backup)
       setPreview(undefined)
-      setStatus(`${report.matched} ${report.matched === 1 ? 'piece' : 'pieces'} imported.`)
+      setStatus(t('importedPieces', { count: report.matched, pieces: t(report.matched === 1 ? 'piece' : 'pieces') }))
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'No settings were changed.')
+      setError(localizedError(caught, locale, t('noSettingsChanged')))
     } finally {
       setApplying(false)
     }
@@ -85,27 +87,27 @@ export function SettingsBackupPanel({ scores, onImport }: SettingsBackupPanelPro
 
   return (
     <div className="info-card settings-backup">
-      <h2>Settings backup</h2>
-      <p>Browser storage can be cleared.</p>
+      <h2>{t('settingsBackup')}</h2>
+      <p>{t('browserStorageCleared')}</p>
       <div className="settings-actions">
-        <button type="button" className="secondary-action" disabled={scores.length === 0} onClick={download}>Download settings</button>
-        <button type="button" className="secondary-action" onClick={() => fileInput.current?.click()}>Import settings</button>
+        <button type="button" className="secondary-action" disabled={scores.length === 0} onClick={download}>{t('downloadSettings')}</button>
+        <button type="button" className="secondary-action" onClick={() => fileInput.current?.click()}>{t('importSettings')}</button>
         <input ref={fileInput} className="hidden-input" type="file" accept=".json,application/json" onChange={(event) => { void selectFile(event) }} />
       </div>
-      <details><summary>Backup details</summary><p>Names and settings only. Imports match by number; files and sets are excluded.</p></details>
+      <details><summary>{t('backupDetails')}</summary><p>{t('namesAndSettingsOnly')}</p></details>
 
       {preview && (
         <div className="settings-preview" aria-labelledby="settings-preview-title">
-          <h3 id="settings-preview-title">Import preview</h3>
+          <h3 id="settings-preview-title">{t('importPreview')}</h3>
           <dl className="backup-summary">
-            <div><dt>In file</dt><dd>{preview.backup.pieces.length}</dd></div>
-            <div><dt>Matched</dt><dd>{preview.report.matched}</dd></div>
-            <div><dt>Missing</dt><dd>{preview.report.notFound}</dd></div>
-            <div><dt>Renamed</dt><dd>{preview.report.titleMismatches.length}</dd></div>
+            <div><dt>{t('inFile')}</dt><dd>{preview.backup.pieces.length}</dd></div>
+            <div><dt>{t('matched')}</dt><dd>{preview.report.matched}</dd></div>
+            <div><dt>{t('missing')}</dt><dd>{preview.report.notFound}</dd></div>
+            <div><dt>{t('renamed')}</dt><dd>{preview.report.titleMismatches.length}</dd></div>
           </dl>
           {preview.report.titleMismatches.length > 0 && (
             <details>
-              <summary>Renamed pieces</summary>
+              <summary>{t('renamedPieces')}</summary>
               <ul className="plain-list">
                 {preview.report.titleMismatches.map((item) => (
                   <li key={item.scoreNumber}><strong>{item.scoreNumber}</strong>: {item.backupName} → {item.currentName}</li>
@@ -114,8 +116,8 @@ export function SettingsBackupPanel({ scores, onImport }: SettingsBackupPanelPro
             </details>
           )}
           <div className="action-row">
-            <button type="button" className="secondary-action" disabled={applying} onClick={() => setPreview(undefined)}>Cancel</button>
-            <button type="button" className="primary-action" disabled={applying || preview.report.matched === 0} onClick={() => { void apply() }}>{applying ? 'Importing…' : 'Import matched'}</button>
+            <button type="button" className="secondary-action" disabled={applying} onClick={() => setPreview(undefined)}>{t('cancel')}</button>
+            <button type="button" className="primary-action" disabled={applying || preview.report.matched === 0} onClick={() => { void apply() }}>{applying ? t('importing') : t('importMatched')}</button>
           </div>
         </div>
       )}

@@ -1,4 +1,5 @@
 import type { Hotness, Score } from './types'
+import { configurationStatus } from './configuration'
 
 export const SETTINGS_BACKUP_FORMAT = 'piece-selector-settings'
 export const SETTINGS_BACKUP_VERSION = 3
@@ -166,7 +167,6 @@ export function applySettingsBackup(
     scores: scores.map((score) => {
       const settings = settingsByNumber.get(score.scoreNumber)
       if (!settings) return score
-      const configuration = settings.canStart !== null && settings.hotness !== null && settings.drumsIntro !== null && settings.goesHigh !== null ? 'complete' : 'pending'
       return {
         ...score,
         canStart: settings.canStart,
@@ -175,7 +175,7 @@ export function applySettingsBackup(
         goesHigh: settings.goesHigh,
         enabled: settings.enabled,
         tags: [...score.tags.filter((tag) => tag !== '80s'), ...(settings.in80s ? ['80s'] : [])],
-        configuration,
+        configuration: configurationStatus(settings),
         updatedAt,
       }
     }),

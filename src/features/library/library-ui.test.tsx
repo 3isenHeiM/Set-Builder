@@ -30,4 +30,17 @@ describe('library configuration UI', () => {
     expect(onSave).toHaveBeenCalledWith('one', expect.objectContaining({ canStart: true, hotness: 3, drumsIntro: false, goesHigh: true }))
     expect(screen.getByText('2 of 2')).toBeVisible()
   })
+
+  it('allows a disabled pending piece to be saved without metric settings', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn(() => Promise.resolve())
+    render(<LibraryScreen scores={[makeScore({ configuration: 'pending', canStart: null, hotness: null, drumsIntro: null, goesHigh: null })]} lastScan={undefined} onFolder={vi.fn()} onSave={onSave} />)
+    await user.click(screen.getByRole('button', { name: 'Configure 1' }))
+    const save = screen.getByRole('button', { name: 'Save and finish' })
+    expect(save).toBeDisabled()
+    await user.click(screen.getByRole('switch', { name: /Enabled/ }))
+    expect(save).toBeEnabled()
+    await user.click(save)
+    expect(onSave).toHaveBeenLastCalledWith('score-1', expect.objectContaining({ enabled: false, canStart: null, hotness: null, drumsIntro: null, goesHigh: null }))
+  })
 })

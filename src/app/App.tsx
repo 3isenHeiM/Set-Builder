@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { classifyReconciliation } from '../domain/reconciliation'
 import type { SettingsBackup } from '../domain/settingsBackup'
-import type { FolderScan, FolderSnapshot, GeneratedPerformance, ReconciliationPlan, RenumberingDecisions, Score, ScoreConfiguration } from '../domain/types'
-import { repository as browserRepository } from '../data/client'
+import type { FolderScan, FolderSnapshot, GeneratedPerformance, ReconciliationPlan, RenumberingDecisions, SavedSetList, Score, ScoreConfiguration } from '../domain/types'
+import { restoreSetList, type SetListBackup } from '../domain/setListBackup'
+import { authentication as cloudAuthentication, repository as browserRepository } from '../data/client'
+import { CloudApiError } from '../data/cloudRepository'
+import type { AuthenticationClient } from '../data/authentication'
 import type { PerformanceRepository, ScoreRepository } from '../data/repository'
 import { createLocalId } from './id'
 import { ReconciliationPreview } from '../features/import/ReconciliationPreview'
@@ -10,36 +13,56 @@ import { GenerateScreen } from '../features/generator/GenerateScreen'
 import { LibraryScreen } from '../features/library/LibraryScreen'
 import { PerformanceScreen } from '../features/performance/PerformanceScreen'
 import { SettingsBackupPanel } from '../features/settings/SettingsBackupPanel'
+import { LoginScreen, SignOutButton } from '../features/auth/AuthenticationScreens'
 import { AboutScreen, InstallGuide } from '../pwa/InstallGuide'
 import { UpdateBanner } from '../pwa/UpdateBanner'
 import { UiIcon } from './UiIcon'
+import { localizedError, useI18n } from './i18n'
 
 type Page = 'library' | 'generate' | 'performance' | 'about'
 type AppRepository = ScoreRepository & PerformanceRepository
 
-export function App({ repository = browserRepository }: { repository?: AppRepository }) {
+export function App({ repository = browserRepository, authentication = cloudAuthentication }: { repository?: AppRepository; authentication?: AuthenticationClient }) {
+  const { locale, t } = useI18n()
   const [scores, setScores] = useState<Score[]>([])
   const [lastScan, setLastScan] = useState<FolderScan>()
-  const [performance, setPerformance] = useState<GeneratedPerformance>()
+  const [setLists, setSetLists] = useState<SavedSetList[]>([])
+  const [currentSetList, setCurrentSetList] = useState<SavedSetList>()
   const [preview, setPreview] = useState<ReconciliationPlan>()
   const [applying, setApplying] = useState(false)
   const [previewError, setPreviewError] = useState('')
   const [page, setPage] = useState<Page>('library')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [loginRequired, setLoginRequired] = useState(false)
   const [editingScore, setEditingScore] = useState(false)
 
   useEffect(() => {
-    void Promise.all([repository.listScores(), repository.getLastScan(), repository.getLastPerformance()])
-      .then(([loadedScores, scan, savedPerformance]) => {
+    void Promise.all([repository.listScores(), repository.getLastScan(), repository.getLastPerformance(), repository.listSetLists()])
+      .then(([loadedScores, scan, savedPerformance, savedSetLists]) => {
         setScores(loadedScores)
         setLastScan(scan)
-        setPerformance(savedPerformance)
-        if (savedPerformance) setPage('performance')
+        setSetLists(savedSetLists)
+        if (savedPerformance) {
+          setCurrentSetList(savedSetLists.find((saved) => saved.id === savedPerformance.id) ?? {
+            id: savedPerformance.id,
+            name: '',
+            createdAt: savedPerformance.generatedAt,
+            updatedAt: savedPerformance.generatedAt,
+            performance: savedPerformance,
+          })
+          setPage('performance')
+        } else if (savedSetLists[0]) {
+          setCurrentSetList(savedSetLists[0])
+          setPage('performance')
+        }
       })
-      .catch((error: unknown) => setLoadError(error instanceof Error ? error.message : 'Local storage is unavailable.'))
+      .catch((error: unknown) => {
+        if (authentication && error instanceof CloudApiError && error.status === 401) setLoginRequired(true)
+        else setLoadError(localizedError(error, locale, t('localStorageUnavailable')))
+      })
       .finally(() => setLoading(false))
-  }, [repository])
+  }, [authentication, locale, repository, t])
 
   const rescan = (snapshot: FolderSnapshot) => {
     setPreviewError('')
@@ -57,7 +80,7 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
       setPreview(undefined)
       setPage('library')
     } catch (error) {
-      setPreviewError(error instanceof Error ? error.message : 'Changes were not applied.')
+      setPreviewError(localizedError(error, locale, t('changesNotApplied')))
     } finally {
       setApplying(false)
     }
@@ -69,8 +92,28 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
   }
 
   const savePerformance = async (generated: GeneratedPerformance) => {
-    await repository.saveLastPerformance(generated)
-    setPerformance(generated)
+    const saved: SavedSetList = { id: generated.id, name: '', createdAt: generated.generatedAt, updatedAt: generated.generatedAt, performance: generated }
+    await repository.saveSetList(saved)
+    setSetLists(await repository.listSetLists())
+    setCurrentSetList(saved)
+    setPage('performance')
+  }
+
+  const saveSetList = async (saved: SavedSetList) => {
+    await repository.saveSetList(saved)
+    setSetLists(await repository.listSetLists())
+    setCurrentSetList(saved)
+  }
+
+  const selectSetList = async (id: string) => {
+    const selected = setLists.find((saved) => saved.id === id)
+    if (!selected) return
+    await repository.saveLastPerformance(selected.performance)
+    setCurrentSetList(selected)
+  }
+
+  const importSetList = async (backup: SetListBackup) => {
+    await saveSetList(restoreSetList(backup, new Date().toISOString(), createLocalId))
     setPage('performance')
   }
 
@@ -80,19 +123,20 @@ export function App({ repository = browserRepository }: { repository?: AppReposi
     return report
   }
 
-  if (loading) return <main id="main-content" className="loading-screen"><div className="hero-mark"><UiIcon name="music" /></div><p>Opening library…</p></main>
+  if (loading) return <main id="main-content" className="loading-screen"><div className="hero-mark"><UiIcon name="music" /></div><p>{t('loadingLibrary')}</p></main>
+  if (loginRequired && authentication) return <LoginScreen onLogin={async (password) => { await authentication.login(password); window.location.reload() }} />
   if (loadError) return <main id="main-content" className="loading-screen"><h1>Piece Selector</h1><p className="error" role="alert">{loadError}</p></main>
 
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#main-content">Skip to content</a>
+      <a className="skip-link" href="#main-content">{t('skipToContent')}</a>
       <header className="app-header"><span className="app-logo" aria-hidden="true"><UiIcon name="music" /></span><strong>Piece Selector</strong></header>
       <InstallGuide />
       <UpdateBanner />
       <main id="main-content">
-        {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} /> : page === 'library' ? <LibraryScreen scores={scores} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onEditingChange={setEditingScore} /> : page === 'generate' ? <GenerateScreen scores={scores} hasPerformance={Boolean(performance)} onGenerated={savePerformance} /> : page === 'performance' ? <PerformanceScreen performance={performance} onRegenerate={() => setPage('generate')} /> : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} /></AboutScreen>}
+        {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} /> : page === 'library' ? <LibraryScreen scores={scores} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onEditingChange={setEditingScore} /> : page === 'generate' ? <GenerateScreen scores={scores} hasPerformance={Boolean(currentSetList)} onGenerated={savePerformance} /> : page === 'performance' ? <PerformanceScreen setList={currentSetList} savedSetLists={setLists} onSave={saveSetList} onSelect={selectSetList} onImport={importSetList} onRegenerate={() => setPage('generate')} /> : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} />{authentication && <SignOutButton onLogout={async () => { await authentication.logout(); window.location.reload() }} />}</AboutScreen>}
       </main>
-      {!preview && !editingScore && <nav className="bottom-nav" aria-label="Primary navigation">{([['library', 'Library'], ['generate', 'Build'], ['performance', 'Sets'], ['about', 'About']] as const).map(([target, label]) => <button type="button" key={target} aria-current={page === target ? 'page' : undefined} onClick={() => setPage(target)}><UiIcon name={target === 'library' ? 'library' : target === 'generate' ? 'sparkles' : target === 'performance' ? 'sets' : 'info'} />{label}</button>)}</nav>}
+      {!preview && !editingScore && <nav className="bottom-nav" aria-label={t('primaryNavigation')}>{([['library', t('library')], ['generate', t('build')], ['performance', t('sets')], ['about', t('about')]] as const).map(([target, label]) => <button type="button" key={target} aria-current={page === target ? 'page' : undefined} onClick={() => setPage(target)}><UiIcon name={target === 'library' ? 'library' : target === 'generate' ? 'sparkles' : target === 'performance' ? 'sets' : 'info'} />{label}</button>)}</nav>}
     </div>
   )
 }

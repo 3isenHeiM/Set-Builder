@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
-import type { FolderScan, GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, Score, StoredPerformance } from '../domain/types'
+import type { FolderScan, GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, SavedSetList, Score, StoredPerformance } from '../domain/types'
+import type { CloudState } from './cloudState'
 
 export const DATABASE_NAME = 'piece-selector'
 
@@ -21,6 +22,8 @@ export class PieceSelectorDatabase extends Dexie {
   scores!: EntityTable<Score, 'id'>
   scans!: EntityTable<FolderScan, 'id'>
   performances!: EntityTable<StoredPerformance, 'key'>
+  savedSetLists!: EntityTable<SavedSetList, 'id'>
+  cloudSync!: EntityTable<CloudSyncRecord, 'key'>
 
   constructor(name = DATABASE_NAME) {
     super(name)
@@ -90,6 +93,73 @@ export class PieceSelectorDatabase extends Dexie {
               for (const score of set.scores) score.goesHigh = false
             }
           })
+      })
+    this.version(5)
+      .stores({
+        scores: 'id,scoreNumber,availability,configuration,enabled,*tags',
+        scans: 'id,appliedAt',
+        performances: 'key',
+      })
+      .upgrade((transaction: Transaction) =>
+        transaction
+          .table<Score, string>('scores')
+          .toCollection()
+          .modify((score) => {
+            if (!score.enabled) score.configuration = 'complete'
+          }),
+      )
+    this.version(6)
+      .stores({
+        scores: 'id,scoreNumber,availability,configuration,enabled,*tags',
+        scans: 'id,appliedAt',
+        performances: 'key',
+        savedSetLists: 'id,updatedAt',
+      })
+      .upgrade(async (transaction: Transaction) => {
+        const stored = await transaction.table<StoredPerformance, string>('performances').get('last')
+        if (!stored) return
+        await transaction.table<SavedSetList, string>('savedSetLists').put({
+          id: stored.performance.id,
+          name: '',
+          createdAt: stored.performance.generatedAt,
+          updatedAt: stored.performance.generatedAt,
+          performance: stored.performance,
+        })
+      })
+    this.version(7).stores({
+      scores: 'id,scoreNumber,availability,configuration,enabled,*tags',
+      scans: 'id,appliedAt',
+      performances: 'key',
+      savedSetLists: 'id,updatedAt',
+      cloudSync: 'key',
+    })
+    this.version(8).stores({
+      scores: 'id,scoreNumber,availability,configuration,enabled,*tags',
+      scans: 'id,appliedAt',
+      performances: 'key',
+      savedSetLists: 'id,updatedAt',
+      cloudSync: 'key',
+    })
+  }
+}
+
+export interface CloudSyncRecord {
+  key: 'cloud'
+  connected: boolean
+  revision: number
+  pending: CloudState | null
+  backend?: 'signed-cookie-v1'
+}
+
+export class LegacyDatabaseV4 extends Dexie {
+  scores!: EntityTable<Score, 'id'>
+
+  constructor(name: string) {
+    super(name)
+    this.version(4).stores({
+      scores: 'id,scoreNumber,availability,configuration,enabled,*tags',
+      scans: 'id,appliedAt',
+      performances: 'key',
       })
   }
 }
