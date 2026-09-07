@@ -11,7 +11,7 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "piece-selector"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "eccdeb30-3d58-43f6-b931-6f146b58976b"
 migrations_dir = "./migrations"
 
 [[ratelimits]]
