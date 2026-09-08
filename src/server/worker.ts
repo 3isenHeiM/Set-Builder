@@ -5,9 +5,11 @@ const STATE_PATH = '/api/state'
 const LOGIN_PATH = '/api/login'
 const LOGOUT_PATH = '/api/logout'
 const SESSION_PATH = '/api/session'
+const TURNSTILE_CONFIGURATION_PATH = '/api/turnstile'
+const TURNSTILE_SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 const SHARED_LIBRARY_ID = 'shared-band'
 const MAX_STATE_BYTES = 2_000_000
-const MAX_LOGIN_BYTES = 1_000
+const MAX_LOGIN_BYTES = 4_000
 
 interface D1PreparedStatement {
   bind: (...values: Array<string | number | null>) => D1PreparedStatement
@@ -32,6 +34,8 @@ export interface WorkerEnvironment {
   LOGIN_RATE_LIMITER?: RateLimiter
   AUTH_PASSWORD_HASH?: string
   SESSION_SIGNING_KEY?: string
+  TURNSTILE_SITE_KEY?: string
+  TURNSTILE_SECRET_KEY?: string
 }
 
 interface StoredState {
@@ -40,6 +44,9 @@ interface StoredState {
 }
 
 class InvalidStateRequest extends Error {}
+class HumanVerificationUnavailable extends Error {}
+
+type FetchRequest = (input: string, init?: RequestInit) => Promise<Response>
 
 function json(body: unknown, status = 200, headers?: HeadersInit): Response {
   return new Response(JSON.stringify(body), {
@@ -61,7 +68,41 @@ function isSameOrigin(request: Request): boolean {
   return origin === null || origin === new URL(request.url).origin
 }
 
-async function login(request: Request, environment: WorkerEnvironment): Promise<Response> {
+function turnstileConfiguration(environment: WorkerEnvironment): { siteKey: string; secretKey: string } {
+  const siteKey = environment.TURNSTILE_SITE_KEY?.trim()
+  const secretKey = environment.TURNSTILE_SECRET_KEY?.trim()
+  if (!siteKey || siteKey.length > 200 || !secretKey) throw new HumanVerificationUnavailable()
+  return { siteKey, secretKey }
+}
+
+async function verifyHuman(token: string, request: Request, environment: WorkerEnvironment, fetchRequest: FetchRequest): Promise<boolean> {
+  const { secretKey } = turnstileConfiguration(environment)
+  let response: Response
+  try {
+    response = await fetchRequest(TURNSTILE_SITEVERIFY_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        secret: secretKey,
+        response: token,
+        remoteip: request.headers.get('cf-connecting-ip') ?? undefined,
+      }),
+    })
+  } catch {
+    throw new HumanVerificationUnavailable()
+  }
+  if (!response.ok) throw new HumanVerificationUnavailable()
+  let result: unknown
+  try {
+    result = await response.json()
+  } catch {
+    throw new HumanVerificationUnavailable()
+  }
+  if (!isRecord(result)) throw new HumanVerificationUnavailable()
+  return result.success === true && result.hostname === new URL(request.url).hostname && result.action === 'login'
+}
+
+async function login(request: Request, environment: WorkerEnvironment, fetchRequest: FetchRequest): Promise<Response> {
   if (!isSameOrigin(request)) return json({ error: 'Sign-in request came from an invalid origin.' }, 403)
   const limiter = environment.LOGIN_RATE_LIMITER
   if (!limiter) throw new AuthenticationUnavailable()
@@ -78,9 +119,11 @@ async function login(request: Request, environment: WorkerEnvironment): Promise<
   } catch {
     return json({ error: 'Incorrect password.' }, 401)
   }
-  if (!isRecord(raw) || typeof raw.password !== 'string' || raw.password.length < 1 || raw.password.length > 200) {
+  if (!isRecord(raw) || typeof raw.password !== 'string' || raw.password.length < 1 || raw.password.length > 200
+    || typeof raw.verificationToken !== 'string' || raw.verificationToken.length < 1 || raw.verificationToken.length > 2_048) {
     return json({ error: 'Incorrect password.' }, 401)
   }
+  if (!await verifyHuman(raw.verificationToken, request, environment, fetchRequest)) return json({ error: 'Human verification failed. Try again.' }, 400)
   if (!await passwordMatches(raw.password, environment)) return json({ error: 'Incorrect password.' }, 401)
   return noContent(await createSessionCookie(environment))
 }
@@ -127,12 +170,16 @@ async function storeState(request: Request, environment: WorkerEnvironment): Pro
   return { revision: stored.revision, state }
 }
 
-export async function handleRequest(request: Request, environment: WorkerEnvironment): Promise<Response> {
+export async function handleRequest(request: Request, environment: WorkerEnvironment, fetchRequest: FetchRequest = fetch): Promise<Response> {
   const url = new URL(request.url)
   try {
     if (!url.pathname.startsWith('/api/')) return environment.ASSETS.fetch(request)
     assertAuthenticationConfigured(environment)
-    if (url.pathname === LOGIN_PATH) return request.method === 'POST' ? await login(request, environment) : json({ error: 'Method not allowed.' }, 405, { allow: 'POST' })
+    if (url.pathname === TURNSTILE_CONFIGURATION_PATH) {
+      if (request.method !== 'GET') return json({ error: 'Method not allowed.' }, 405, { allow: 'GET' })
+      return json({ siteKey: turnstileConfiguration(environment).siteKey })
+    }
+    if (url.pathname === LOGIN_PATH) return request.method === 'POST' ? await login(request, environment, fetchRequest) : json({ error: 'Method not allowed.' }, 405, { allow: 'POST' })
     if (url.pathname === LOGOUT_PATH) {
       if (request.method !== 'POST') return json({ error: 'Method not allowed.' }, 405, { allow: 'POST' })
       if (!isSameOrigin(request)) return json({ error: 'Sign-out request came from an invalid origin.' }, 403)
@@ -150,6 +197,7 @@ export async function handleRequest(request: Request, environment: WorkerEnviron
     return json({ error: 'Not found.' }, 404)
   } catch (error) {
     if (error instanceof AuthenticationUnavailable) return json({ error: 'Authentication is unavailable.' }, 503)
+    if (error instanceof HumanVerificationUnavailable) return json({ error: 'Human verification is unavailable. Try again.' }, 503)
     if (error instanceof InvalidStateRequest) return json({ error: error.message }, 400)
     return json({ error: 'Cloud storage is temporarily unavailable.' }, 503)
   }

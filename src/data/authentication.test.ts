@@ -10,10 +10,13 @@ function databaseName(): string {
 
 describe('authentication client', () => {
   it('checks the session without opening cloud state', async () => {
-    const active = new CookieAuthenticationClient((path) => Promise.resolve(new Response(null, { status: path === '/api/session' ? 204 : 500 })))
+    const active = new CookieAuthenticationClient((path) => Promise.resolve(path === '/api/session'
+      ? new Response(null, { status: 204 })
+      : Response.json({ siteKey: 'public-site-key' })))
     const missing = new CookieAuthenticationClient(() => Promise.resolve(Response.json({ error: 'Authentication is required.' }, { status: 401 })))
 
     await expect(active.hasSession()).resolves.toBe(true)
+    await expect(active.loadTurnstileSiteKey()).resolves.toBe('public-site-key')
     await expect(missing.hasSession()).resolves.toBe(false)
   })
 
@@ -39,6 +42,6 @@ describe('authentication client', () => {
 
   it('surfaces rate-limit errors returned by the Worker', async () => {
     const client = new CookieAuthenticationClient(() => Promise.resolve(Response.json({ error: 'Too many sign-in attempts.' }, { status: 429 })))
-    await expect(client.login('guess')).rejects.toMatchObject({ message: 'Too many sign-in attempts.', status: 429 })
+    await expect(client.login('guess', 'verified-human')).rejects.toMatchObject({ message: 'Too many sign-in attempts.', status: 429 })
   })
 })

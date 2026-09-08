@@ -14,7 +14,8 @@ async function readError(response: Response, fallback: string): Promise<string> 
 
 export interface AuthenticationClient {
   hasSession: () => Promise<boolean>
-  login: (password: string) => Promise<void>
+  loadTurnstileSiteKey: () => Promise<string>
+  login: (password: string, verificationToken: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -31,12 +32,27 @@ export class CookieAuthenticationClient implements AuthenticationClient {
     throw new CloudApiError(await readError(response, 'Authentication check failed. Try again.'), response.status)
   }
 
-  async login(password: string): Promise<void> {
+  async loadTurnstileSiteKey(): Promise<string> {
+    const response = await this.fetchRequest('/api/turnstile', {
+      credentials: 'same-origin',
+      headers: { accept: 'application/json' },
+    })
+    if (!response.ok) throw new CloudApiError(await readError(response, 'Human verification is unavailable. Try again.'), response.status)
+    try {
+      const body = await response.json() as { siteKey?: unknown }
+      if (typeof body.siteKey === 'string' && body.siteKey.trim()) return body.siteKey
+    } catch {
+      // A malformed response is intentionally reduced to a safe client message.
+    }
+    throw new CloudApiError('Human verification is unavailable. Try again.', response.status)
+  }
+
+  async login(password: string, verificationToken: string): Promise<void> {
     const response = await this.fetchRequest('/api/login', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { accept: 'application/json', 'content-type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ password, verificationToken }),
     })
     if (response.status !== 204) throw new CloudApiError(await readError(response, 'Sign in failed. Try again.'), response.status)
   }

@@ -1,21 +1,47 @@
-import { useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { localizedError, useI18n } from '../../app/i18n'
 import { UiIcon } from '../../app/UiIcon'
+import { TurnstileVerification } from './TurnstileVerification'
 
-export function LoginScreen({ onLogin }: { onLogin: (password: string) => Promise<void> }) {
+export function LoginScreen({ loadSiteKey, onLogin }: {
+  loadSiteKey: () => Promise<string>
+  onLogin: (password: string, verificationToken: string) => Promise<void>
+}) {
   const { locale, t } = useI18n()
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [siteKey, setSiteKey] = useState('')
+  const [verificationToken, setVerificationToken] = useState('')
+  const [challengeVersion, setChallengeVersion] = useState(0)
   const [signingIn, setSigningIn] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    void loadSiteKey()
+      .then((key) => { if (active) setSiteKey(key) })
+      .catch((caught) => { if (active) setError(localizedError(caught, locale, t('humanVerificationUnavailable'))) })
+    return () => { active = false }
+  }, [loadSiteKey, locale, t])
+
+  const verificationUnavailable = useCallback(() => {
+    setVerificationToken('')
+    setError(t('humanVerificationUnavailable'))
+  }, [t])
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (!verificationToken) {
+      setError(t('humanVerificationRequired'))
+      return
+    }
     setError('')
     setSigningIn(true)
     try {
-      await onLogin(password)
+      await onLogin(password, verificationToken)
     } catch (caught) {
       setError(localizedError(caught, locale, t('signInFailed')))
+      setVerificationToken('')
+      setChallengeVersion((current) => current + 1)
     } finally {
       setSigningIn(false)
     }
@@ -28,7 +54,9 @@ export function LoginScreen({ onLogin }: { onLogin: (password: string) => Promis
       <form className="auth-form" onSubmit={(event) => { void submit(event) }}>
         <label htmlFor="band-password">{t('bandPassword')}</label>
         <input id="band-password" type="password" value={password} required maxLength={200} autoComplete="current-password" enterKeyHint="go" aria-invalid={Boolean(error)} aria-describedby={error ? 'sign-in-error' : undefined} onChange={(event) => setPassword(event.target.value)} />
-        <button className="primary-action" type="submit" disabled={signingIn}>{signingIn ? t('signingIn') : t('signIn')}</button>
+        <p className="auth-verification-label">{siteKey ? t('humanVerification') : t('humanVerificationLoading')}</p>
+        {siteKey && <TurnstileVerification key={challengeVersion} siteKey={siteKey} onVerified={setVerificationToken} onUnavailable={verificationUnavailable} />}
+        <button className="primary-action" type="submit" disabled={signingIn || !verificationToken}>{signingIn ? t('signingIn') : t('signIn')}</button>
       </form>
       {error && <p id="sign-in-error" className="error" role="alert">{error}</p>}
     </main>

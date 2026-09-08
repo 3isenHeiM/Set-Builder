@@ -133,7 +133,7 @@ export function App({ repository = browserRepository, authentication = cloudAuth
     return report
   }
 
-  if (authentication && authenticationState !== 'authenticated') return <LoginScreen onLogin={async (password) => { await authentication.login(password); window.location.reload() }} />
+  if (authentication && authenticationState !== 'authenticated') return <LoginScreen loadSiteKey={() => authentication.loadTurnstileSiteKey()} onLogin={async (password, verificationToken) => { await authentication.login(password, verificationToken); window.location.reload() }} />
   if (loading) return <main id="main-content" className="loading-screen"><div className="hero-mark"><UiIcon name="music" /></div><p>{t('loadingLibrary')}</p></main>
   if (loadError) return <main id="main-content" className="loading-screen"><h1>Piece Selector</h1><p className="error" role="alert">{loadError}</p></main>
 
