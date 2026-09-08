@@ -21,6 +21,7 @@ import { localizedError, useI18n } from './i18n'
 
 type Page = 'library' | 'generate' | 'performance' | 'about'
 type AppRepository = ScoreRepository & PerformanceRepository
+type AuthenticationState = 'checking' | 'required' | 'authenticated'
 
 export function App({ repository = browserRepository, authentication = cloudAuthentication }: { repository?: AppRepository; authentication?: AuthenticationClient }) {
   const { locale, t } = useI18n()
@@ -34,10 +35,19 @@ export function App({ repository = browserRepository, authentication = cloudAuth
   const [page, setPage] = useState<Page>('library')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [loginRequired, setLoginRequired] = useState(false)
+  const [authenticationState, setAuthenticationState] = useState<AuthenticationState>(authentication ? 'checking' : 'authenticated')
   const [editingScore, setEditingScore] = useState(false)
 
   useEffect(() => {
+    if (!authentication) return
+    void authentication.hasSession()
+      .then((authenticated) => setAuthenticationState(authenticated ? 'authenticated' : 'required'))
+      .catch((error: unknown) => setAuthenticationState(error instanceof CloudApiError ? 'required' : 'authenticated'))
+  }, [authentication])
+
+  useEffect(() => {
+    if (authenticationState !== 'authenticated') return
+    setLoading(true)
     void Promise.all([repository.listScores(), repository.getLastScan(), repository.getLastPerformance(), repository.listSetLists()])
       .then(([loadedScores, scan, savedPerformance, savedSetLists]) => {
         setScores(loadedScores)
@@ -58,11 +68,11 @@ export function App({ repository = browserRepository, authentication = cloudAuth
         }
       })
       .catch((error: unknown) => {
-        if (authentication && error instanceof CloudApiError && error.status === 401) setLoginRequired(true)
+        if (authentication && error instanceof CloudApiError && error.status === 401) setAuthenticationState('required')
         else setLoadError(localizedError(error, locale, t('localStorageUnavailable')))
       })
       .finally(() => setLoading(false))
-  }, [authentication, locale, repository, t])
+  }, [authentication, authenticationState, locale, repository, t])
 
   const rescan = (snapshot: FolderSnapshot) => {
     setPreviewError('')
@@ -123,8 +133,8 @@ export function App({ repository = browserRepository, authentication = cloudAuth
     return report
   }
 
+  if (authentication && authenticationState !== 'authenticated') return <LoginScreen onLogin={async (password) => { await authentication.login(password); window.location.reload() }} />
   if (loading) return <main id="main-content" className="loading-screen"><div className="hero-mark"><UiIcon name="music" /></div><p>{t('loadingLibrary')}</p></main>
-  if (loginRequired && authentication) return <LoginScreen onLogin={async (password) => { await authentication.login(password); window.location.reload() }} />
   if (loadError) return <main id="main-content" className="loading-screen"><h1>Piece Selector</h1><p className="error" role="alert">{loadError}</p></main>
 
   return (

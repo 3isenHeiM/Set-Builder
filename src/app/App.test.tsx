@@ -21,6 +21,31 @@ function storedRepository(performance: GeneratedPerformance) {
 }
 
 describe('application relaunch', () => {
+  it('shows authentication before opening the library when session state is unknown', () => {
+    const repository = storedRepository(makePerformance())
+    const listScores = vi.fn(repository.listScores)
+    const authentication = {
+      hasSession: () => new Promise<boolean>(() => undefined),
+      login: (): Promise<void> => Promise.resolve(),
+      logout: (): Promise<void> => Promise.resolve(),
+    }
+
+    render(<App repository={{ ...repository, listScores }} authentication={authentication} />)
+    expect(screen.getByRole('heading', { name: 'Ready when you are.' })).toBeVisible()
+    expect(listScores).not.toHaveBeenCalled()
+  })
+
+  it('opens the offline cache when the session check cannot reach the Worker', async () => {
+    const authentication = {
+      hasSession: (): Promise<boolean> => Promise.reject(new TypeError('offline')),
+      login: (): Promise<void> => Promise.resolve(),
+      logout: (): Promise<void> => Promise.resolve(),
+    }
+
+    render(<App repository={storedRepository(makePerformance())} authentication={authentication} />)
+    expect(await screen.findByRole('heading', { name: 'Tonight’s sets' })).toBeVisible()
+  })
+
   it('opens the most recently generated performance', async () => {
     render(<App repository={storedRepository(makePerformance())} />)
     expect(await screen.findByRole('heading', { name: 'Tonight’s sets' })).toBeVisible()

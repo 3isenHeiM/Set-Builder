@@ -2,6 +2,9 @@ name = "piece-selector"
 compatibility_date = "2026-09-01"
 main = "./src/server/worker.ts"
 
+[secrets]
+required = [ "AUTH_PASSWORD_HASH", "SESSION_SIGNING_KEY" ]
+
 [assets]
 directory = "./dist/"
 binding = "ASSETS"
