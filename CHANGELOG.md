@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Require a fresh Cloudflare Turnstile verification before every band-password attempt while retaining login rate limiting.
 
+### Fixed
+
+- Bind browser API requests to `window`, preventing sign-out and cloud synchronization failures in browsers that enforce the Fetch API receiver.
+
 ## [2.0.0] - 2026-09-07
 
 ### Added
