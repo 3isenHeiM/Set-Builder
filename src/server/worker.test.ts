@@ -61,8 +61,10 @@ describe('signed-cookie Cloudflare Worker', () => {
   it('serves the non-sensitive app shell but protects D1 state', async () => {
     const env = await environment()
     const asset = await handleRequest(new Request('https://example.com/'), env)
+    const session = await handleRequest(new Request('https://example.com/api/session'), env)
     const api = await handleRequest(new Request('https://example.com/api/state'), env)
     expect(asset.status).toBe(200)
+    expect(session.status).toBe(401)
     expect(api.status).toBe(401)
   })
 
@@ -72,6 +74,7 @@ describe('signed-cookie Cloudflare Worker', () => {
     const cookie = await signIn(env)
     const headers = { cookie, origin: 'https://example.com' }
     const state = { ...emptyCloudState(), scores: [makeScore()] }
+    const session = await handleRequest(new Request('https://example.com/api/session', { headers }), env)
     const write = await handleRequest(new Request('https://example.com/api/state', {
       method: 'PUT',
       headers,
@@ -80,6 +83,7 @@ describe('signed-cookie Cloudflare Worker', () => {
     const read = await handleRequest(new Request('https://example.com/api/state', { headers }), env)
     const logout = await handleRequest(new Request('https://example.com/api/logout', { method: 'POST', headers }), env)
 
+    expect(session.status).toBe(204)
     expect(write.status).toBe(200)
     expect(await read.json()).toMatchObject({ revision: 1, state: { scores: [{ title: 'Take On Me' }] } })
     expect(logout.headers.get('set-cookie')).toContain('Max-Age=0')

@@ -13,12 +13,23 @@ async function readError(response: Response, fallback: string): Promise<string> 
 }
 
 export interface AuthenticationClient {
+  hasSession: () => Promise<boolean>
   login: (password: string) => Promise<void>
   logout: () => Promise<void>
 }
 
 export class CookieAuthenticationClient implements AuthenticationClient {
   constructor(private readonly fetchRequest: CloudFetch, private readonly database?: PieceSelectorDatabase) {}
+
+  async hasSession(): Promise<boolean> {
+    const response = await this.fetchRequest('/api/session', {
+      credentials: 'same-origin',
+      headers: { accept: 'application/json' },
+    })
+    if (response.status === 204) return true
+    if (response.status === 401) return false
+    throw new CloudApiError(await readError(response, 'Authentication check failed. Try again.'), response.status)
+  }
 
   async login(password: string): Promise<void> {
     const response = await this.fetchRequest('/api/login', {

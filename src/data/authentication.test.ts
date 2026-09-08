@@ -9,6 +9,14 @@ function databaseName(): string {
 }
 
 describe('authentication client', () => {
+  it('checks the session without opening cloud state', async () => {
+    const active = new CookieAuthenticationClient((path) => Promise.resolve(new Response(null, { status: path === '/api/session' ? 204 : 500 })))
+    const missing = new CookieAuthenticationClient(() => Promise.resolve(Response.json({ error: 'Authentication is required.' }, { status: 401 })))
+
+    await expect(active.hasSession()).resolves.toBe(true)
+    await expect(missing.hasSession()).resolves.toBe(false)
+  })
+
   it('flushes deferred state before signing out and clearing the offline cache', async () => {
     const name = databaseName()
     const database = new PieceSelectorDatabase(name)

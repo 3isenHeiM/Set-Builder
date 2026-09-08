@@ -4,6 +4,7 @@ import { AuthenticationUnavailable, assertAuthenticationConfigured, clearSession
 const STATE_PATH = '/api/state'
 const LOGIN_PATH = '/api/login'
 const LOGOUT_PATH = '/api/logout'
+const SESSION_PATH = '/api/session'
 const SHARED_LIBRARY_ID = 'shared-band'
 const MAX_STATE_BYTES = 2_000_000
 const MAX_LOGIN_BYTES = 1_000
@@ -136,6 +137,10 @@ export async function handleRequest(request: Request, environment: WorkerEnviron
       if (request.method !== 'POST') return json({ error: 'Method not allowed.' }, 405, { allow: 'POST' })
       if (!isSameOrigin(request)) return json({ error: 'Sign-out request came from an invalid origin.' }, 403)
       return noContent(clearSessionCookie())
+    }
+    if (url.pathname === SESSION_PATH) {
+      if (request.method !== 'GET') return json({ error: 'Method not allowed.' }, 405, { allow: 'GET' })
+      return await hasValidSession(request, environment) ? new Response(null, { status: 204, headers: { 'cache-control': 'no-store' } }) : json({ error: 'Authentication is required.' }, 401)
     }
     if (!await hasValidSession(request, environment)) return json({ error: 'Authentication is required.' }, 401)
     if (!isSameOrigin(request)) return json({ error: 'Request came from an invalid origin.' }, 403)
