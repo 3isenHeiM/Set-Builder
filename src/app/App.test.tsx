@@ -26,6 +26,7 @@ describe('application relaunch', () => {
     const listScores = vi.fn(repository.listScores)
     const authentication = {
       hasSession: () => new Promise<boolean>(() => undefined),
+      loadTurnstileSiteKey: () => new Promise<string>(() => undefined),
       login: (): Promise<void> => Promise.resolve(),
       logout: (): Promise<void> => Promise.resolve(),
     }
@@ -38,6 +39,7 @@ describe('application relaunch', () => {
   it('opens the offline cache when the session check cannot reach the Worker', async () => {
     const authentication = {
       hasSession: (): Promise<boolean> => Promise.reject(new TypeError('offline')),
+      loadTurnstileSiteKey: () => new Promise<string>(() => undefined),
       login: (): Promise<void> => Promise.resolve(),
       logout: (): Promise<void> => Promise.resolve(),
     }

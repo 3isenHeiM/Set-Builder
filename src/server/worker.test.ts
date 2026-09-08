@@ -44,6 +44,15 @@ async function environment(database = new MemoryD1(), allowed = true): Promise<W
     LOGIN_RATE_LIMITER: { limit: () => Promise.resolve({ success: allowed }) },
     AUTH_PASSWORD_HASH: await hash('test passphrase'),
     SESSION_SIGNING_KEY: 'local test signing key with at least thirty-two bytes',
+    TURNSTILE_SITE_KEY: 'test-site-key',
+    TURNSTILE_SECRET_KEY: 'test-secret-key',
+  }
+}
+
+function turnstile(success = true): (input: string) => Promise<Response> {
+  return (input) => {
+    expect(input).toBe('https://challenges.cloudflare.com/turnstile/v0/siteverify')
+    return Promise.resolve(Response.json({ success, hostname: 'example.com', action: 'login' }))
   }
 }
 
@@ -51,8 +60,8 @@ async function signIn(env: WorkerEnvironment): Promise<string> {
   const response = await handleRequest(new Request('https://example.com/api/login', {
     method: 'POST',
     headers: { 'content-type': 'application/json', origin: 'https://example.com' },
-    body: JSON.stringify({ password: 'test passphrase' }),
-  }), env)
+    body: JSON.stringify({ password: 'test passphrase', verificationToken: 'verified-human' }),
+  }), env, turnstile())
   expect(response.status).toBe(204)
   return response.headers.get('set-cookie')?.split(';')[0] ?? ''
 }
@@ -61,9 +70,11 @@ describe('signed-cookie Cloudflare Worker', () => {
   it('serves the non-sensitive app shell but protects D1 state', async () => {
     const env = await environment()
     const asset = await handleRequest(new Request('https://example.com/'), env)
+    const turnstileConfiguration = await handleRequest(new Request('https://example.com/api/turnstile'), env)
     const session = await handleRequest(new Request('https://example.com/api/session'), env)
     const api = await handleRequest(new Request('https://example.com/api/state'), env)
     expect(asset.status).toBe(200)
+    expect(await turnstileConfiguration.json()).toEqual({ siteKey: 'test-site-key' })
     expect(session.status).toBe(401)
     expect(api.status).toBe(401)
   })
@@ -94,12 +105,12 @@ describe('signed-cookie Cloudflare Worker', () => {
     const env = await environment()
     const incorrect = await handleRequest(new Request('https://example.com/api/login', {
       method: 'POST',
-      body: JSON.stringify({ password: 'not the password' }),
-    }), env)
+      body: JSON.stringify({ password: 'not the password', verificationToken: 'verified-human' }),
+    }), env, turnstile())
     const foreign = await handleRequest(new Request('https://example.com/api/login', {
       method: 'POST',
       headers: { origin: 'https://attacker.example' },
-      body: JSON.stringify({ password: 'test passphrase' }),
+      body: JSON.stringify({ password: 'test passphrase', verificationToken: 'verified-human' }),
     }), env)
     const limitedEnv = await environment(new MemoryD1(), false)
     const limited = await handleRequest(new Request('https://example.com/api/login', { method: 'POST', body: '{}' }), limitedEnv)
@@ -109,13 +120,37 @@ describe('signed-cookie Cloudflare Worker', () => {
     expect(limited.status).toBe(429)
   })
 
+  it('rejects forged human-verification tokens before checking the password', async () => {
+    const env = await environment()
+    const response = await handleRequest(new Request('https://example.com/api/login', {
+      method: 'POST',
+      body: JSON.stringify({ password: 'test passphrase', verificationToken: 'forged' }),
+    }), env, turnstile(false))
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ error: 'Human verification failed. Try again.' })
+  })
+
   it('fails closed when authentication secrets are not configured', async () => {
     const missingSecrets: WorkerEnvironment = {
       ASSETS: { fetch: () => Promise.resolve(new Response('app')) },
       DB: new MemoryD1(),
       LOGIN_RATE_LIMITER: { limit: () => Promise.resolve({ success: true }) },
     }
-    const login = await handleRequest(new Request('https://example.com/api/login', { method: 'POST', body: JSON.stringify({ password: 'anything' }) }), missingSecrets)
+    const login = await handleRequest(new Request('https://example.com/api/login', { method: 'POST', body: JSON.stringify({ password: 'anything', verificationToken: 'anything' }) }), missingSecrets)
+    expect(login.status).toBe(503)
+  })
+
+  it('fails closed when Turnstile is not configured', async () => {
+    const env = await environment()
+    delete env.TURNSTILE_SECRET_KEY
+    const configuration = await handleRequest(new Request('https://example.com/api/turnstile'), env)
+    const login = await handleRequest(new Request('https://example.com/api/login', {
+      method: 'POST',
+      body: JSON.stringify({ password: 'test passphrase', verificationToken: 'verified-human' }),
+    }), env, turnstile())
+
+    expect(configuration.status).toBe(503)
     expect(login.status).toBe(503)
   })
 

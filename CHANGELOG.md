@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-09-08
+
+### Security
+
+- Require a fresh Cloudflare Turnstile verification before every band-password attempt while retaining login rate limiting.
+
+### Fixed
+
+- Bind browser API requests to `window`, preventing sign-out and cloud synchronization failures in browsers that enforce the Fetch API receiver.
+
 ## [2.0.0] - 2026-09-07
 
 ### Added
@@ -41,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Initial mobile-first offline PWA for importing and re-aligning `.mscz` filename metadata, configuring pieces, generating valid performances, saving the latest performance, and backing up piece settings.
 
-[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/3isenHeiM/Set-Builder/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/3isenHeiM/Set-Builder/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/3isenHeiM/Set-Builder/releases/tag/v1.0.0
