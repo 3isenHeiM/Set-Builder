@@ -70,7 +70,7 @@ export function TurnstileVerification({ siteKey, onVerified, onUnavailable }: {
       clear()
       if (widgetId) api.reset(widgetId)
     }
-    void loadTurnstile().then((api) => api.ready(() => {
+    void loadTurnstile().then((api) => {
       if (!active || !container.current) return
       widgetId = api.render(container.current, {
         sitekey: siteKey,
@@ -83,7 +83,7 @@ export function TurnstileVerification({ siteKey, onVerified, onUnavailable }: {
         'expired-callback': () => reset(api),
         'timeout-callback': () => reset(api),
       })
-    })).catch(() => { if (active) onUnavailable() })
+    }).catch(() => { if (active) onUnavailable() })
     return () => {
       active = false
       if (widgetId && window.turnstile) window.turnstile.remove(widgetId)

@@ -11,7 +11,7 @@ describe('authentication controls', () => {
     const user = userEvent.setup()
     const onLogin = vi.fn<(password: string, token: string) => Promise<void>>(() => Promise.reject(new Error('Incorrect password.')))
     window.turnstile = {
-      ready: (callback) => callback(),
+      ready: vi.fn(),
       render: (_container, options) => { options.callback('verified-human'); return 'widget' },
       remove: vi.fn(),
       reset: vi.fn(),
@@ -22,6 +22,7 @@ describe('authentication controls', () => {
     const submit = screen.getByRole('button', { name: 'Sign in' })
     await waitFor(() => expect(submit).toBeEnabled())
     await user.click(submit)
+    expect(window.turnstile.ready).not.toHaveBeenCalled()
     expect(onLogin).toHaveBeenCalledWith('guess', 'verified-human')
     expect(await screen.findByRole('alert')).toHaveTextContent('Incorrect password.')
   })
