@@ -7,14 +7,17 @@ describe('cloud state validation', () => {
     const first = makeScore()
     const performance = makePerformance()
     const setList = { id: performance.id, name: 'Night', createdAt: performance.generatedAt, updatedAt: performance.generatedAt, performance }
+    const savedSet = { id: 'saved-set', name: 'Hot Set', createdAt: performance.generatedAt, updatedAt: performance.generatedAt, scores: performance.sets[0]!.scores }
     const state = parseCloudState({
       ...emptyCloudState(),
       scores: [second, first],
       lastPerformance: performance,
       setLists: [setList],
+      savedSets: [savedSet],
     })
 
     expect(state.scores.map((score) => score.id)).toEqual(['score-1', 'score-2'])
+    expect(state.savedSets[0]?.name).toBe('Hot Set')
     expect(parseCloudEnvelope({ revision: 4, state })).toEqual({ revision: 4, state })
   })
 

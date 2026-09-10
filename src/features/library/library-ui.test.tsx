@@ -43,4 +43,18 @@ describe('library configuration UI', () => {
     await user.click(save)
     expect(onSave).toHaveBeenLastCalledWith('score-1', expect.objectContaining({ enabled: false, canStart: null, hotness: null, drumsIntro: null, goesHigh: null }))
   })
+
+  it('returns to the library after saving one piece', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn(() => Promise.resolve())
+    const onEditingChange = vi.fn()
+    render(<LibraryScreen scores={[makeScore()]} lastScan={undefined} onFolder={vi.fn()} onSave={onSave} onEditingChange={onEditingChange} />)
+
+    await user.click(screen.getByRole('button', { name: /Take On Me/ }))
+    await user.click(screen.getByRole('button', { name: 'Save score' }))
+
+    expect(await screen.findByRole('heading', { name: 'Library' })).toBeVisible()
+    expect(onSave).toHaveBeenCalledWith('score-1', expect.objectContaining({ hotness: 2 }))
+    expect(onEditingChange).toHaveBeenLastCalledWith(false)
+  })
 })

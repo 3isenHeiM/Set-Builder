@@ -141,6 +141,15 @@ export interface PerformanceScoreSnapshot {
 export interface PerformanceSet {
   number: number
   name?: string
+  savedSetId?: string
+  scores: PerformanceScoreSnapshot[]
+}
+
+export interface SavedSet {
+  id: string
+  name: string
+  createdAt: IsoTimestamp
+  updatedAt: IsoTimestamp
   scores: PerformanceScoreSnapshot[]
 }
 

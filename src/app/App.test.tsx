@@ -17,6 +17,8 @@ function storedRepository(performance: GeneratedPerformance) {
     getLastPerformance: (): Promise<GeneratedPerformance | undefined> => Promise.resolve(performance),
     listSetLists: () => Promise.resolve([]),
     saveSetList: (): Promise<void> => Promise.resolve(),
+    listSavedSets: () => Promise.resolve([]),
+    saveSavedSet: (): Promise<void> => Promise.resolve(),
   }
 }
 
@@ -45,12 +47,12 @@ describe('application relaunch', () => {
     }
 
     render(<App repository={storedRepository(makePerformance())} authentication={authentication} />)
-    expect(await screen.findByRole('heading', { name: 'Tonight’s sets' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Event program' })).toBeVisible()
   })
 
   it('opens the most recently generated performance', async () => {
     render(<App repository={storedRepository(makePerformance())} />)
-    expect(await screen.findByRole('heading', { name: 'Tonight’s sets' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Event program' })).toBeVisible()
     expect(screen.getByText('Take On Me')).toBeVisible()
   })
 })

@@ -29,4 +29,11 @@ describe('set-list export and import', () => {
     backup.setList.sets[0]!.scores.push({ ...backup.setList.sets[0]!.scores[0]! })
     expect(() => parseSetListBackupJson(JSON.stringify(backup))).toThrow('appears more than once')
   })
+
+  it('imports sets with different piece counts', () => {
+    const backup = createSetListBackup(saved, '2026-09-02T10:00:00.000Z')
+    backup.setList.sets[0]!.scores.push({ ...backup.setList.sets[0]!.scores[0]!, scoreNumber: 2, displayNumber: '02', canStart: false })
+    backup.setList.sets.push({ name: 'Short set', scores: [{ ...backup.setList.sets[0]!.scores[0]!, scoreNumber: 3, displayNumber: '03' }] })
+    expect(parseSetListBackupJson(JSON.stringify(backup)).setList.sets.map((set) => set.scores.length)).toEqual([2, 1])
+  })
 })

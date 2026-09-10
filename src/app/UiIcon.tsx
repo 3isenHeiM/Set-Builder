@@ -1,4 +1,4 @@
-type UiIconName = 'library' | 'sparkles' | 'sets' | 'info' | 'music' | 'back' | 'close' | 'start' | 'heat' | 'drum' | 'high' | 'up' | 'down'
+type UiIconName = 'library' | 'sparkles' | 'sets' | 'info' | 'music' | 'back' | 'close' | 'start' | 'heat' | 'drum' | 'high' | 'up' | 'down' | 'plus' | 'minus'
 
 export function UiIcon({ name, className = '' }: { name: UiIconName; className?: string }) {
   const paths = name === 'library' ? <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h8M8 16h5" /></>
@@ -13,6 +13,8 @@ export function UiIcon({ name, className = '' }: { name: UiIconName; className?:
                     : name === 'high' ? <path d="M12 20V5m-6 6 6-6 6 6" />
                       : name === 'up' ? <path d="m6 15 6-6 6 6" />
                         : name === 'down' ? <path d="m6 9 6 6 6-6" />
+                          : name === 'plus' ? <path d="M12 5v14M5 12h14" />
+                            : name === 'minus' ? <path d="M5 12h14" />
                           : <path d="m7 7 10 10M17 7 7 17" />
 
   return <svg className={`ui-icon ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{paths}</svg>
