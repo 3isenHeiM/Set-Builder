@@ -1,5 +1,5 @@
 import { MAX_SCORES_PER_SET, MIN_SCORES_PER_SET } from './generator'
-import type { GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, SavedSetList, Score } from './types'
+import type { GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, SavedSet, SavedSetList, Score } from './types'
 
 function moved<T>(values: readonly T[], from: number, to: number): T[] {
   if (from < 0 || to < 0 || from >= values.length || to >= values.length) return [...values]
@@ -51,6 +51,11 @@ export function renameSet(setList: SavedSetList, setIndex: number, name: string,
       sets: setList.performance.sets.map((set, index) => index === setIndex ? { ...set, name: name.trim() } : set),
     },
   }, updatedAt)
+}
+
+export function linkSavedSet(setList: SavedSetList, setIndex: number, savedSet: SavedSet, updatedAt: string): SavedSetList {
+  const sets = setList.performance.sets.map((set, index) => index === setIndex ? { ...set, name: savedSet.name, savedSetId: savedSet.id } : set)
+  return updated({ ...setList, performance: { ...setList.performance, sets } }, updatedAt)
 }
 
 export function moveSet(setList: SavedSetList, from: number, to: number, updatedAt: string): SavedSetList {
@@ -107,4 +112,10 @@ export function assertSavedPerformanceValid(performance: GeneratedPerformance): 
       ids.add(score.id)
     }
   }
+}
+
+export function assertSavedSetValid(savedSet: SavedSet): void {
+  if (savedSet.scores.length < MIN_SCORES_PER_SET || savedSet.scores.length > MAX_SCORES_PER_SET
+    || !validPieceOrder({ number: 1, scores: savedSet.scores })) throw new Error('Invalid saved set.')
+  if (new Set(savedSet.scores.map((score) => score.id)).size !== savedSet.scores.length) throw new Error('Invalid saved set: duplicate piece.')
 }

@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
-import type { FolderScan, GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, SavedSetList, Score, StoredPerformance } from '../domain/types'
+import type { FolderScan, GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, SavedSet, SavedSetList, Score, StoredPerformance } from '../domain/types'
 import type { CloudState } from './cloudState'
 
 export const DATABASE_NAME = 'piece-selector'
@@ -23,6 +23,7 @@ export class PieceSelectorDatabase extends Dexie {
   scans!: EntityTable<FolderScan, 'id'>
   performances!: EntityTable<StoredPerformance, 'key'>
   savedSetLists!: EntityTable<SavedSetList, 'id'>
+  savedSets!: EntityTable<SavedSet, 'id'>
   cloudSync!: EntityTable<CloudSyncRecord, 'key'>
 
   constructor(name = DATABASE_NAME) {
@@ -138,6 +139,14 @@ export class PieceSelectorDatabase extends Dexie {
       scans: 'id,appliedAt',
       performances: 'key',
       savedSetLists: 'id,updatedAt',
+      cloudSync: 'key',
+    })
+    this.version(9).stores({
+      scores: 'id,scoreNumber,availability,configuration,enabled,*tags',
+      scans: 'id,appliedAt',
+      performances: 'key',
+      savedSetLists: 'id,updatedAt',
+      savedSets: 'id,updatedAt',
       cloudSync: 'key',
     })
   }

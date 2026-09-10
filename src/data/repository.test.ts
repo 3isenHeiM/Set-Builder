@@ -3,7 +3,7 @@ import { buildFolderSnapshot } from '../domain/filename'
 import { classifyReconciliation } from '../domain/reconciliation'
 import { createSettingsBackup } from '../domain/settingsBackup'
 import { makePerformance, makeScore } from '../test/fixtures'
-import type { SavedSetList } from '../domain/types'
+import type { SavedSet, SavedSetList } from '../domain/types'
 import { LegacyDatabaseV1, LegacyDatabaseV4, PieceSelectorDatabase } from './database'
 import { PieceSelectorRepository } from './repository'
 
@@ -114,6 +114,26 @@ describe('IndexedDB persistence', () => {
 
     const reopened = new PieceSelectorDatabase(name)
     expect((await new PieceSelectorRepository(reopened).listSetLists()).map((saved) => saved.id)).toEqual(['second', 'first'])
+    reopened.close()
+    await Dexie.delete(name)
+  })
+
+  it('migrates storage and persists independently named sets', async () => {
+    const name = databaseName()
+    const legacy = new LegacyDatabaseV4(name)
+    await legacy.scores.put(makeScore())
+    legacy.close()
+
+    const database = new PieceSelectorDatabase(name)
+    const repository = new PieceSelectorRepository(database)
+    const set: SavedSet = { id: 'hot-set', name: 'Hot Set', createdAt: '2026-09-10T10:00:00.000Z', updatedAt: '2026-09-10T10:00:00.000Z', scores: makePerformance().sets[0]!.scores }
+    await repository.saveSavedSet(set)
+    expect(await repository.listSavedSets()).toEqual([set])
+    expect(await database.scores.get('score-1')).toBeDefined()
+    database.close()
+
+    const reopened = new PieceSelectorDatabase(name)
+    expect(await new PieceSelectorRepository(reopened).listSavedSets()).toEqual([set])
     reopened.close()
     await Dexie.delete(name)
   })

@@ -1,6 +1,6 @@
 import { configurationStatus } from '../domain/configuration'
 import { MAX_SCORES_PER_SET, MAX_SETS, MIN_SCORES_PER_SET, MIN_SETS, assertPerformanceValid } from '../domain/generator'
-import { assertSavedPerformanceValid } from '../domain/setList'
+import { assertSavedPerformanceValid, assertSavedSetValid } from '../domain/setList'
 import type {
   FolderScan,
   FolderScanSummary,
@@ -8,6 +8,7 @@ import type {
   Hotness,
   PerformanceScoreSnapshot,
   PerformanceSet,
+  SavedSet,
   SavedSetList,
   Score,
 } from '../domain/types'
@@ -22,6 +23,7 @@ export interface CloudState {
   lastScan: FolderScan | null
   lastPerformance: GeneratedPerformance | null
   setLists: SavedSetList[]
+  savedSets: SavedSet[]
 }
 
 export interface CloudStateEnvelope {
@@ -42,11 +44,12 @@ export function emptyCloudState(): CloudState {
     lastScan: null,
     lastPerformance: null,
     setLists: [],
+    savedSets: [],
   }
 }
 
 export function hasCloudData(state: CloudState): boolean {
-  return state.scores.length > 0 || state.lastScan !== null || state.lastPerformance !== null || state.setLists.length > 0
+  return state.scores.length > 0 || state.lastScan !== null || state.lastPerformance !== null || state.setLists.length > 0 || state.savedSets.length > 0
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -173,7 +176,8 @@ function readPerformance(value: unknown, allowVariableSetSize = false): Generate
       throw new Error('Cloud state contains a malformed set.')
     }
     const name = set.name === undefined ? undefined : stringValue(set.name, 120)
-    return { number: index + 1, ...(name === undefined ? {} : { name }), scores: set.scores.map(readPerformanceScore) }
+    const savedSetId = set.savedSetId === undefined ? undefined : idValue(set.savedSetId)
+    return { number: index + 1, ...(name === undefined ? {} : { name }), ...(savedSetId === undefined ? {} : { savedSetId }), scores: set.scores.map(readPerformanceScore) }
   })
   const performance: GeneratedPerformance = {
     id: idValue(value.id),
@@ -220,6 +224,21 @@ function readSetList(value: unknown): SavedSetList {
   }
 }
 
+function readSavedSet(value: unknown): SavedSet {
+  if (!isRecord(value) || !Array.isArray(value.scores) || value.scores.length < MIN_SCORES_PER_SET || value.scores.length > MAX_SCORES_PER_SET) {
+    throw new Error('Cloud state contains a malformed saved set.')
+  }
+  const savedSet: SavedSet = {
+    id: idValue(value.id),
+    name: stringValue(value.name, 120),
+    createdAt: timestampValue(value.createdAt),
+    updatedAt: timestampValue(value.updatedAt),
+    scores: value.scores.map(readPerformanceScore),
+  }
+  assertSavedSetValid(savedSet)
+  return savedSet
+}
+
 export function parseCloudState(value: unknown): CloudState {
   if (!isRecord(value) || value.format !== CLOUD_STATE_FORMAT || value.version !== CLOUD_STATE_VERSION
     || !Array.isArray(value.scores) || value.scores.length > 20_000
@@ -233,6 +252,10 @@ export function parseCloudState(value: unknown): CloudState {
   const setLists = value.setLists.map(readSetList)
   const setListIds = new Set(setLists.map((setList) => setList.id))
   if (setListIds.size !== setLists.length) throw new Error('The cloud library contains duplicate set lists.')
+  const rawSavedSets = value.savedSets === undefined ? [] : value.savedSets
+  if (!Array.isArray(rawSavedSets) || rawSavedSets.length > 5_000) throw new Error('The cloud library contains malformed saved sets.')
+  const savedSets = rawSavedSets.map(readSavedSet)
+  if (new Set(savedSets.map((set) => set.id)).size !== savedSets.length) throw new Error('The cloud library contains duplicate saved sets.')
   return {
     format: CLOUD_STATE_FORMAT,
     version: CLOUD_STATE_VERSION,
@@ -240,6 +263,7 @@ export function parseCloudState(value: unknown): CloudState {
     lastScan: value.lastScan === null ? null : readScan(value.lastScan),
     lastPerformance: value.lastPerformance === null ? null : readPerformance(value.lastPerformance, true),
     setLists: setLists.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+    savedSets: savedSets.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
   }
 }
 

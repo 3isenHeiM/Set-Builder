@@ -1,5 +1,5 @@
 import type { PerformanceScoreSnapshot, SavedSetList } from './types'
-import { addPiece, assertSavedPerformanceValid, canAddPiece, canMovePiece, movePiece, moveSet, removePiece, renameSet, renameSetList } from './setList'
+import { addPiece, assertSavedPerformanceValid, assertSavedSetValid, canAddPiece, canMovePiece, linkSavedSet, movePiece, moveSet, removePiece, renameSet, renameSetList } from './setList'
 import { makePerformance, makeScore } from '../test/fixtures'
 
 function piece(id: string, goesHigh = false, canStart = false): PerformanceScoreSnapshot {
@@ -55,5 +55,13 @@ describe('editable set lists', () => {
     expect(removePiece(added, 0, 1, 'removed').performance.sets[0]?.scores.map((score) => score.id)).toEqual(['1', '3', '4', '9'])
     expect(removePiece(added, 0, 0, 'unchanged')).toBe(added)
     expect(() => assertSavedPerformanceValid(added.performance)).not.toThrow()
+  })
+
+  it('links a reusable named set without changing its pieces', () => {
+    const program = saved()
+    const reusable = { id: 'saved-opening', name: 'Hot Set', createdAt: 'created', updatedAt: 'saved', scores: program.performance.sets[0]!.scores }
+    const linked = linkSavedSet(program, 0, reusable, 'linked')
+    expect(linked.performance.sets[0]).toMatchObject({ savedSetId: 'saved-opening', name: 'Hot Set' })
+    expect(() => assertSavedSetValid(reusable)).not.toThrow()
   })
 })

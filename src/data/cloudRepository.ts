@@ -7,6 +7,7 @@ import type {
   GeneratedPerformance,
   ReconciliationPlan,
   RenumberingDecisions,
+  SavedSet,
   SavedSetList,
   Score,
   ScoreConfiguration,
@@ -237,6 +238,22 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
         ...state,
         lastPerformance: setList.performance,
         setLists: [setList, ...state.setLists.filter((saved) => saved.id !== setList.id)]
+          .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+      },
+    }))
+  }
+
+  async listSavedSets(): Promise<SavedSet[]> {
+    await this.ready()
+    return this.state?.savedSets ?? []
+  }
+
+  saveSavedSet(savedSet: SavedSet): Promise<void> {
+    return this.change((state) => ({
+      result: undefined,
+      state: {
+        ...state,
+        savedSets: [savedSet, ...state.savedSets.filter((set) => set.id !== savedSet.id)]
           .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
       },
     }))

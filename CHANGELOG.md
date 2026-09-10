@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - Add or remove pieces from a saved set while preserving starters, early high pieces, and whole-program uniqueness.
+- Name and save individual sets as reusable building blocks, independently from generated or saved event programs.
 
 ### Fixed
 

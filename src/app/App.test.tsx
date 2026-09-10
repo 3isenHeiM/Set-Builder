@@ -17,6 +17,8 @@ function storedRepository(performance: GeneratedPerformance) {
     getLastPerformance: (): Promise<GeneratedPerformance | undefined> => Promise.resolve(performance),
     listSetLists: () => Promise.resolve([]),
     saveSetList: (): Promise<void> => Promise.resolve(),
+    listSavedSets: () => Promise.resolve([]),
+    saveSavedSet: (): Promise<void> => Promise.resolve(),
   }
 }
 

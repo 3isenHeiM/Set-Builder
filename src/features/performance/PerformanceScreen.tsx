@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { addPiece, assertSavedPerformanceValid, canAddPiece, canMovePiece, movePiece, moveSet, removePiece, renameSet, renameSetList } from '../../domain/setList'
+import { addPiece, assertSavedPerformanceValid, canAddPiece, canMovePiece, linkSavedSet, movePiece, moveSet, removePiece, renameSet, renameSetList } from '../../domain/setList'
 import { createSetListBackup, parseSetListBackupJson, setListBackupToJson, type SetListBackup } from '../../domain/setListBackup'
-import type { SavedSetList, Score } from '../../domain/types'
+import type { PerformanceSet, SavedSet, SavedSetList, Score } from '../../domain/types'
 import { UiIcon } from '../../app/UiIcon'
 import { localizedError, localizedKnownMessage, useI18n } from '../../app/i18n'
 
@@ -9,7 +9,9 @@ interface PerformanceScreenProps {
   scores: Score[]
   setList: SavedSetList | undefined
   savedSetLists: SavedSetList[]
+  savedSets: SavedSet[]
   onSave: (setList: SavedSetList) => Promise<void>
+  onSaveSavedSet: (set: PerformanceSet) => Promise<SavedSet>
   onSelect: (id: string) => Promise<void>
   onImport: (backup: SetListBackup) => Promise<void>
   onRegenerate: () => void
@@ -19,7 +21,7 @@ function downloadName(exportedAt: string): string {
   return `piece-selector-set-list-${exportedAt.slice(0, 10)}.json`
 }
 
-export function PerformanceScreen({ scores, setList, savedSetLists, onSave, onSelect, onImport, onRegenerate }: PerformanceScreenProps) {
+export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, onSave, onSaveSavedSet, onSelect, onImport, onRegenerate }: PerformanceScreenProps) {
   const { locale, t } = useI18n()
   const fileInput = useRef<HTMLInputElement>(null)
   const [listName, setListName] = useState(setList?.name ?? '')
@@ -27,8 +29,12 @@ export function PerformanceScreen({ scores, setList, savedSetLists, onSave, onSe
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [pieceSelections, setPieceSelections] = useState<Record<number, string>>({})
+  const [setNames, setSetNames] = useState<Record<string, string>>({})
 
-  useEffect(() => setListName(setList?.name ?? ''), [setList?.id, setList?.name])
+  useEffect(() => {
+    setListName(setList?.name ?? '')
+    setSetNames({})
+  }, [setList?.id, setList?.name])
 
   const save = async (next: SavedSetList) => {
     setSaving(true)
@@ -44,6 +50,13 @@ export function PerformanceScreen({ scores, setList, savedSetLists, onSave, onSe
     }
   }
 
+  const saveSetName = (next: SavedSetList) => {
+    setError('')
+    void onSave(next)
+      .then(() => setStatus(t('saved')))
+      .catch((caught: unknown) => setError(localizedError(caught, locale, t('setListSaveFailed'))))
+  }
+
   const select = async (id: string) => {
     setStatus('')
     setError('')
@@ -51,6 +64,25 @@ export function PerformanceScreen({ scores, setList, savedSetLists, onSave, onSe
       await onSelect(id)
     } catch (caught) {
       setError(localizedError(caught, locale, t('setListOpenFailed')))
+    }
+  }
+
+  const saveReusableSet = async (setIndex: number) => {
+    const set = setList?.performance.sets[setIndex]
+    if (!set || !setList) return
+    setSaving(true)
+    setStatus('')
+    setError('')
+    try {
+      const nameKey = set.scores[0]?.id ?? String(set.number)
+      const name = setNames[nameKey] ?? set.name
+      const savedSet = await onSaveSavedSet({ ...set, ...(name === undefined ? {} : { name }) })
+      await onSave(linkSavedSet(setList, setIndex, savedSet, savedSet.updatedAt))
+      setStatus(t('setSaved'))
+    } catch (caught) {
+      setError(localizedError(caught, locale, t('setSaveFailed')))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -119,13 +151,13 @@ export function PerformanceScreen({ scores, setList, savedSetLists, onSave, onSe
         {setList.performance.sets.map((set, setIndex) => (
           <section className="set-card" key={`${setList.id}-${set.scores[0]?.id ?? set.number}`} aria-labelledby={`set-${set.number}`}>
             <div className="set-card-header">
-              <div><span>{t('set')} {set.number}</span><label><span className="sr-only">{t('setName', { number: set.number })}</span><input id={`set-${set.number}`} type="text" defaultValue={set.name ?? ''} maxLength={120} placeholder={`${t('set')} ${set.number}`} onBlur={(event) => { if (event.currentTarget.value.trim() !== (set.name ?? '')) void save(renameSet(setList, setIndex, event.currentTarget.value, new Date().toISOString())) }} /></label></div>
+              <div><span>{t('set')} {set.number}</span><label><span className="sr-only">{t('setName', { number: set.number })}</span><input id={`set-${set.number}`} type="text" value={setNames[set.scores[0]?.id ?? String(set.number)] ?? set.name ?? ''} maxLength={120} placeholder={`${t('set')} ${set.number}`} onChange={(event) => { const key = set.scores[0]?.id ?? String(set.number); setSetNames((current) => ({ ...current, [key]: event.target.value })) }} onBlur={(event) => { if (event.currentTarget.value.trim() !== (set.name ?? '')) saveSetName(renameSet(setList, setIndex, event.currentTarget.value, new Date().toISOString())) }} /></label></div>
               <div className="order-controls">
                 <button type="button" aria-label={t('moveSetUp', { number: set.number })} disabled={saving || setIndex === 0} onClick={() => { void save(moveSet(setList, setIndex, setIndex - 1, new Date().toISOString())) }}><UiIcon name="up" /></button>
                 <button type="button" aria-label={t('moveSetDown', { number: set.number })} disabled={saving || setIndex === setList.performance.sets.length - 1} onClick={() => { void save(moveSet(setList, setIndex, setIndex + 1, new Date().toISOString())) }}><UiIcon name="down" /></button>
               </div>
             </div>
-            <div className="set-piece-count">{t('pieceCount', { count: set.scores.length })}</div>
+            <div className="set-card-toolbar"><span>{t('pieceCount', { count: set.scores.length })}</span><button type="button" disabled={saving} onClick={() => { void saveReusableSet(setIndex) }}>{set.savedSetId && savedSets.some((saved) => saved.id === set.savedSetId) ? t('updateSavedSet') : t('saveThisSet')}</button></div>
             <ol>
               {set.scores.map((score, scoreIndex) => <li key={score.id}><span className="position">{scoreIndex + 1}</span><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>{t('hotnessShort')}{score.hotness}{score.goesHigh ? ` · ${t('highPiece')}` : ''}{score.drumsIntro ? ` · ${t('drums')}` : ''}{scoreIndex === 0 ? ` · ${t('start')}` : ''}</small></span>{scoreIndex > 0 && <span className="piece-order-controls"><button type="button" aria-label={t('movePieceUp', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex - 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex - 1, new Date().toISOString())) }}><UiIcon name="up" /></button><button type="button" aria-label={t('movePieceDown', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex + 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex + 1, new Date().toISOString())) }}><UiIcon name="down" /></button><button type="button" aria-label={t('removePiece', { title: score.title, number: set.number })} disabled={saving} onClick={() => { void save(removePiece(setList, setIndex, scoreIndex, new Date().toISOString())) }}><UiIcon name="minus" /></button></span>}</li>)}
             </ol>
