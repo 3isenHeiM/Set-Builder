@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { assertPerformanceValid } from '../../domain/generator'
-import { canMovePiece, movePiece, moveSet, renameSet, renameSetList } from '../../domain/setList'
+import { addPiece, assertSavedPerformanceValid, canAddPiece, canMovePiece, movePiece, moveSet, removePiece, renameSet, renameSetList } from '../../domain/setList'
 import { createSetListBackup, parseSetListBackupJson, setListBackupToJson, type SetListBackup } from '../../domain/setListBackup'
-import type { SavedSetList } from '../../domain/types'
+import type { SavedSetList, Score } from '../../domain/types'
 import { UiIcon } from '../../app/UiIcon'
 import { localizedError, localizedKnownMessage, useI18n } from '../../app/i18n'
 
 interface PerformanceScreenProps {
+  scores: Score[]
   setList: SavedSetList | undefined
   savedSetLists: SavedSetList[]
   onSave: (setList: SavedSetList) => Promise<void>
@@ -19,13 +19,14 @@ function downloadName(exportedAt: string): string {
   return `piece-selector-set-list-${exportedAt.slice(0, 10)}.json`
 }
 
-export function PerformanceScreen({ setList, savedSetLists, onSave, onSelect, onImport, onRegenerate }: PerformanceScreenProps) {
+export function PerformanceScreen({ scores, setList, savedSetLists, onSave, onSelect, onImport, onRegenerate }: PerformanceScreenProps) {
   const { locale, t } = useI18n()
   const fileInput = useRef<HTMLInputElement>(null)
   const [listName, setListName] = useState(setList?.name ?? '')
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
+  const [pieceSelections, setPieceSelections] = useState<Record<number, string>>({})
 
   useEffect(() => setListName(setList?.name ?? ''), [setList?.id, setList?.name])
 
@@ -101,7 +102,8 @@ export function PerformanceScreen({ setList, savedSetLists, onSave, onSelect, on
       {error && <p className="error" role="alert">{error}</p>}
     </section>
   )
-  if (import.meta.env.DEV) assertPerformanceValid(setList.performance)
+  if (import.meta.env.DEV) assertSavedPerformanceValid(setList.performance)
+  const availableScores = scores.filter((score) => canAddPiece(setList, score))
 
   return (
     <section className="screen-section performance" aria-labelledby="performance-title">
@@ -123,9 +125,14 @@ export function PerformanceScreen({ setList, savedSetLists, onSave, onSelect, on
                 <button type="button" aria-label={t('moveSetDown', { number: set.number })} disabled={saving || setIndex === setList.performance.sets.length - 1} onClick={() => { void save(moveSet(setList, setIndex, setIndex + 1, new Date().toISOString())) }}><UiIcon name="down" /></button>
               </div>
             </div>
+            <div className="set-piece-count">{t('pieceCount', { count: set.scores.length })}</div>
             <ol>
-              {set.scores.map((score, scoreIndex) => <li key={score.id}><span className="position">{scoreIndex + 1}</span><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>{t('hotnessShort')}{score.hotness}{score.goesHigh ? ` · ${t('highPiece')}` : ''}{score.drumsIntro ? ` · ${t('drums')}` : ''}{scoreIndex === 0 ? ` · ${t('start')}` : ''}</small></span>{scoreIndex > 0 && <span className="piece-order-controls"><button type="button" aria-label={t('movePieceUp', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex - 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex - 1, new Date().toISOString())) }}><UiIcon name="up" /></button><button type="button" aria-label={t('movePieceDown', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex + 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex + 1, new Date().toISOString())) }}><UiIcon name="down" /></button></span>}</li>)}
+              {set.scores.map((score, scoreIndex) => <li key={score.id}><span className="position">{scoreIndex + 1}</span><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>{t('hotnessShort')}{score.hotness}{score.goesHigh ? ` · ${t('highPiece')}` : ''}{score.drumsIntro ? ` · ${t('drums')}` : ''}{scoreIndex === 0 ? ` · ${t('start')}` : ''}</small></span>{scoreIndex > 0 && <span className="piece-order-controls"><button type="button" aria-label={t('movePieceUp', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex - 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex - 1, new Date().toISOString())) }}><UiIcon name="up" /></button><button type="button" aria-label={t('movePieceDown', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex + 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex + 1, new Date().toISOString())) }}><UiIcon name="down" /></button><button type="button" aria-label={t('removePiece', { title: score.title, number: set.number })} disabled={saving} onClick={() => { void save(removePiece(setList, setIndex, scoreIndex, new Date().toISOString())) }}><UiIcon name="minus" /></button></span>}</li>)}
             </ol>
+            <div className="set-piece-editor">
+              <label><span>{t('addPiece')}</span><select value={pieceSelections[set.number] ?? ''} disabled={saving || availableScores.length === 0} onChange={(event) => setPieceSelections((current) => ({ ...current, [set.number]: event.target.value }))}><option value="">{availableScores.length === 0 ? t('noAvailablePieces') : t('choosePiece')}</option>{availableScores.map((score) => <option key={score.id} value={score.id}>{score.displayNumber} · {score.title}</option>)}</select></label>
+              <button type="button" className="set-add-button" aria-label={t('addPieceToSet', { number: set.number })} disabled={saving || !(pieceSelections[set.number] ?? '')} onClick={() => { const score = scores.find((candidate) => candidate.id === pieceSelections[set.number]); if (score) { void save(addPiece(setList, setIndex, score, new Date().toISOString())); setPieceSelections((current) => ({ ...current, [set.number]: '' })) } }}><UiIcon name="plus" />{t('add')}</button>
+            </div>
           </section>
         ))}
       </div>

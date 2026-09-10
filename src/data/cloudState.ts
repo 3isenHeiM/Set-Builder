@@ -1,5 +1,6 @@
 import { configurationStatus } from '../domain/configuration'
 import { MAX_SCORES_PER_SET, MAX_SETS, MIN_SCORES_PER_SET, MIN_SETS, assertPerformanceValid } from '../domain/generator'
+import { assertSavedPerformanceValid } from '../domain/setList'
 import type {
   FolderScan,
   FolderScanSummary,
@@ -155,7 +156,7 @@ function readPerformanceScore(value: unknown): PerformanceScoreSnapshot {
   }
 }
 
-function readPerformance(value: unknown): GeneratedPerformance {
+function readPerformance(value: unknown, allowVariableSetSize = false): GeneratedPerformance {
   if (!isRecord(value)) throw new Error('Cloud state contains a malformed performance.')
   const setCount = integerValue(value.setCount, MIN_SETS, MAX_SETS)
   const scoresPerSet = integerValue(value.scoresPerSet, MIN_SCORES_PER_SET, MAX_SCORES_PER_SET)
@@ -167,7 +168,8 @@ function readPerformance(value: unknown): GeneratedPerformance {
   }
   const warnings = value.warnings.map((warning) => stringValue(warning, 500))
   const sets: PerformanceSet[] = value.sets.map((set, index) => {
-    if (!isRecord(set) || set.number !== index + 1 || !Array.isArray(set.scores) || set.scores.length !== scoresPerSet) {
+    if (!isRecord(set) || set.number !== index + 1 || !Array.isArray(set.scores)
+      || (allowVariableSetSize ? set.scores.length < MIN_SCORES_PER_SET || set.scores.length > MAX_SCORES_PER_SET : set.scores.length !== scoresPerSet)) {
       throw new Error('Cloud state contains a malformed set.')
     }
     const name = set.name === undefined ? undefined : stringValue(set.name, 120)
@@ -183,7 +185,8 @@ function readPerformance(value: unknown): GeneratedPerformance {
     sets,
     warnings,
   }
-  assertPerformanceValid(performance)
+  if (allowVariableSetSize) assertSavedPerformanceValid(performance)
+  else assertPerformanceValid(performance)
   return performance
 }
 
@@ -206,7 +209,7 @@ function readScan(value: unknown): FolderScan {
 function readSetList(value: unknown): SavedSetList {
   if (!isRecord(value)) throw new Error('Cloud state contains a malformed saved set list.')
   const id = idValue(value.id)
-  const performance = readPerformance(value.performance)
+  const performance = readPerformance(value.performance, true)
   if (performance.id !== id) throw new Error('Cloud state contains an inconsistent saved set list.')
   return {
     id,
@@ -235,7 +238,7 @@ export function parseCloudState(value: unknown): CloudState {
     version: CLOUD_STATE_VERSION,
     scores: scores.sort((left, right) => left.scoreNumber - right.scoreNumber || left.id.localeCompare(right.id)),
     lastScan: value.lastScan === null ? null : readScan(value.lastScan),
-    lastPerformance: value.lastPerformance === null ? null : readPerformance(value.lastPerformance),
+    lastPerformance: value.lastPerformance === null ? null : readPerformance(value.lastPerformance, true),
     setLists: setLists.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
   }
 }

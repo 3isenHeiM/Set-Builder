@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Add or remove pieces from a saved set while preserving starters, early high pieces, and whole-program uniqueness.
+
 ### Fixed
 
 - Render Turnstile directly after its asynchronous script load, preventing the verification widget from failing before it appears.

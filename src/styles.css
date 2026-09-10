@@ -195,6 +195,12 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
 .set-card ol { margin: 0; padding: 0; list-style: none; }
 .set-card li { min-height: 62px; display: grid; grid-template-columns: 22px 38px minmax(70px, 1fr) auto; gap: 7px; align-items: center; padding: 8px 10px; }
 .set-card li + li { border-top: 1px solid #e8e1d4; }
+.set-piece-count { padding: 8px 12px; color: var(--muted); background: var(--fog); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 800; }
+.set-piece-editor { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; padding: 12px; background: var(--fog); border-top: 1px solid var(--border); }
+.set-piece-editor label > span { display: block; margin-bottom: 5px; color: var(--muted); font-size: 12px; font-weight: 800; }
+.set-piece-editor select { width: 100%; min-height: 44px; }
+.set-add-button { min-height: 44px; display: flex; gap: 5px; align-items: center; justify-content: center; padding: 0 13px; color: #fff; background: var(--forest); border: 0; border-radius: 12px; font-weight: 850; }
+.set-add-button:disabled { opacity: .4; }
 .position { color: #908773; font-size: 12px; font-weight: 700; }
 .set-list-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .info-card { padding: 16px; background: var(--paper); border: 1px solid var(--border); border-radius: 16px; }

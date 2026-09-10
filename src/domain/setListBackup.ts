@@ -104,14 +104,11 @@ export function parseSetListBackupJson(source: string): SetListBackup {
   }
 
   const numbers = new Set<number>()
-  let expectedSize: number | undefined
   const sets = setList.sets.map((set) => {
     if (!isRecord(set) || typeof set.name !== 'string' || set.name.length > 120
       || !Array.isArray(set.scores) || set.scores.length < 1 || set.scores.length > MAX_SCORES_PER_SET) {
       throw new Error('This Piece Selector set-list file is malformed.')
     }
-    expectedSize ??= set.scores.length
-    if (set.scores.length !== expectedSize) throw new Error('Every imported set must contain the same number of pieces.')
     const scores = set.scores.map(readScore)
     if (!scores[0]?.canStart) throw new Error('Every imported set must start with an eligible starter.')
     let regularPieceSeen = false
