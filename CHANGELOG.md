@@ -6,11 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-09-10
+
 ### Added
 
-- Add or remove pieces from a saved set while preserving starters, early high pieces, and whole-program uniqueness.
-- Name and save individual sets as reusable building blocks, independently from generated or saved event programs.
-- Create saved event programs by combining, reordering, and removing reusable sets without changing those reusable originals.
+- Reusable named sets that can be saved and updated independently from an event program.
+- Saved event programs assembled from reusable sets, with explicit save, import, and export actions.
+- Controls to add or remove ready pieces, use different set sizes, and add, remove, or reorder sets while preserving starter, high-piece, and whole-program uniqueness constraints.
+
+### Changed
+
+- Reworked the Sets page around individually reusable sets and complete event programs. Programs keep stable copies so later set changes cannot silently alter a planned event.
+- Saving an individually edited piece now returns to the Library, while **Save and next** continues through the pending configuration queue.
 
 ### Fixed
 
@@ -61,7 +68,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Initial mobile-first offline PWA for importing and re-aligning `.mscz` filename metadata, configuring pieces, generating valid performances, saving the latest performance, and backing up piece settings.
 
-[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/3isenHeiM/Set-Builder/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/3isenHeiM/Set-Builder/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/3isenHeiM/Set-Builder/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/3isenHeiM/Set-Builder/releases/tag/v1.0.0
