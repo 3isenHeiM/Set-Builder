@@ -1,4 +1,4 @@
-import { MAX_SCORES_PER_SET, MIN_SCORES_PER_SET } from './generator'
+import { MAX_SCORES_PER_SET, MAX_SETS, MIN_SCORES_PER_SET } from './generator'
 import type { GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, SavedSet, SavedSetList, Score } from './types'
 
 function moved<T>(values: readonly T[], from: number, to: number): T[] {
@@ -75,7 +75,7 @@ export function movePiece(setList: SavedSetList, setIndex: number, from: number,
 }
 
 export function canAddPiece(setList: SavedSetList, score: Score): boolean {
-  return snapshot(score) !== undefined && !setList.performance.sets.some((set) => set.scores.some((candidate) => candidate.id === score.id))
+  return snapshot(score) !== undefined && !setList.performance.sets.some((set) => set.scores.some((candidate) => candidate.id === score.id || candidate.scoreNumber === score.scoreNumber))
 }
 
 export function addPiece(setList: SavedSetList, setIndex: number, score: Score, updatedAt: string): SavedSetList {
@@ -103,13 +103,15 @@ export function removePiece(setList: SavedSetList, setIndex: number, scoreIndex:
 export function assertSavedPerformanceValid(performance: GeneratedPerformance): void {
   if (performance.sets.length !== performance.setCount) throw new Error('Invalid saved program: set count mismatch.')
   const ids = new Set<string>()
+  const numbers = new Set<number>()
   for (const [setIndex, set] of performance.sets.entries()) {
     if (set.number !== setIndex + 1 || set.scores.length < MIN_SCORES_PER_SET || set.scores.length > MAX_SCORES_PER_SET || !validPieceOrder(set)) {
       throw new Error(`Invalid saved program: malformed Set ${setIndex + 1}.`)
     }
     for (const score of set.scores) {
-      if (ids.has(score.id)) throw new Error(`Invalid saved program: duplicate score ${score.id}.`)
+      if (ids.has(score.id) || numbers.has(score.scoreNumber)) throw new Error(`Invalid saved program: duplicate score ${score.id}.`)
       ids.add(score.id)
+      numbers.add(score.scoreNumber)
     }
   }
 }
@@ -117,5 +119,39 @@ export function assertSavedPerformanceValid(performance: GeneratedPerformance): 
 export function assertSavedSetValid(savedSet: SavedSet): void {
   if (savedSet.scores.length < MIN_SCORES_PER_SET || savedSet.scores.length > MAX_SCORES_PER_SET
     || !validPieceOrder({ number: 1, scores: savedSet.scores })) throw new Error('Invalid saved set.')
-  if (new Set(savedSet.scores.map((score) => score.id)).size !== savedSet.scores.length) throw new Error('Invalid saved set: duplicate piece.')
+  if (new Set(savedSet.scores.map((score) => score.id)).size !== savedSet.scores.length
+    || new Set(savedSet.scores.map((score) => score.scoreNumber)).size !== savedSet.scores.length) throw new Error('Invalid saved set: duplicate piece.')
+}
+
+export function canAddSavedSet(performance: GeneratedPerformance, savedSet: SavedSet): boolean {
+  const usedIds = new Set(performance.sets.flatMap((set) => set.scores.map((score) => score.id)))
+  const usedNumbers = new Set(performance.sets.flatMap((set) => set.scores.map((score) => score.scoreNumber)))
+  return performance.sets.length < MAX_SETS && savedSet.scores.every((score) => !usedIds.has(score.id) && !usedNumbers.has(score.scoreNumber))
+}
+
+export function createProgramFromSavedSet(savedSet: SavedSet, now: string, id: string): SavedSetList {
+  const performance: GeneratedPerformance = {
+    id,
+    generatedAt: now,
+    preset: 'mix',
+    seed: 0,
+    setCount: 1,
+    scoresPerSet: savedSet.scores.length,
+    sets: [{ number: 1, name: savedSet.name, savedSetId: savedSet.id, scores: [...savedSet.scores] }],
+    warnings: [],
+  }
+  assertSavedPerformanceValid(performance)
+  return { id, name: '', createdAt: now, updatedAt: now, performance }
+}
+
+export function addSavedSetToProgram(setList: SavedSetList, savedSet: SavedSet, updatedAt: string): SavedSetList {
+  if (!canAddSavedSet(setList.performance, savedSet)) return setList
+  const sets = [...setList.performance.sets, { number: setList.performance.sets.length + 1, name: savedSet.name, savedSetId: savedSet.id, scores: [...savedSet.scores] }]
+  return updated({ ...setList, performance: { ...setList.performance, setCount: sets.length, sets } }, updatedAt)
+}
+
+export function removeSetFromProgram(setList: SavedSetList, setIndex: number, updatedAt: string): SavedSetList {
+  if (setList.performance.sets.length <= 1 || setIndex < 0 || setIndex >= setList.performance.sets.length) return setList
+  const sets = setList.performance.sets.filter((_set, index) => index !== setIndex).map((set, index) => ({ ...set, number: index + 1 }))
+  return updated({ ...setList, performance: { ...setList.performance, setCount: sets.length, sets } }, updatedAt)
 }

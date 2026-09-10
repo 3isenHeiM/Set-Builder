@@ -197,6 +197,14 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
 .set-card li + li { border-top: 1px solid #e8e1d4; }
 .set-card-toolbar { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; color: var(--muted); background: var(--fog); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 800; }
 .set-card-toolbar button { min-height: 36px; padding: 0 10px; color: var(--forest); background: transparent; border: 1px solid currentColor; border-radius: 10px; font-size: 12px; font-weight: 850; }
+.program-composer { display: grid; gap: 12px; padding: 15px; background: linear-gradient(135deg, var(--paper), var(--fog)); border: 1px solid var(--border); border-radius: 17px; }
+.program-composer h2, .program-composer p { margin: 0; }
+.program-composer h2 { font-size: 18px; }
+.program-composer p { color: var(--muted); font-size: 13px; line-height: 1.45; }
+.program-composer label > span { display: block; margin-bottom: 5px; color: var(--muted); font-size: 12px; font-weight: 800; }
+.program-composer select { width: 100%; min-height: 44px; }
+.program-composer-actions { display: grid; gap: 8px; }
+.program-composer-actions .primary-action, .program-composer-actions .secondary-action { display: flex; gap: 6px; align-items: center; justify-content: center; }
 .set-piece-editor { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; padding: 12px; background: var(--fog); border-top: 1px solid var(--border); }
 .set-piece-editor label > span { display: block; margin-bottom: 5px; color: var(--muted); font-size: 12px; font-weight: 800; }
 .set-piece-editor select { width: 100%; min-height: 44px; }

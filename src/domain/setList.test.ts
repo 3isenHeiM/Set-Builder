@@ -1,5 +1,5 @@
 import type { PerformanceScoreSnapshot, SavedSetList } from './types'
-import { addPiece, assertSavedPerformanceValid, assertSavedSetValid, canAddPiece, canMovePiece, linkSavedSet, movePiece, moveSet, removePiece, renameSet, renameSetList } from './setList'
+import { addPiece, addSavedSetToProgram, assertSavedPerformanceValid, assertSavedSetValid, canAddPiece, canAddSavedSet, canMovePiece, createProgramFromSavedSet, linkSavedSet, movePiece, moveSet, removePiece, removeSetFromProgram, renameSet, renameSetList } from './setList'
 import { makePerformance, makeScore } from '../test/fixtures'
 
 function piece(id: string, goesHigh = false, canStart = false): PerformanceScoreSnapshot {
@@ -63,5 +63,16 @@ describe('editable set lists', () => {
     const linked = linkSavedSet(program, 0, reusable, 'linked')
     expect(linked.performance.sets[0]).toMatchObject({ savedSetId: 'saved-opening', name: 'Hot Set' })
     expect(() => assertSavedSetValid(reusable)).not.toThrow()
+  })
+
+  it('builds a program from reusable sets without repeated pieces', () => {
+    const first = { id: 'hot', name: 'Hot Set', createdAt: 'created', updatedAt: 'created', scores: [piece('1', false, true), piece('2')] }
+    const second = { id: 'slow', name: 'Slow Set', createdAt: 'created', updatedAt: 'created', scores: [piece('3', false, true), piece('4')] }
+    const program = createProgramFromSavedSet(first, 'created', 'program')
+    expect(canAddSavedSet(program.performance, second)).toBe(true)
+    const combined = addSavedSetToProgram(program, second, 'combined')
+    expect(combined.performance.sets.map((set) => [set.number, set.name])).toEqual([[1, 'Hot Set'], [2, 'Slow Set']])
+    expect(canAddSavedSet(combined.performance, first)).toBe(false)
+    expect(removeSetFromProgram(combined, 0, 'removed').performance.sets).toMatchObject([{ number: 1, name: 'Slow Set' }])
   })
 })
