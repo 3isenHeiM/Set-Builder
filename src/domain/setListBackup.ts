@@ -18,7 +18,7 @@ export interface SetListBackup {
     preset: Preset
     seed: number
     warnings: string[]
-    sets: Array<{ name: string; scores: SetListBackupScore[] }>
+    sets: Array<{ name: string; orderOverride?: boolean; scores: SetListBackupScore[] }>
   }
 }
 
@@ -67,6 +67,7 @@ export function createSetListBackup(saved: SavedSetList, exportedAt: string): Se
       warnings: [...saved.performance.warnings],
       sets: saved.performance.sets.map((set) => ({
         name: set.name?.trim() ?? '',
+        ...(set.orderOverride === undefined ? {} : { orderOverride: set.orderOverride }),
         scores: set.scores.map(({ id: _, ...score }) => {
           void _
           return score
@@ -113,16 +114,17 @@ export function parseSetListBackupJson(source: string): SetListBackup {
       || !Array.isArray(set.scores) || set.scores.length < 1 || set.scores.length > MAX_SCORES_PER_SET) {
       throw new Error('This Piece Selector set-list file is malformed.')
     }
+    if (set.orderOverride !== undefined && typeof set.orderOverride !== 'boolean') throw new Error('This Piece Selector set-list file is malformed.')
     const scores = set.scores.map(readScore)
     if (!scores[0]?.canStart) throw new Error('Every imported set must start with an eligible starter.')
     let regularPieceSeen = false
     for (const score of scores) {
       if (numbers.has(pieceKey(score))) throw new Error('A piece appears more than once in the imported set list.')
       numbers.add(pieceKey(score))
-      if (score !== scores[0] && score.goesHigh && regularPieceSeen) throw new Error('Pieces that go high must remain near the start of their set.')
+      if (!set.orderOverride && score !== scores[0] && score.goesHigh && regularPieceSeen) throw new Error('Pieces that go high must remain near the start of their set.')
       if (score !== scores[0]) regularPieceSeen ||= !score.goesHigh
     }
-    return { name: set.name.trim(), scores }
+    return { name: set.name.trim(), ...(set.orderOverride === undefined ? {} : { orderOverride: set.orderOverride }), scores }
   })
 
   return {
@@ -158,6 +160,7 @@ export function restoreSetList(backup: SetListBackup, now: string, createId: () 
       sets: backup.setList.sets.map((set, index) => ({
         number: index + 1,
         name: set.name,
+        ...(set.orderOverride === undefined ? {} : { orderOverride: set.orderOverride }),
         scores: set.scores.map((score) => ({ ...score, id: createId() })),
       })),
       warnings: backup.setList.warnings,

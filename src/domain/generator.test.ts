@@ -68,6 +68,8 @@ describe('generator', () => {
     [5, 5, 1, 1],
     [9, 9, 3, 3],
     [20, 6, 4, 5],
+    [40, 5, 5, 8],
+    [96, 12, 12, 8],
   ])('satisfies every hard invariant over 100 seeds (pool %i)', (size, starters, setCount, scoresPerSet) => {
     for (let seed = 0; seed < 100; seed += 1) {
       const result = generatePerformance(pool(size, starters), { preset: 'mix', setCount, scoresPerSet, seed }, { now: 'now', createId: () => `p-${seed}` })

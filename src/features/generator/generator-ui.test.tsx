@@ -10,6 +10,23 @@ function saved(performance: GeneratedPerformance = makePerformance()): SavedSetL
 }
 
 describe('performance UI', () => {
+  it.each([5, 12])('generates %i sets with touch controls and enforces the documented maximum', async (count) => {
+    const user = userEvent.setup()
+    const scores = Array.from({ length: 96 }, (_, index) => makeScore({ id: `piece-${index}`, scoreNumber: index + 1, displayNumber: String(index + 1) }))
+    const onGenerated = vi.fn<(performance: GeneratedPerformance) => Promise<void>>(() => Promise.resolve())
+    render(<GenerateScreen scores={scores} hasPerformance={false} onGenerated={onGenerated} />)
+    for (let current = 3; current < count; current += 1) await user.click(screen.getByRole('button', { name: 'Increase Sets' }))
+    expect(screen.getByRole('spinbutton', { name: 'Sets' })).toHaveValue(count)
+    if (count === 12) expect(screen.getByRole('button', { name: 'Increase Sets' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Generate sets' }))
+    expect(onGenerated.mock.calls[0]?.[0].sets).toHaveLength(count)
+    expect(onGenerated.mock.calls[0]?.[0].sets.every((set) => set.scores.length === 8 && set.scores[0]?.canStart)).toBe(true)
+    await user.clear(screen.getByRole('spinbutton', { name: 'Sets' }))
+    await user.type(screen.getByRole('spinbutton', { name: 'Sets' }), '13')
+    expect(screen.getByRole('button', { name: 'Generate sets' })).toBeDisabled()
+    expect(screen.getByRole('alert')).toHaveTextContent('1 to 12')
+  })
+
   it('uses collections for generation without a separate 80s repertoire option', async () => {
     const user = userEvent.setup()
     render(<GenerateScreen scores={[makeScore({ collection: 'Christmas' }), makeScore({ id: 'other', scoreNumber: 2, displayNumber: '02', collection: 'General' })]} collections={['General', 'Christmas']} hasPerformance={false} onGenerated={vi.fn()} />)

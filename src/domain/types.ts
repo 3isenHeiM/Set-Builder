@@ -156,6 +156,7 @@ export interface PerformanceSet {
   number: number
   name?: string
   savedSetId?: string
+  orderOverride?: boolean
   scores: PerformanceScoreSnapshot[]
 }
 
@@ -164,6 +165,7 @@ export interface SavedSet {
   name: string
   createdAt: IsoTimestamp
   updatedAt: IsoTimestamp
+  orderOverride?: boolean
   scores: PerformanceScoreSnapshot[]
 }
 

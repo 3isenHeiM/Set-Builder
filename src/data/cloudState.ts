@@ -89,6 +89,12 @@ function nullableBoolean(value: unknown): boolean | null {
   return value
 }
 
+function readOrderOverride(value: unknown): { orderOverride?: boolean } {
+  if (value === undefined) return {}
+  if (typeof value !== 'boolean') throw new Error('Cloud state contains an invalid order override.')
+  return { orderOverride: value }
+}
+
 function hotnessValue(value: unknown, nullable: true): Hotness | null
 function hotnessValue(value: unknown, nullable: false): Hotness
 function hotnessValue(value: unknown, nullable: boolean): Hotness | null {
@@ -187,7 +193,7 @@ function readPerformance(value: unknown, allowVariableSetSize = false): Generate
     }
     const name = set.name === undefined ? undefined : stringValue(set.name, 120)
     const savedSetId = set.savedSetId === undefined ? undefined : idValue(set.savedSetId)
-    return { number: index + 1, ...(name === undefined ? {} : { name }), ...(savedSetId === undefined ? {} : { savedSetId }), scores: set.scores.map(readPerformanceScore) }
+    return { number: index + 1, ...(name === undefined ? {} : { name }), ...(savedSetId === undefined ? {} : { savedSetId }), ...readOrderOverride(set.orderOverride), scores: set.scores.map(readPerformanceScore) }
   })
   const performance: GeneratedPerformance = {
     id: idValue(value.id),
@@ -244,6 +250,7 @@ function readSavedSet(value: unknown): SavedSet {
     name: stringValue(value.name, 120),
     createdAt: timestampValue(value.createdAt),
     updatedAt: timestampValue(value.updatedAt),
+    ...readOrderOverride(value.orderOverride),
     scores: value.scores.map(readPerformanceScore),
   }
   assertSavedSetValid(savedSet)

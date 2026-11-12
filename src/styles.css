@@ -233,6 +233,16 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
 .preset-grid strong { color: var(--forest); font-size: 22px; }
 .preset-grid small { color: var(--muted); line-height: 1.3; }
 .number-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.count-field { min-width: 0; display: grid; gap: 6px; }
+.count-field label { color: var(--forest); font-weight: 750; }
+.count-field small { color: var(--muted); }
+.count-stepper { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; }
+.count-stepper input { width: 100%; min-width: 0; padding-inline: 0; text-align: center; appearance: textfield; -moz-appearance: textfield; }
+.count-stepper input::-webkit-inner-spin-button, .count-stepper input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
+.count-stepper button { width: 44px; height: 48px; display: grid; place-items: center; padding: 0; color: var(--forest); background: var(--paper); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+.count-stepper button:disabled { opacity: .4; cursor: not-allowed; }
+.count-stepper button:enabled:hover, .order-override button:enabled:hover { background: var(--amber-soft); }
+.count-stepper button:focus-visible, .order-override button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .availability-card { min-height: 72px; display: grid; grid-template-columns: 1fr 1fr; align-items: center; padding: 12px; background: var(--amber-soft); border: 1px solid #d4b169; border-radius: 14px; }
 .availability-card span { display: grid; color: var(--muted); font-size: 12px; text-align: center; }
 .availability-card strong { color: var(--forest); font-size: 24px; line-height: 1; }
@@ -255,6 +265,10 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
 .set-card li + li { border-top: 1px solid #e8e1d4; }
 .set-card-toolbar { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; color: var(--muted); background: var(--fog); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 800; }
 .set-card-toolbar button { min-height: 36px; padding: 0 10px; color: var(--forest); background: transparent; border: 1px solid currentColor; border-radius: 10px; font-size: 12px; font-weight: 850; }
+.order-override { display: grid; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.order-override button { min-height: 44px; padding: 8px 12px; color: var(--forest); background: var(--paper); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-weight: 750; }
+.order-override button[aria-pressed="true"] { background: var(--amber-soft); border-color: var(--amber); }
+.order-override p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
 .program-composer { display: grid; gap: 12px; padding: 15px; background: linear-gradient(135deg, var(--paper), var(--fog)); border: 1px solid var(--border); border-radius: 17px; }
 .program-composer h2, .program-composer p { margin: 0; }
 .program-composer h2 { font-size: 18px; }

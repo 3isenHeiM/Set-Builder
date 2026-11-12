@@ -169,6 +169,7 @@ export function App({ repository = browserRepository, authentication = cloudAuth
       name: set.name?.trim() || `${t('set')} ${set.number}`,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
+      ...(set.orderOverride === undefined ? {} : { orderOverride: set.orderOverride }),
       scores: set.scores,
     }
     await repository.saveSavedSet(saved)

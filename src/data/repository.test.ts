@@ -6,12 +6,36 @@ import { makePerformance, makeScore } from '../test/fixtures'
 import type { SavedSet, SavedSetList } from '../domain/types'
 import { LegacyDatabaseV1, LegacyDatabaseV4, PieceSelectorDatabase } from './database'
 import { PieceSelectorRepository } from './repository'
+import { addNewSet, addPiece, createProgramFromStarter, movePiece, setOrderOverride } from '../domain/setList'
 
 function databaseName(): string {
   return `piece-selector-test-${crypto.randomUUID()}`
 }
 
 describe('IndexedDB persistence', () => {
+  it('reopens a five-set program with custom order and a reusable set unchanged', async () => {
+    const name = databaseName()
+    const database = new PieceSelectorDatabase(name)
+    const repository = new PieceSelectorRepository(database)
+    const starter = (number: number) => makeScore({ id: `starter-${number}`, scoreNumber: number, displayNumber: String(number) })
+    let program = createProgramFromStarter(starter(1), '2026-11-12T10:00:00Z', 'program')
+    for (let number = 2; number <= 5; number += 1) program = addNewSet(program, starter(number), program.updatedAt)
+    program = addPiece(program, 0, makeScore({ id: 'high', scoreNumber: 6, displayNumber: '06', goesHigh: true, canStart: false }), program.updatedAt)
+    program = addPiece(program, 0, makeScore({ id: 'regular', scoreNumber: 7, displayNumber: '07', canStart: false }), program.updatedAt)
+    program = movePiece(setOrderOverride(program, 0, true, program.updatedAt), 0, 1, 2, program.updatedAt)
+    const reusable: SavedSet = { id: 'reusable', name: 'Custom order', createdAt: program.createdAt, updatedAt: program.updatedAt, orderOverride: true, scores: program.performance.sets[0]!.scores }
+    await repository.saveSetList(program)
+    await repository.saveSavedSet(reusable)
+    database.close()
+    const reopened = new PieceSelectorDatabase(name)
+    const restored = new PieceSelectorRepository(reopened)
+    expect(await restored.getLastPerformance()).toEqual(program.performance)
+    expect(await restored.listSetLists()).toEqual([program])
+    expect(await restored.listSavedSets()).toEqual([reusable])
+    reopened.close()
+    await Dexie.delete(name)
+  })
+
   it('applies partial settings atomically while preserving other values and tags', async () => {
     const database = new PieceSelectorDatabase(databaseName())
     const repository = new PieceSelectorRepository(database)

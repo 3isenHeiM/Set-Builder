@@ -13,6 +13,7 @@ function moved<T>(values: readonly T[], from: number, to: number): T[] {
 
 function validPieceOrder(set: PerformanceSet): boolean {
   if (!set.scores[0]?.canStart) return false
+  if (set.orderOverride) return true
   let regularPieceSeen = false
   for (const score of set.scores.slice(1)) {
     if (score.goesHigh && regularPieceSeen) return false
@@ -67,7 +68,17 @@ export function moveSet(setList: SavedSetList, from: number, to: number, updated
 }
 
 export function canMovePiece(set: PerformanceSet, from: number, to: number): boolean {
-  return from !== to && from > 0 && to > 0 && to < set.scores.length && validPieceOrder({ ...set, scores: moved(set.scores, from, to) })
+  return Number.isInteger(from) && Number.isInteger(to) && from !== to && from > 0 && from < set.scores.length && to > 0 && to < set.scores.length && validPieceOrder({ ...set, scores: moved(set.scores, from, to) })
+}
+
+export function setOrderOverride(setList: SavedSetList, setIndex: number, enabled: boolean, updatedAt: string): SavedSetList {
+  const target = setList.performance.sets[setIndex]
+  if (!target) return setList
+  const [starter, ...remaining] = target.scores
+  if (!starter) return setList
+  const scores = enabled ? target.scores : [starter, ...remaining.filter((score) => score.goesHigh), ...remaining.filter((score) => !score.goesHigh)]
+  const sets = setList.performance.sets.map((set, index) => index === setIndex ? { ...set, orderOverride: enabled, scores } : set)
+  return updated({ ...setList, performance: { ...setList.performance, sets } }, updatedAt)
 }
 
 export function movePiece(setList: SavedSetList, setIndex: number, from: number, to: number, updatedAt: string): SavedSetList {
@@ -85,7 +96,7 @@ export function addPiece(setList: SavedSetList, setIndex: number, score: Score, 
   const target = setList.performance.sets[setIndex]
   const candidate = snapshot(score)
   if (!target || !candidate || !canAddPiece(setList, score) || target.scores.length >= MAX_SCORES_PER_SET) return setList
-  const firstRegularIndex = candidate.goesHigh ? target.scores.findIndex((piece, index) => index > 0 && !piece.goesHigh) : -1
+  const firstRegularIndex = candidate.goesHigh && !target.orderOverride ? target.scores.findIndex((piece, index) => index > 0 && !piece.goesHigh) : -1
   const insertAt = firstRegularIndex < 0 ? target.scores.length : firstRegularIndex
   const scores = [...target.scores]
   scores.splice(insertAt, 0, candidate)
@@ -118,7 +129,7 @@ export function moveBetweenSets(setList: SavedSetList, from: number, scoreIndex:
   const destination = setList.performance.sets[to]!
   const score = source.scores[scoreIndex]!
   const scores = [...destination.scores]
-  const firstRegular = score.goesHigh ? scores.findIndex((piece, index) => index > 0 && !piece.goesHigh) : -1
+  const firstRegular = score.goesHigh && !destination.orderOverride ? scores.findIndex((piece, index) => index > 0 && !piece.goesHigh) : -1
   scores.splice(firstRegular < 0 ? scores.length : firstRegular, 0, score)
   const sets = setList.performance.sets.map((set, index) => index === from ? { ...set, scores: source.scores.filter((_, i) => i !== scoreIndex) } : index === to ? { ...set, scores } : set)
   return updated({ ...setList, performance: { ...setList.performance, sets } }, updatedAt)
@@ -138,6 +149,7 @@ export function createProgramFromStarter(starter: Score, now: string, id: string
 }
 
 export function assertSavedPerformanceValid(performance: GeneratedPerformance): void {
+  if (performance.sets.length < 1 || performance.sets.length > MAX_SETS) throw new Error('Invalid saved program: set count out of range.')
   if (performance.sets.length !== performance.setCount) throw new Error('Invalid saved program: set count mismatch.')
   const ids = new Set<string>()
   const numbers = new Set<string>()
@@ -155,7 +167,7 @@ export function assertSavedPerformanceValid(performance: GeneratedPerformance): 
 
 export function assertSavedSetValid(savedSet: SavedSet): void {
   if (savedSet.scores.length < MIN_SCORES_PER_SET || savedSet.scores.length > MAX_SCORES_PER_SET
-    || !validPieceOrder({ number: 1, scores: savedSet.scores })) throw new Error('Invalid saved set.')
+    || !validPieceOrder({ number: 1, ...savedSet })) throw new Error('Invalid saved set.')
   if (new Set(savedSet.scores.map((score) => score.id)).size !== savedSet.scores.length
     || new Set(savedSet.scores.map(pieceKey)).size !== savedSet.scores.length) throw new Error('Invalid saved set: duplicate piece.')
 }
@@ -174,7 +186,7 @@ export function createProgramFromSavedSet(savedSet: SavedSet, now: string, id: s
     seed: 0,
     setCount: 1,
     scoresPerSet: savedSet.scores.length,
-    sets: [{ number: 1, name: savedSet.name, savedSetId: savedSet.id, scores: [...savedSet.scores] }],
+    sets: [{ number: 1, name: savedSet.name, savedSetId: savedSet.id, ...(savedSet.orderOverride === undefined ? {} : { orderOverride: savedSet.orderOverride }), scores: [...savedSet.scores] }],
     warnings: [],
   }
   assertSavedPerformanceValid(performance)
@@ -183,7 +195,7 @@ export function createProgramFromSavedSet(savedSet: SavedSet, now: string, id: s
 
 export function addSavedSetToProgram(setList: SavedSetList, savedSet: SavedSet, updatedAt: string): SavedSetList {
   if (!canAddSavedSet(setList.performance, savedSet)) return setList
-  const sets = [...setList.performance.sets, { number: setList.performance.sets.length + 1, name: savedSet.name, savedSetId: savedSet.id, scores: [...savedSet.scores] }]
+  const sets = [...setList.performance.sets, { number: setList.performance.sets.length + 1, name: savedSet.name, savedSetId: savedSet.id, ...(savedSet.orderOverride === undefined ? {} : { orderOverride: savedSet.orderOverride }), scores: [...savedSet.scores] }]
   return updated({ ...setList, performance: { ...setList.performance, setCount: sets.length, sets } }, updatedAt)
 }
 
