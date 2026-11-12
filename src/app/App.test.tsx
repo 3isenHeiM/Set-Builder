@@ -7,11 +7,16 @@ import { App } from './App'
 function storedRepository(performance: GeneratedPerformance) {
   const scores: Score[] = []
   return {
+    getTonightSetList: () => Promise.resolve(undefined),
+    saveTonightSetList: (): Promise<void> => Promise.resolve(),
+    clearTonightSetList: (): Promise<void> => Promise.resolve(),
+    setSetListLocked: (): Promise<never> => Promise.reject(new Error('unused')),
     listCollections: () => Promise.resolve(['General']),
     createCollection: (): Promise<void> => Promise.resolve(),
     assignCollection: (): Promise<void> => Promise.resolve(),
     listScores: (): Promise<Score[]> => Promise.resolve(scores),
     getScore: (): Promise<Score | undefined> => Promise.resolve(undefined),
+    deleteScore: (): Promise<void> => Promise.resolve(),
     saveConfiguration: (): Promise<void> => Promise.resolve(),
     saveBulkConfiguration: (): Promise<void> => Promise.resolve(),
     renameCollection: (): Promise<void> => Promise.resolve(),

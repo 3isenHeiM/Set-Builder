@@ -13,6 +13,7 @@ import { ReconciliationPreview } from '../features/import/ReconciliationPreview'
 import { GenerateScreen } from '../features/generator/GenerateScreen'
 import { LibraryScreen } from '../features/library/LibraryScreen'
 import { PerformanceScreen } from '../features/performance/PerformanceScreen'
+import { TonightScreen } from '../features/performance/TonightScreen'
 import { SettingsBackupPanel } from '../features/settings/SettingsBackupPanel'
 import { LoginScreen, SignOutButton } from '../features/auth/AuthenticationScreens'
 import { AboutScreen, InstallGuide } from '../pwa/InstallGuide'
@@ -20,7 +21,7 @@ import { UpdateBanner } from '../pwa/UpdateBanner'
 import { UiIcon } from './UiIcon'
 import { localizedError, useI18n } from './i18n'
 
-type Page = 'library' | 'generate' | 'performance' | 'about'
+type Page = 'library' | 'generate' | 'performance' | 'tonight' | 'about'
 type AppRepository = ScoreRepository & PerformanceRepository
 type AuthenticationState = 'checking' | 'required' | 'authenticated'
 
@@ -32,6 +33,7 @@ export function App({ repository = browserRepository, authentication = cloudAuth
   const [setLists, setSetLists] = useState<SavedSetList[]>([])
   const [savedSets, setSavedSets] = useState<SavedSet[]>([])
   const [currentSetList, setCurrentSetList] = useState<SavedSetList>()
+  const [tonight, setTonight] = useState<SavedSetList>()
   const [preview, setPreview] = useState<ReconciliationPlan>()
   const [applying, setApplying] = useState(false)
   const [previewError, setPreviewError] = useState('')
@@ -51,8 +53,18 @@ export function App({ repository = browserRepository, authentication = cloudAuth
   useEffect(() => {
     if (authenticationState !== 'authenticated') return
     setLoading(true)
-    void Promise.all([repository.listScores(), repository.getLastScan(), repository.getLastPerformance(), repository.listSetLists(), repository.listSavedSets(), repository.listCollections()])
-      .then(([loadedScores, scan, savedPerformance, savedSetLists, loadedSavedSets, loadedCollections]) => {
+    let active = true
+    let loadedTonight: SavedSetList | undefined
+    void repository.getTonightSetList().then((selected) => {
+      if (!active) return undefined
+      loadedTonight = selected
+      setTonight(selected)
+      if (selected) { setPage('tonight'); setLoading(false) }
+      return Promise.all([repository.listScores(), repository.getLastScan(), repository.getLastPerformance(), repository.listSetLists(), repository.listSavedSets(), repository.listCollections()])
+    })
+      .then((loaded) => {
+        if (!active || !loaded) return
+        const [loadedScores, scan, savedPerformance, savedSetLists, loadedSavedSets, loadedCollections] = loaded
         setScores(loadedScores)
         setCollections(loadedCollections)
         setLastScan(scan)
@@ -66,17 +78,19 @@ export function App({ repository = browserRepository, authentication = cloudAuth
             updatedAt: savedPerformance.generatedAt,
             performance: savedPerformance,
           })
-          setPage('performance')
+          if (!loadedTonight) setPage('performance')
         } else if (savedSetLists[0]) {
           setCurrentSetList(savedSetLists[0])
-          setPage('performance')
+          if (!loadedTonight) setPage('performance')
         }
       })
       .catch((error: unknown) => {
+        if (!active) return
         if (authentication && error instanceof CloudApiError && error.status === 401) setAuthenticationState('required')
-        else setLoadError(localizedError(error, locale, t('localStorageUnavailable')))
+        else if (!loadedTonight) setLoadError(localizedError(error, locale, t('localStorageUnavailable')))
       })
-      .finally(() => setLoading(false))
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
   }, [authentication, authenticationState, locale, repository, t])
 
   const rescan = (snapshot: FolderSnapshot) => {
@@ -105,6 +119,14 @@ export function App({ repository = browserRepository, authentication = cloudAuth
   const saveConfiguration = async (id: string, configuration: ScoreConfiguration) => {
     await repository.saveConfiguration(id, configuration, new Date().toISOString())
     setScores(await repository.listScores())
+    if (configuration.drummerNotes !== undefined) await refreshSavedNotes()
+  }
+
+  const refreshSavedNotes = async () => {
+    const [lists, reusable, last] = await Promise.all([repository.listSetLists(), repository.listSavedSets(), repository.getLastPerformance()])
+    setSetLists(lists)
+    setSavedSets(reusable)
+    setCurrentSetList((current) => current ? lists.find((list) => list.id === current.id) ?? (last?.id === current.id ? { ...current, performance: last } : current) : current)
   }
 
   const saveBulkConfiguration = async (ids: string[], changes: BulkConfiguration) => {
@@ -124,6 +146,12 @@ export function App({ repository = browserRepository, authentication = cloudAuth
 
   const createCollection = async (name: string) => {
     await repository.createCollection(name)
+    setCollections(await repository.listCollections())
+  }
+
+  const deleteScore = async (id: string) => {
+    await repository.deleteScore(id)
+    setScores(await repository.listScores())
     setCollections(await repository.listCollections())
   }
 
@@ -147,6 +175,23 @@ export function App({ repository = browserRepository, authentication = cloudAuth
     setCurrentSetList(saved)
   }
 
+  const setListLock = async (id: string, locked: boolean) => {
+    const saved = await repository.setSetListLocked(id, locked, new Date().toISOString())
+    setSetLists(await repository.listSetLists())
+    setCurrentSetList(saved)
+  }
+
+  const loadTonight = async (saved: SavedSetList) => {
+    await repository.saveTonightSetList(saved)
+    setTonight(structuredClone(saved))
+    setPage('tonight')
+  }
+
+  const clearTonight = async () => {
+    await repository.clearTonightSetList()
+    setTonight(undefined)
+  }
+
   const saveReusableSet = async (set: PerformanceSet): Promise<SavedSet> => {
     const now = new Date().toISOString()
     const existing = savedSets.find((saved) => saved.id === set.savedSetId)
@@ -155,6 +200,7 @@ export function App({ repository = browserRepository, authentication = cloudAuth
       name: set.name?.trim() || `${t('set')} ${set.number}`,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
+      ...(set.orderOverride === undefined ? {} : { orderOverride: set.orderOverride }),
       scores: set.scores,
     }
     await repository.saveSavedSet(saved)
@@ -187,6 +233,7 @@ export function App({ repository = browserRepository, authentication = cloudAuth
   const importSettings = async (backup: SettingsBackup) => {
     const report = await repository.importSettings(backup, new Date().toISOString())
     setScores(await repository.listScores())
+    await refreshSavedNotes()
     return report
   }
 
@@ -202,12 +249,13 @@ export function App({ repository = browserRepository, authentication = cloudAuth
       <UpdateBanner />
       <main id="main-content">
         {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} />
-          : page === 'library' ? <LibraryScreen scores={scores} collections={collections} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onBulkSave={saveBulkConfiguration} onRenameCollection={renameCollection} onCreateCollection={createCollection} onAssignCollection={assignCollection} onEditingChange={setEditingScore} />
+          : page === 'library' ? <LibraryScreen scores={scores} collections={collections} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onBulkSave={saveBulkConfiguration} onRenameCollection={renameCollection} onCreateCollection={createCollection} onAssignCollection={assignCollection} onDelete={deleteScore} onEditingChange={setEditingScore} />
             : page === 'generate' ? <GenerateScreen scores={scores} collections={collections} hasPerformance={Boolean(currentSetList)} onGenerated={savePerformance} />
-              : page === 'performance' ? <PerformanceScreen scores={scores} setList={currentSetList} savedSetLists={setLists} savedSets={savedSets} onSave={saveSetList} onSaveSavedSet={saveReusableSet} onCreateProgram={createProgram} onCreateManualProgram={createManualProgram} onSelect={selectSetList} onImport={importSetList} onRegenerate={() => setPage('generate')} />
+              : page === 'performance' ? <PerformanceScreen scores={scores} setList={currentSetList} savedSetLists={setLists} savedSets={savedSets} onSave={saveSetList} onSaveSavedSet={saveReusableSet} onCreateProgram={createProgram} onCreateManualProgram={createManualProgram} onSelect={selectSetList} onImport={importSetList} onRegenerate={() => setPage('generate')} onLockChange={setListLock} onTonight={loadTonight} />
+                : page === 'tonight' ? <TonightScreen setList={tonight} savedSetLists={setLists} onLoad={loadTonight} onClear={clearTonight} onManage={() => setPage('performance')} />
                 : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} />{authentication && <SignOutButton onLogout={async () => { await authentication.logout(); window.location.reload() }} />}</AboutScreen>}
       </main>
-      {!preview && !editingScore && <nav className="bottom-nav" aria-label={t('primaryNavigation')}>{([['library', t('library')], ['generate', t('build')], ['performance', t('sets')], ['about', t('about')]] as const).map(([target, label]) => <button type="button" key={target} aria-current={page === target ? 'page' : undefined} onClick={() => setPage(target)}><UiIcon name={target === 'library' ? 'library' : target === 'generate' ? 'sparkles' : target === 'performance' ? 'sets' : 'info'} />{label}</button>)}</nav>}
+      {!preview && !editingScore && <nav className="bottom-nav" aria-label={t('primaryNavigation')}>{([['library', t('library')], ['generate', t('build')], ['performance', t('sets')], ['tonight', t('tonight')], ['about', t('about')]] as const).map(([target, label]) => <button type="button" key={target} aria-current={page === target ? 'page' : undefined} onClick={() => setPage(target)}><UiIcon name={target === 'library' ? 'library' : target === 'generate' ? 'sparkles' : target === 'performance' ? 'sets' : target === 'tonight' ? 'moon' : 'info'} />{label}</button>)}</nav>}
     </div>
   )
 }

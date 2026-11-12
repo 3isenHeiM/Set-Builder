@@ -35,10 +35,11 @@ interface LibraryScreenProps {
   collections?: string[]
   onCreateCollection?: (name: string) => Promise<void>
   onAssignCollection?: (ids: string[], name: string) => Promise<void>
+  onDelete?: (id: string) => Promise<void>
   onEditingChange?: ((editing: boolean) => void) | undefined
 }
 
-export function LibraryScreen({ scores, lastScan, onFolder, onSave, onBulkSave, onRenameCollection, collections: storedCollections = [], onCreateCollection, onAssignCollection, onEditingChange }: LibraryScreenProps) {
+export function LibraryScreen({ scores, lastScan, onFolder, onSave, onBulkSave, onRenameCollection, collections: storedCollections = [], onCreateCollection, onAssignCollection, onDelete, onEditingChange }: LibraryScreenProps) {
   const { locale, t } = useI18n()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
@@ -87,7 +88,7 @@ export function LibraryScreen({ scores, lastScan, onFolder, onSave, onBulkSave, 
   if (activeEditor) {
     const isQueue = Boolean(queue)
     const persist = (configuration: ScoreConfiguration) => onSave(activeEditor.id, configuration)
-    return <ConfigurationEditor key={activeEditor.id} score={activeEditor} progress={isQueue ? `${queueIndex + 1} ${t('of')} ${queue?.length ?? 0}` : undefined} saveLabel={isQueue ? (queueIndex + 1 === queue?.length ? t('saveAndFinish') : t('saveAndNext')) : t('saveScore')} onClose={() => { setEditing(null); setQueue(null); setQueueIndex(0); onEditingChange?.(false) }} onDraftChange={persist} onSave={async (configuration) => { await persist(configuration); if (isQueue) { if (queueIndex + 1 < (queue?.length ?? 0)) setQueueIndex((index) => index + 1); else { setQueue(null); setQueueIndex(0); onEditingChange?.(false) } } else { setEditing(null); onEditingChange?.(false) } }} />
+    return <ConfigurationEditor key={activeEditor.id} score={activeEditor} progress={isQueue ? `${queueIndex + 1} ${t('of')} ${queue?.length ?? 0}` : undefined} saveLabel={isQueue ? (queueIndex + 1 === queue?.length ? t('saveAndFinish') : t('saveAndNext')) : t('saveScore')} onClose={() => { setEditing(null); setQueue(null); setQueueIndex(0); onEditingChange?.(false) }} onDraftChange={persist} onDelete={onDelete ? async () => { await onDelete(activeEditor.id); setEditing(null); setQueue(null); setQueueIndex(0); onEditingChange?.(false); setFeedback(t('pieceDeleted')) } : undefined} onSave={async (configuration) => { await persist(configuration); if (isQueue) { if (queueIndex + 1 < (queue?.length ?? 0)) setQueueIndex((index) => index + 1); else { setQueue(null); setQueueIndex(0); onEditingChange?.(false) } } else { setEditing(null); onEditingChange?.(false) } }} />
   }
 
   if (scores.length === 0) {

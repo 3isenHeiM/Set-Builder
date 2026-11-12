@@ -103,6 +103,7 @@ function createScore(file: ParsedScoreFile, now: string, id: string): Score {
     canStart: null,
     hotness: null,
     drumsIntro: null,
+    drummerNotes: '',
     goesHigh: null,
     enabled: true,
     tags: [],

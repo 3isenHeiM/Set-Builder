@@ -2,6 +2,22 @@ import { makePerformance, makeScore } from '../test/fixtures'
 import { CLOUD_STATE_FORMAT, CLOUD_STATE_VERSION, emptyCloudState, parseCloudEnvelope, parseCloudState } from './cloudState'
 
 describe('cloud state validation', () => {
+  it('preserves explicit order overrides for programs, last performance and reusable sets', () => {
+    const starter = makePerformance().sets[0]!.scores[0]!
+    const performance = makePerformance({ scoresPerSet: 3, sets: [{ number: 1, orderOverride: true, scores: [starter, { ...starter, id: 'regular', scoreNumber: 2, displayNumber: '02', canStart: false }, { ...starter, id: 'high', scoreNumber: 3, displayNumber: '03', goesHigh: true, canStart: false }] }] })
+    const setList = { id: performance.id, name: 'Custom', createdAt: performance.generatedAt, updatedAt: performance.generatedAt, performance }
+    const savedSet = { id: 'reusable', name: 'Custom', createdAt: performance.generatedAt, updatedAt: performance.generatedAt, orderOverride: true, scores: performance.sets[0]!.scores }
+    const source = { ...emptyCloudState(), lastPerformance: performance, setLists: [setList], savedSets: [savedSet] }
+    const parsed = parseCloudState(JSON.parse(JSON.stringify(source)))
+    expect(parsed.lastPerformance).toEqual(performance)
+    expect(parsed.setLists).toEqual([setList])
+    expect(parsed.savedSets).toEqual([savedSet])
+    expect(() => parseCloudState({ ...source, savedSets: [{ ...savedSet, orderOverride: 'true' }] })).toThrow('invalid order override')
+    expect(() => parseCloudState({ ...source, savedSets: [{ ...savedSet, orderOverride: false }] })).toThrow('Invalid saved set')
+    performance.sets[0]!.orderOverride = false
+    expect(() => parseCloudState(source)).toThrow('malformed Set')
+  })
+
   it('accepts a complete library snapshot and sorts its records', () => {
     const second = makeScore({ id: 'score-2', scoreNumber: 2, displayNumber: '02' })
     const first = makeScore()

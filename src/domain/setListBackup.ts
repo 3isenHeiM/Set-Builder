@@ -1,9 +1,10 @@
 import { MAX_SCORES_PER_SET, MAX_SETS } from './generator'
 import { readCollection, matchesDisplay, pieceKey, validCode } from './collections'
+import { readDrummerNotes } from './drummerNotes'
 import type { Hotness, PerformanceScoreSnapshot, Preset, SavedSetList } from './types'
 
 export const SET_LIST_BACKUP_FORMAT = 'piece-selector-set-list'
-export const SET_LIST_BACKUP_VERSION = 2
+export const SET_LIST_BACKUP_VERSION = 3
 
 type SetListBackupScore = Omit<PerformanceScoreSnapshot, 'id'>
 
@@ -13,11 +14,12 @@ export interface SetListBackup {
   exportedAt: string
   setList: {
     name: string
+    locked?: boolean
     generatedAt: string
     preset: Preset
     seed: number
     warnings: string[]
-    sets: Array<{ name: string; scores: SetListBackupScore[] }>
+    sets: Array<{ name: string; orderOverride?: boolean; scores: SetListBackupScore[] }>
   }
 }
 
@@ -47,6 +49,7 @@ function readScore(value: unknown): SetListBackupScore {
     title: value.title.trim(),
     hotness: Number(value.hotness) as Hotness,
     drumsIntro: value.drumsIntro,
+    ...(value.drummerNotes === undefined ? {} : { drummerNotes: readDrummerNotes(value.drummerNotes) }),
     goesHigh: value.goesHigh,
     canStart: value.canStart,
   }
@@ -59,12 +62,14 @@ export function createSetListBackup(saved: SavedSetList, exportedAt: string): Se
     exportedAt,
     setList: {
       name: saved.name,
+      ...(saved.locked === undefined ? {} : { locked: saved.locked }),
       generatedAt: saved.performance.generatedAt,
       preset: saved.performance.preset,
       seed: saved.performance.seed,
       warnings: [...saved.performance.warnings],
       sets: saved.performance.sets.map((set) => ({
         name: set.name?.trim() ?? '',
+        ...(set.orderOverride === undefined ? {} : { orderOverride: set.orderOverride }),
         scores: set.scores.map(({ id: _, ...score }) => {
           void _
           return score
@@ -86,10 +91,11 @@ export function parseSetListBackupJson(source: string): SetListBackup {
     throw new Error('Set-list file is not valid JSON.')
   }
   if (!isRecord(raw) || raw.format !== SET_LIST_BACKUP_FORMAT) throw new Error('This is not a Piece Selector set-list file.')
-  if (raw.version !== 1 && raw.version !== SET_LIST_BACKUP_VERSION) throw new Error('This set-list file version is not supported.')
+  if (raw.version !== 1 && raw.version !== 2 && raw.version !== SET_LIST_BACKUP_VERSION) throw new Error('This set-list file version is not supported.')
   if (!isIsoDate(raw.exportedAt) || !isRecord(raw.setList)) throw new Error('This Piece Selector set-list file is malformed.')
 
   const { setList } = raw
+  if (setList.locked !== undefined && typeof setList.locked !== 'boolean') throw new Error('This Piece Selector set-list file is malformed.')
   if (typeof setList.name !== 'string' || setList.name.length > 120
     || !isIsoDate(setList.generatedAt)
     || (setList.preset !== '80s' && setList.preset !== 'mix')
@@ -111,16 +117,17 @@ export function parseSetListBackupJson(source: string): SetListBackup {
       || !Array.isArray(set.scores) || set.scores.length < 1 || set.scores.length > MAX_SCORES_PER_SET) {
       throw new Error('This Piece Selector set-list file is malformed.')
     }
+    if (set.orderOverride !== undefined && typeof set.orderOverride !== 'boolean') throw new Error('This Piece Selector set-list file is malformed.')
     const scores = set.scores.map(readScore)
     if (!scores[0]?.canStart) throw new Error('Every imported set must start with an eligible starter.')
     let regularPieceSeen = false
     for (const score of scores) {
       if (numbers.has(pieceKey(score))) throw new Error('A piece appears more than once in the imported set list.')
       numbers.add(pieceKey(score))
-      if (score !== scores[0] && score.goesHigh && regularPieceSeen) throw new Error('Pieces that go high must remain near the start of their set.')
+      if (!set.orderOverride && score !== scores[0] && score.goesHigh && regularPieceSeen) throw new Error('Pieces that go high must remain near the start of their set.')
       if (score !== scores[0]) regularPieceSeen ||= !score.goesHigh
     }
-    return { name: set.name.trim(), scores }
+    return { name: set.name.trim(), ...(set.orderOverride === undefined ? {} : { orderOverride: set.orderOverride }), scores }
   })
 
   return {
@@ -129,6 +136,7 @@ export function parseSetListBackupJson(source: string): SetListBackup {
     exportedAt: raw.exportedAt,
     setList: {
       name: setList.name.trim(),
+      ...(setList.locked === undefined ? {} : { locked: setList.locked }),
       generatedAt: setList.generatedAt,
       preset: setList.preset,
       seed: Number(setList.seed),
@@ -144,6 +152,7 @@ export function restoreSetList(backup: SetListBackup, now: string, createId: () 
   return {
     id,
     name: backup.setList.name,
+    ...(backup.setList.locked === undefined ? {} : { locked: backup.setList.locked }),
     createdAt: now,
     updatedAt: now,
     performance: {
@@ -156,6 +165,7 @@ export function restoreSetList(backup: SetListBackup, now: string, createId: () 
       sets: backup.setList.sets.map((set, index) => ({
         number: index + 1,
         name: set.name,
+        ...(set.orderOverride === undefined ? {} : { orderOverride: set.orderOverride }),
         scores: set.scores.map((score) => ({ ...score, id: createId() })),
       })),
       warnings: backup.setList.warnings,

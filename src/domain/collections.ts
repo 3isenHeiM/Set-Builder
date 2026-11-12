@@ -69,8 +69,8 @@ export function renameCollectionData(data: { scores: Score[]; collections?: stri
   return {
     collections: collectionNames([], names.map((value) => collectionKey(value) === key ? nextName : value)),
     scores: data.scores.map(rename),
-    lastPerformance: data.lastPerformance ? performance(data.lastPerformance) : null,
-    setLists: data.setLists.map((list) => ({ ...list, performance: performance(list.performance) })),
+    lastPerformance: data.lastPerformance ? data.setLists.find((list) => list.id === data.lastPerformance?.id && list.locked)?.performance ?? performance(data.lastPerformance) : null,
+    setLists: data.setLists.map((list) => list.locked ? list : ({ ...list, performance: performance(list.performance) })),
     savedSets: data.savedSets.map((set) => ({ ...set, scores: set.scores.map(rename) })),
   }
 }

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { emptyCloudState } from '../data/cloudState'
-import { makeScore } from '../test/fixtures'
+import { makeScore, makeSetList } from '../test/fixtures'
 import { handleRequest, type WorkerEnvironment } from './worker'
 
 interface Stored {
@@ -67,6 +67,17 @@ async function signIn(env: WorkerEnvironment): Promise<string> {
 }
 
 describe('signed-cookie Cloudflare Worker', () => {
+  it('rejects edits to a locked program and requires a separate unchanged unlock', async () => {
+    const env = await environment()
+    const cookie = await signIn(env)
+    const saved = makeSetList({ locked: true })
+    const write = (list: typeof saved) => handleRequest(new Request('https://example.com/api/state', { method: 'PUT', headers: { cookie, origin: 'https://example.com' }, body: JSON.stringify({ operationId: crypto.randomUUID(), state: { ...emptyCloudState(), setLists: [list], lastPerformance: list.performance } }) }), env)
+    expect((await write(saved)).status).toBe(200)
+    expect((await write({ ...saved, name: 'Accidental change' })).status).toBe(400)
+    expect((await write({ ...saved, name: 'Accidental change', locked: false })).status).toBe(400)
+    expect((await write({ ...saved, locked: false })).status).toBe(200)
+    expect((await write({ ...saved, locked: false, name: 'Deliberate edit' })).status).toBe(200)
+  })
   it('serves the non-sensitive app shell but protects D1 state', async () => {
     const env = await environment()
     const asset = await handleRequest(new Request('https://example.com/'), env)

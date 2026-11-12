@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-11-12
+
+*It's happening*
+
+### Added
+
+- See a live set count and total piece count at the top of Build and saved-program screens, including programs with unequal set sizes; keep the summary visible while scrolling (fixes [#9](https://github.com/3isenHeiM/Set-Builder/issues/9)).
+- Lock a saved program against edits and load a fixed, device-local copy into **Tonight**, which opens automatically on relaunch and remains available offline; unlock only after explicit confirmation in Sets (fixes [#13](https://github.com/3isenHeiM/Set-Builder/issues/13)).
+- Override goes-high piece ordering within an individual set while preserving its required starter and whole-program uniqueness; retain the custom order in saved programs, reusable sets, and JSON export/import (refs [#10](https://github.com/3isenHeiM/Set-Builder/issues/10)).
+- Fold or expand individual sets by tapping their ribbons in editable and shared read-only programs, with keyboard support and visible state indicators (fixes [#12](https://github.com/3isenHeiM/Set-Builder/issues/12)).
+- Delete a piece from its detail page after explicit confirmation, preserving saved sets and programs (fixes [#6](https://github.com/3isenHeiM/Set-Builder/issues/6)).
+- Share a live, read-only mirror of a saved setlist, including its piece metrics, warnings, and notes, without requiring viewers to sign in; revoke access with **Stop sharing** (fixes [#7](https://github.com/3isenHeiM/Set-Builder/issues/7)).
+- Add optional multiline drummer notes to pieces, retain them in backups, and update those notes in reusable sets, editable programs, and shared views while preserving locked program snapshots (fixes [#8](https://github.com/3isenHeiM/Set-Builder/issues/8)).
+
+### Changed
+
+- Build 1–12 sets with phone-friendly plus/minus controls and clear explanations when adding a set would reuse pieces or needs another unused starter (refs [#10](https://github.com/3isenHeiM/Set-Builder/issues/10)).
+- Keep **Move to set** as a compact 44 × 44 picker beside each piece's ordering controls, leaving the title column free (fixes [#13](https://github.com/3isenHeiM/Set-Builder/issues/13)).
+- Upgrade existing local databases without losing library settings or saved programs. Tonight's selection stays on its device, is cleared on sign-out, and must be reloaded to include later source-program edits.
+- When deploying this release, apply the new D1 migration `0002_setlist_shares.sql` to enable setlist sharing.
+
 ## [2.2.1] - 2026-11-12
 
 ### Added
@@ -94,7 +115,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Initial mobile-first offline PWA for importing and re-aligning `.mscz` filename metadata, configuring pieces, generating valid performances, saving the latest performance, and backing up piece settings.
 
-[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.2.1...HEAD
+[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/3isenHeiM/Set-Builder/compare/v2.2.1...v2.3.0
 [2.2.1]: https://github.com/3isenHeiM/Set-Builder/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/3isenHeiM/Set-Builder/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/3isenHeiM/Set-Builder/compare/v2.0.1...v2.1.0

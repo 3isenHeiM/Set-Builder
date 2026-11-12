@@ -5,6 +5,8 @@ import type { GeneratedPerformance, Score } from '../../domain/types'
 import { createLocalId, createSeed } from '../../app/id'
 import { localizedError, localizedKnownMessage, useI18n } from '../../app/i18n'
 import { collectionKey, collectionNames } from '../../domain/collections'
+import { CountField } from './CountField'
+import { ProgramSummary } from '../performance/ProgramSummary'
 
 interface GenerateScreenProps {
   scores: Score[]
@@ -26,6 +28,8 @@ export function GenerateScreen({ scores, collections: storedCollections = [], ha
   const eligible = eligibleScores(scopedScores, preset)
   const starterCount = eligible.filter((score) => score.canStart).length
   const feasibility = validateFeasibility(scopedScores, { preset, setCount, scoresPerSet, seed: 0 })
+  const summarySetCount = Number.isInteger(setCount) && setCount >= 1 && setCount <= MAX_SETS ? setCount : null
+  const summaryPieceCount = summarySetCount !== null && Number.isInteger(scoresPerSet) && scoresPerSet >= 1 && scoresPerSet <= MAX_SCORES_PER_SET ? summarySetCount * scoresPerSet : null
 
   const generate = async () => {
     setError('')
@@ -50,11 +54,12 @@ export function GenerateScreen({ scores, collections: storedCollections = [], ha
     <section className="screen-section" aria-labelledby="generate-title">
       <div className="eyebrow">{t('noRepeats')}</div>
       <h1 id="generate-title">{t('buildSets')}</h1>
+      <ProgramSummary setCount={summarySetCount} pieceCount={summaryPieceCount} />
       <label><span>{t('collection')}</span><select value={collection} onChange={(event) => setCollection(event.target.value)}><option value="">{t('allCollections')}</option>{collections.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
       {hasPerformance && <p className="notice">{t('createsSavedSetList')}</p>}
       <div className="number-fields">
-        <label><span>{t('sets')}</span><input type="number" inputMode="numeric" min="1" max={MAX_SETS} value={Number.isNaN(setCount) ? '' : setCount} onChange={(event) => setSetCount(event.target.valueAsNumber)} /></label>
-        <label><span>{t('piecesPerSet')}</span><input type="number" inputMode="numeric" min="1" max={MAX_SCORES_PER_SET} value={Number.isNaN(scoresPerSet) ? '' : scoresPerSet} onChange={(event) => setScoresPerSet(event.target.valueAsNumber)} /></label>
+        <CountField label={t('sets')} value={setCount} maximum={MAX_SETS} onChange={setSetCount} />
+        <CountField label={t('piecesPerSet')} value={scoresPerSet} maximum={MAX_SCORES_PER_SET} onChange={setScoresPerSet} />
       </div>
       <div className="availability-card" aria-live="polite">
         <span><strong>{eligible.length}</strong> {t('eligible')}</span>

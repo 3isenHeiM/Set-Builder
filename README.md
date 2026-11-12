@@ -55,11 +55,39 @@ On iPhone with Safari 18.4 or newer, tap the folder action, navigate inside the 
 
 ## Configuration and generation
 
+To delete a piece, open its details, choose **Delete piece**, and confirm **Delete permanently**. Its library entry and settings are removed, while saved sets and programs retain their independent copies. Re-importing the filename creates a new piece requiring configuration. Deletion also works offline and synchronizes on reconnection.
+
 New scores start active, enabled, and pending. `can start`, hotness 1–3, drums intro, and goes high must each have an explicit value before an enabled score becomes complete; a disabled score may leave these values unset. Collections replace the separate **80s repertoire** option. Create an **80s** collection if you want to group that repertoire. Missing, disabled, and pending scores cannot be generated.
+
+Each piece has an optional **Drummer notes** field for count-ins, grooves, breaks, or endings, with up to 2,000 characters and preserved line breaks. Notes save when leaving the field, using **Save**, or going **Back**. A failed Back save keeps the draft open. Notes never affect generation eligibility. Saving notes also updates matching pieces in existing reusable sets and programs, including imported copies matched by collection and identifier, without changing their order or musical settings. The notes appear directly below each piece in private and shared setlists.
 
 Choose a collection on the Build screen, or **All collections** to use every active, enabled, complete score. There is no separate repertoire switch. Existing 80s tags and historical program metadata are retained for backup compatibility; they do not restrict new builds. To continue grouping pieces previously tagged 80s, select them in the Library and move them into an **80s** collection. The documented UI limits are 1–12 sets and 1–30 scores per set. Generation checks the requested score and distinct-starter counts before doing work, reserves all starters first, samples the remaining scores without replacement using hotness as weight, places goes-high pieces at the beginning of their set immediately after its starter, and avoids adjacent drums intros when possible. A non-blocking warning is retained when that soft preference must be relaxed. The seed is stored so a result can be reproduced in tests.
 
-Every generated performance becomes a saved set list containing independent score snapshots, and the most recently opened list opens automatically after relaunch. Set-list and individual-set names are editable. Arrow controls can reorder whole sets and pieces; the starter remains first and goes-high placement stays valid. Later folder alignment does not rewrite this historical output.
+Every generated performance becomes a saved set list containing independent score snapshots, and the most recently opened list opens automatically after relaunch. Set-list and individual-set names are editable. A summary below the title shows the number of sets and total pieces and stays near the top while scrolling. On Build it follows the requested counts; in a saved program it counts the actual pieces across all sets and updates after accepted edits, including sets of different sizes. The Build screen has plus/minus controls for 1–12 sets and 1–30 pieces per set. Manually adding a set also supports up to 12 sets and requires an unused ready starter; the screen explains when a piece is already used or the maximum has been reached. Adding a saved set requires all of its pieces to be unused in the program.
+
+Arrow controls reorder whole sets and pieces. By default, the starter remains first and goes-high pieces stay near the beginning. Enable **Override piece order** on an individual set to move goes-high pieces anywhere after its starter. Turning the override off restores goes-high pieces immediately after the starter while preserving relative order within each group. The override and exact piece order persist in saved programs, reusable sets, and set-list exports/imports. Generation still applies all musical rules, and pieces remain unique across the program. Later folder alignment does not rewrite this historical output.
+
+## Locking and Tonight
+
+In **Sets**, use **Lock setlist** to protect the entire saved program. Locking saves pending names first and replaces all editing controls with a read-only setlist. Unlocking requires a separate confirmation in Sets. Locked programs keep their original piece order, names, collection labels, and drummer notes even when the library changes. Locks persist in the local database, existing cloud storage, and set-list JSON exports/imports. Older programs remain unlocked by default. The compact arrows control beside each piece opens the native **Move to set** picker without occupying the title column.
+
+The **Tonight** tab loads only locked programs. It keeps an independent, fixed copy on this device and opens automatically at the next launch, including offline. Its large piece titles, numbers, notes, and folding sets are available without editing controls. The local copy can open before the rest of the library finishes loading. Use **Change tonight’s setlist** to load another locked program, reload later edits, or clear the selection. Unlocking or editing the source program does not change Tonight’s copy. Normal app closure preserves it; signing out clears it with the private device cache. Tonight’s selection is not synchronized to other devices.
+
+## Read-only setlist sharing
+
+On the Sets page, open a saved program and choose **Share read-only link**, then **Copy link**. Anyone with the link can view that program without the band password. The link mirrors the latest saved program: its title, set names and sizes, piece order, collections, hotness, goes-high and drums-intro markers, starting pieces, warnings, and drummer notes. It refreshes every 30 seconds while visible and supports manual refresh. **Stop sharing** immediately revokes future reads; creating another link after stopping generates a different token. Sharing requires an online connection. The shared page has no editing controls or private-app navigation, and the public API accepts read requests only. It never exposes the rest of the library, filenames, or internal IDs.
+
+Existing deployments must apply `migrations/0002_setlist_shares.sql` once before using sharing. In the Cloudflare D1 Console, execute:
+
+```sql
+CREATE TABLE IF NOT EXISTS setlist_shares (
+  set_list_id TEXT PRIMARY KEY,
+  token TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL
+);
+```
+
+Deploy the updated Worker and app together. No new binding or secret is required. The local Workers preview applies the migration through `npm run db:migrate:local`; the Vite-only development server does not provide the sharing API. Sharing links authorize read access to that one program, so share them only with intended viewers. Previously viewed or copied data cannot be recalled by revocation.
 
 ## Data, authentication, and offline behavior
 
@@ -67,7 +95,7 @@ Authenticated D1 storage is the source of truth whenever the service is reachabl
 
 IndexedDB holds a cache for installed/offline use and at most one latest deferred state write. When connectivity returns, that deferred write is copied to D1. Avoid simultaneous edits on several devices: the last complete state received by D1 wins. An existing local-only installation is migrated automatically only when the shared D1 library is empty and that browser has never connected successfully; once D1 exists it wins over a stale browser cache.
 
-Collection management upgrades IndexedDB to version 11 and the cloud state document to version 3. Older libraries are upgraded without dropping pieces or settings. The D1 SQL schema and Worker bindings do not change; deploy the updated Worker and app together. Settings backups contain each piece's collection, but do not include empty collections.
+The application upgrades IndexedDB to version 12 and the cloud state document to version 4 without dropping pieces or settings. Notes are included in settings backup version 5 and setlist backup version 3. Older backup versions remain supported; importing old settings without notes preserves existing notes. Settings backups contain each piece's collection, but do not include empty collections. Notes need no D1 SQL migration; sharing requires the separate migration above. Deploy the updated Worker and app together.
 
 The Worker accepts only a correctly signed, unexpired, 30-day session cookie before reading or changing D1. Login requires a server-validated Cloudflare Turnstile token before the password is checked and retains the per-network-location rate limit of ten attempts per minute. The password is represented only by its SHA-256 digest in an encrypted Worker Secret, and the independent session-signing key and Turnstile validation key are separate encrypted secrets. The static application shell is public and contains no library data or credentials. Turnstile loads only on the login page and sends no score filenames, settings, or set lists to its challenge service. There is no Zero Trust account, account database, WebDAV access, telemetry, or external font. The production service worker caches only the same-origin app shell and static assets; it does not cache Turnstile or selected `.mscz` files.
 

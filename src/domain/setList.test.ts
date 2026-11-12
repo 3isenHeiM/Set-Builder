@@ -1,5 +1,6 @@
 import type { PerformanceScoreSnapshot, SavedSetList } from './types'
-import { addNewSet, addPiece, addSavedSetToProgram, assertSavedPerformanceValid, assertSavedSetValid, canAddPiece, canAddSavedSet, canMoveBetweenSets, canMovePiece, createProgramFromSavedSet, createProgramFromStarter, linkSavedSet, moveBetweenSets, movePiece, moveSet, removePiece, removeSetFromProgram, renameSet, renameSetList } from './setList'
+import { addNewSet, addPiece, addSavedSetToProgram, assertSavedPerformanceValid, assertSavedSetValid, canAddPiece, canAddSavedSet, canMoveBetweenSets, canMovePiece, createProgramFromSavedSet, createProgramFromStarter, linkSavedSet, moveBetweenSets, movePiece, moveSet, removePiece, removeSetFromProgram, renameSet, renameSetList, setOrderOverride } from './setList'
+import { MAX_SETS } from './generator'
 import { makePerformance, makeScore } from '../test/fixtures'
 
 function piece(id: string, goesHigh = false, canStart = false): PerformanceScoreSnapshot {
@@ -24,6 +25,61 @@ function saved(): SavedSetList {
 }
 
 describe('editable set lists', () => {
+  it('adds more than four sets up to the documented limit without reusing pieces', () => {
+    const starter = (number: number) => makeScore({ id: `piece-${number}`, scoreNumber: number, displayNumber: String(number) })
+    let program = createProgramFromStarter(starter(1), 'created', 'program')
+    for (let number = 2; number <= MAX_SETS; number += 1) program = addNewSet(program, starter(number), 'updated')
+    expect(program.performance.setCount).toBe(MAX_SETS)
+    expect(new Set(program.performance.sets.flatMap((set) => set.scores.map((score) => score.id))).size).toBe(MAX_SETS)
+    expect(() => assertSavedPerformanceValid(program.performance)).not.toThrow()
+    expect(addNewSet(program, starter(MAX_SETS + 1), 'later')).toBe(program)
+  })
+
+  it('combines reusable sets beyond four and stops at the same program limit', () => {
+    const reusable = (number: number) => ({ id: `set-${number}`, name: `Set ${number}`, createdAt: 'created', updatedAt: 'updated', scores: [piece(String(number), false, true)] })
+    let program = createProgramFromSavedSet(reusable(1), 'created', 'program')
+    for (let number = 2; number <= MAX_SETS; number += 1) program = addSavedSetToProgram(program, reusable(number), 'updated')
+    expect(program.performance.sets).toHaveLength(MAX_SETS)
+    expect(canAddSavedSet(program.performance, reusable(MAX_SETS + 1))).toBe(false)
+    expect(() => assertSavedPerformanceValid(program.performance)).not.toThrow()
+  })
+
+  it('overrides goes-high placement per set and restores the suggested order explicitly', () => {
+    const original = saved()
+    const overridden = setOrderOverride(original, 0, true, 'enabled')
+    expect(canMovePiece(overridden.performance.sets[0]!, 1, 3)).toBe(true)
+    const moved = movePiece(overridden, 0, 1, 3, 'moved')
+    expect(moved.performance.sets[0]?.scores.map((score) => score.id)).toEqual(['1', '3', '4', '2'])
+    expect(moved.performance.sets[1]).toEqual(original.performance.sets[1])
+    expect(canMovePiece(moved.performance.sets[0]!, 1, 0)).toBe(false)
+    expect(() => assertSavedPerformanceValid(moved.performance)).not.toThrow()
+    const restored = setOrderOverride(moved, 0, false, 'restored')
+    expect(restored.performance.sets[0]?.scores.map((score) => score.id)).toEqual(['1', '2', '3', '4'])
+    expect(original.performance.sets[0]?.orderOverride).toBeUndefined()
+    expect(() => assertSavedPerformanceValid(restored.performance)).not.toThrow()
+  })
+
+  it('retains an overridden order when saving and reusing a set', () => {
+    const program = movePiece(setOrderOverride(saved(), 0, true, 'enabled'), 0, 1, 3, 'moved')
+    const reusable = { id: 'reusable', name: 'Custom order', createdAt: 'created', updatedAt: 'saved', orderOverride: true, scores: program.performance.sets[0]!.scores }
+    expect(() => assertSavedSetValid(reusable)).not.toThrow()
+    const restored = createProgramFromSavedSet(reusable, 'created', 'new')
+    expect(restored.performance.sets[0]).toMatchObject({ orderOverride: true, scores: reusable.scores })
+    const added = addSavedSetToProgram(createProgramFromSavedSet({ ...reusable, id: 'second', scores: program.performance.sets[1]!.scores }, 'created', 'second'), reusable, 'updated')
+    expect(added.performance.sets[1]).toMatchObject({ orderOverride: true, scores: reusable.scores })
+    expect(() => assertSavedPerformanceValid(added.performance)).not.toThrow()
+    expect(() => assertSavedSetValid({ ...reusable, orderOverride: false })).toThrow('Invalid saved set')
+  })
+
+  it('rejects duplicates and non-starters even when goes-high ordering is overridden', () => {
+    const program = setOrderOverride(saved(), 0, true, 'enabled')
+    program.performance.sets[0]!.scores[0]!.canStart = false
+    expect(() => assertSavedPerformanceValid(program.performance)).toThrow('malformed')
+    program.performance.sets[0]!.scores[0]!.canStart = true
+    program.performance.sets[0]!.scores[1] = program.performance.sets[1]!.scores[1]!
+    expect(() => assertSavedPerformanceValid(program.performance)).toThrow('duplicate')
+  })
+
   it('creates a program and a second set from unused ready starters', () => {
     const first = makeScore()
     const second = makeScore({ id: 'score-2', scoreNumber: 2, displayNumber: '02' })

@@ -2,6 +2,7 @@ import { configurationStatus } from '../domain/configuration'
 import { MAX_SCORES_PER_SET, MAX_SETS, MIN_SCORES_PER_SET, MIN_SETS, assertPerformanceValid } from '../domain/generator'
 import { assertSavedPerformanceValid, assertSavedSetValid } from '../domain/setList'
 import { readCollection, collectionNames, comparePieces, matchesDisplay, pieceKey, validCode } from '../domain/collections'
+import { readDrummerNotes } from '../domain/drummerNotes'
 import type {
   FolderScan,
   FolderScanSummary,
@@ -15,7 +16,7 @@ import type {
 } from '../domain/types'
 
 export const CLOUD_STATE_FORMAT = 'piece-selector-cloud-state'
-export const CLOUD_STATE_VERSION = 3
+export const CLOUD_STATE_VERSION = 4
 
 export interface CloudState {
   format: typeof CLOUD_STATE_FORMAT
@@ -88,6 +89,12 @@ function nullableBoolean(value: unknown): boolean | null {
   return value
 }
 
+function readOrderOverride(value: unknown): { orderOverride?: boolean } {
+  if (value === undefined) return {}
+  if (typeof value !== 'boolean') throw new Error('Cloud state contains an invalid order override.')
+  return { orderOverride: value }
+}
+
 function hotnessValue(value: unknown, nullable: true): Hotness | null
 function hotnessValue(value: unknown, nullable: false): Hotness
 function hotnessValue(value: unknown, nullable: boolean): Hotness | null {
@@ -132,6 +139,7 @@ function readScore(value: unknown): Score {
     canStart,
     hotness,
     drumsIntro,
+    drummerNotes: readDrummerNotes(value.drummerNotes),
     goesHigh,
     enabled,
     tags: normalizedTags,
@@ -161,6 +169,7 @@ function readPerformanceScore(value: unknown): PerformanceScoreSnapshot {
     title,
     hotness: hotnessValue(value.hotness, false),
     drumsIntro: value.drumsIntro,
+    ...(value.drummerNotes === undefined ? {} : { drummerNotes: readDrummerNotes(value.drummerNotes) }),
     goesHigh: value.goesHigh,
     canStart: value.canStart,
   }
@@ -184,7 +193,7 @@ function readPerformance(value: unknown, allowVariableSetSize = false): Generate
     }
     const name = set.name === undefined ? undefined : stringValue(set.name, 120)
     const savedSetId = set.savedSetId === undefined ? undefined : idValue(set.savedSetId)
-    return { number: index + 1, ...(name === undefined ? {} : { name }), ...(savedSetId === undefined ? {} : { savedSetId }), scores: set.scores.map(readPerformanceScore) }
+    return { number: index + 1, ...(name === undefined ? {} : { name }), ...(savedSetId === undefined ? {} : { savedSetId }), ...readOrderOverride(set.orderOverride), scores: set.scores.map(readPerformanceScore) }
   })
   const performance: GeneratedPerformance = {
     id: idValue(value.id),
@@ -223,8 +232,10 @@ function readSetList(value: unknown): SavedSetList {
   const id = idValue(value.id)
   const performance = readPerformance(value.performance, true)
   if (performance.id !== id) throw new Error('Cloud state contains an inconsistent saved set list.')
+  if (value.locked !== undefined && typeof value.locked !== 'boolean') throw new Error('Cloud state contains an invalid setlist lock.')
   return {
     id,
+    ...(value.locked === undefined ? {} : { locked: value.locked }),
     name: stringValue(value.name, 120),
     createdAt: timestampValue(value.createdAt),
     updatedAt: timestampValue(value.updatedAt),
@@ -241,6 +252,7 @@ function readSavedSet(value: unknown): SavedSet {
     name: stringValue(value.name, 120),
     createdAt: timestampValue(value.createdAt),
     updatedAt: timestampValue(value.updatedAt),
+    ...readOrderOverride(value.orderOverride),
     scores: value.scores.map(readPerformanceScore),
   }
   assertSavedSetValid(savedSet)
@@ -248,13 +260,13 @@ function readSavedSet(value: unknown): SavedSet {
 }
 
 export function parseCloudState(value: unknown): CloudState {
-  if (!isRecord(value) || value.format !== CLOUD_STATE_FORMAT || (value.version !== 1 && value.version !== 2 && value.version !== CLOUD_STATE_VERSION)
+  if (!isRecord(value) || value.format !== CLOUD_STATE_FORMAT || (value.version !== 1 && value.version !== 2 && value.version !== 3 && value.version !== CLOUD_STATE_VERSION)
     || !Array.isArray(value.scores) || value.scores.length > 20_000
     || !Array.isArray(value.setLists) || value.setLists.length > 2_000) {
     throw new Error('The cloud library is malformed or unsupported.')
   }
   const scores = value.scores.map(readScore)
-  const rawCollections = value.collections === undefined && value.version !== CLOUD_STATE_VERSION ? [] : value.collections
+  const rawCollections = value.collections === undefined && (value.version === 1 || value.version === 2) ? [] : value.collections
   if (!Array.isArray(rawCollections) || rawCollections.length > 20_000) throw new Error('Cloud state contains invalid collections.')
   const collections = rawCollections.map((name) => readCollection(stringValue(name, 120)))
   if (new Set(collections.map((name) => name.toLocaleLowerCase('en'))).size !== collections.length) throw new Error('Cloud state contains duplicate collections.')

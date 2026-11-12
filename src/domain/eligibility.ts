@@ -38,6 +38,7 @@ export function toPerformanceSnapshot(score: EligibleScore): PerformanceScoreSna
     title: score.title,
     hotness: score.hotness,
     drumsIntro: score.drumsIntro,
+    ...(score.drummerNotes ? { drummerNotes: score.drummerNotes } : {}),
     goesHigh: score.goesHigh,
     canStart: score.canStart,
   }

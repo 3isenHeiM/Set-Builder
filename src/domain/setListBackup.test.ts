@@ -1,6 +1,7 @@
 import { makePerformance } from '../test/fixtures'
 import type { SavedSetList } from './types'
 import { createSetListBackup, parseSetListBackupJson, restoreSetList, setListBackupToJson } from './setListBackup'
+import { assertSavedPerformanceValid } from './setList'
 
 const saved: SavedSetList = {
   id: 'local-list-id',
@@ -11,6 +12,21 @@ const saved: SavedSetList = {
 }
 
 describe('set-list export and import', () => {
+  it('round trips an explicit ordering override while rejecting the same order without it', () => {
+    const starter = makePerformance().sets[0]!.scores[0]!
+    const custom = { ...saved, performance: makePerformance({ scoresPerSet: 3, sets: [{ number: 1, orderOverride: true, scores: [starter, { ...starter, id: 'regular', scoreNumber: 2, displayNumber: '02', canStart: false }, { ...starter, id: 'high', scoreNumber: 3, displayNumber: '03', goesHigh: true, canStart: false }] }] }) }
+    const backup = createSetListBackup(custom, saved.updatedAt)
+    let next = 0
+    const restored = restoreSetList(parseSetListBackupJson(JSON.stringify(backup)), saved.updatedAt, () => `new-${next++}`)
+    expect(restored.performance.sets[0]?.orderOverride).toBe(true)
+    expect(restored.performance.sets[0]?.scores.map((score) => score.scoreNumber)).toEqual([1, 2, 3])
+    expect(() => assertSavedPerformanceValid(restored.performance)).not.toThrow()
+    backup.setList.sets[0]!.orderOverride = false
+    expect(() => parseSetListBackupJson(JSON.stringify(backup))).toThrow('go high')
+    const malformed = { ...backup, setList: { ...backup.setList, sets: backup.setList.sets.map((set) => ({ ...set, orderOverride: 'true' })) } }
+    expect(() => parseSetListBackupJson(JSON.stringify(malformed))).toThrow('malformed')
+  })
+
   it('round trips names, order and score metadata with fresh internal IDs', () => {
     const source = setListBackupToJson(createSetListBackup(saved, '2026-09-02T10:00:00.000Z'))
     let next = 0
