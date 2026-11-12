@@ -36,14 +36,14 @@ describe('set-list export and import', () => {
     expect(source).not.toContain('score-1')
   })
 
-  it('rejects malformed, duplicated and non-starter imports', () => {
+  it('rejects malformed and non-starter imports while accepting repeated pieces', () => {
     expect(() => parseSetListBackupJson('{')).toThrow('not valid JSON')
     const backup = createSetListBackup(saved, '2026-09-02T10:00:00.000Z')
     backup.setList.sets[0]!.scores[0]!.canStart = false
     expect(() => parseSetListBackupJson(JSON.stringify(backup))).toThrow('must start')
     backup.setList.sets[0]!.scores[0]!.canStart = true
     backup.setList.sets[0]!.scores.push({ ...backup.setList.sets[0]!.scores[0]! })
-    expect(() => parseSetListBackupJson(JSON.stringify(backup))).toThrow('appears more than once')
+    expect(parseSetListBackupJson(JSON.stringify(backup)).setList.sets[0]?.scores).toHaveLength(2)
   })
 
   it('imports sets with different piece counts', () => {

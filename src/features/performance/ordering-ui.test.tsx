@@ -43,18 +43,17 @@ describe('manual piece ordering', () => {
     expect(screen.getByRole('button', { name: 'Move High piece down' })).toBeDisabled()
   })
 
-  it('adds a fifth set and explains why an already used starter cannot be added', async () => {
+  it('adds a fifth set with an already used starter and marks both appearances', async () => {
     const user = userEvent.setup()
     const starters = Array.from({ length: 5 }, (_, index) => makeScore({ id: `starter-${index}`, scoreNumber: index + 1, displayNumber: String(index + 1), title: `Starter ${index + 1}` }))
     let initial = createProgramFromStarter(starters[0]!, '2026-11-12T10:00:00Z', 'program')
     for (const starter of starters.slice(1, 4)) initial = addNewSet(initial, starter, initial.updatedAt)
     render(<Editor initial={initial} scores={starters} />)
     await user.selectOptions(screen.getByRole('combobox', { name: 'Choose a starting piece' }), starters[0]!.id)
-    expect(screen.getByRole('button', { name: 'Add a new set' })).toBeDisabled()
-    expect(screen.getByText(/This piece is already in the program/)).toBeVisible()
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Choose a starting piece' }), starters[4]!.id)
+    expect(screen.getByRole('button', { name: 'Add a new set' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: 'Add a new set' }))
     expect(await screen.findByRole('textbox', { name: 'Name for Set 5' })).toBeVisible()
-    expect(screen.getByText(/0 unused starting pieces available/)).toBeVisible()
+    expect(screen.getAllByRole('img', { name: 'Starter 1 appears more than once in this program' })).toHaveLength(2)
+    expect(screen.getByText(/5 starting pieces available/)).toBeVisible()
   })
 })

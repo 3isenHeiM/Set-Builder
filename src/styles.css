@@ -446,3 +446,8 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
 .tonight-picker, .unlock-confirmation { display: grid; gap: 12px; padding: 15px; background: var(--paper); border: 1px solid var(--border); border-radius: 14px; }
 .tonight-picker p, .unlock-confirmation p { margin-bottom: 0; }
 .tonight-picker label { display: grid; gap: 6px; }
+
+.piece-title { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.piece-title strong { min-width: 0; }
+.repeat-warning { flex: 0 0 auto; padding: 1px 4px; color: var(--danger); background: var(--amber-soft); border: 1px solid var(--border); border-radius: 5px; font-size: 12px; font-weight: 850; line-height: 1.4; white-space: nowrap; }
+.repeat-hint { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }

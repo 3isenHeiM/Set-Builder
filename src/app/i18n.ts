@@ -1,6 +1,8 @@
 export type Locale = 'en' | 'fr'
 
 const en = {
+  repeatedPiece: '{{title}} appears more than once in this program',
+  repeatedPieceHelp: '(!) marks a piece used more than once in this program.',
   programSummary: 'Program summary',
   summarySet: 'set',
   summarySets: 'sets',
@@ -148,7 +150,7 @@ const en = {
   newSets: 'New sets',
   noFolderSelected: 'No folder was selected. Your library has not changed.',
   noMatches: 'No matches.',
-  noAvailablePieces: 'No unused ready pieces',
+  noAvailablePieces: 'No ready pieces',
   noRepeats: 'No repeats',
   noSettingsChanged: 'No settings were changed.',
   noSets: 'No sets yet.',
@@ -246,7 +248,7 @@ const en = {
   countRange: '1–{{maximum}}',
   overridePieceOrder: 'Override piece order for Set {{number}}',
   overrideOrderHelp: 'Move pieces freely after the starter. Turning this off restores goes-high pieces near the start.',
-  unusedStarters: '{{count}} unused starting pieces available. Programs support up to {{maximum}} sets.',
+  availableStarters: '{{count}} starting pieces available. Programs support up to {{maximum}} sets.',
   starterAlreadyUsed: 'This piece is already in the program. Choose an unused starting piece to add another set.',
   setLimitReached: 'This program has reached the limit of {{maximum}} sets.',
   savedSetConflict: 'This set contains pieces already in the program. Choose a set with unused pieces.',
@@ -338,6 +340,8 @@ const en = {
 type Copy = typeof en
 
 const fr: Copy = {
+  repeatedPiece: '{{title}} apparaît plusieurs fois dans ce programme',
+  repeatedPieceHelp: '(!) indique un morceau utilisé plusieurs fois dans ce programme.',
   programSummary: 'Résumé du programme',
   summarySet: 'set',
   summarySets: 'sets',
@@ -485,7 +489,7 @@ const fr: Copy = {
   newSets: 'Nouveaux sets',
   noFolderSelected: 'Aucun dossier sélectionné. La bibliothèque n’a pas changé.',
   noMatches: 'Aucun résultat.',
-  noAvailablePieces: 'Aucun morceau prêt inutilisé',
+  noAvailablePieces: 'Aucun morceau prêt',
   noRepeats: 'Sans doublons',
   noSettingsChanged: 'Aucun réglage n’a été modifié.',
   noSets: 'Aucun set pour l’instant.',
@@ -583,7 +587,7 @@ const fr: Copy = {
   countRange: '1–{{maximum}}',
   overridePieceOrder: 'Personnaliser l’ordre des morceaux du Set {{number}}',
   overrideOrderHelp: 'Déplacez librement les morceaux après le morceau de départ. Désactiver replace les morceaux qui montent au début.',
-  unusedStarters: '{{count}} morceaux de départ inutilisés disponibles. Les programmes acceptent jusqu’à {{maximum}} sets.',
+  availableStarters: '{{count}} morceaux de départ disponibles. Les programmes acceptent jusqu’à {{maximum}} sets.',
   starterAlreadyUsed: 'Ce morceau est déjà dans le programme. Choisissez un morceau de départ inutilisé pour ajouter un set.',
   setLimitReached: 'Ce programme a atteint la limite de {{maximum}} sets.',
   savedSetConflict: 'Ce set contient des morceaux déjà présents dans le programme. Choisissez un set avec des morceaux inutilisés.',

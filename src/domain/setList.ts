@@ -1,6 +1,6 @@
 import { MAX_SCORES_PER_SET, MAX_SETS, MIN_SCORES_PER_SET } from './generator'
 import type { GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, SavedSet, SavedSetList, Score } from './types'
-import { pieceKey } from './collections'
+import { uniqueEntries } from './performanceEntries'
 
 function moved<T>(values: readonly T[], from: number, to: number): T[] {
   if (from < 0 || to < 0 || from >= values.length || to >= values.length) return [...values]
@@ -95,7 +95,7 @@ export function movePiece(setList: SavedSetList, setIndex: number, from: number,
 }
 
 export function canAddPiece(setList: SavedSetList, score: Score): boolean {
-  return !setList.locked && snapshot(score) !== undefined && !setList.performance.sets.some((set) => set.scores.some((candidate) => candidate.id === score.id || pieceKey(candidate) === pieceKey(score)))
+  return !setList.locked && snapshot(score) !== undefined
 }
 
 export function addPiece(setList: SavedSetList, setIndex: number, score: Score, updatedAt: string): SavedSetList {
@@ -106,7 +106,7 @@ export function addPiece(setList: SavedSetList, setIndex: number, score: Score, 
   const firstRegularIndex = candidate.goesHigh && !target.orderOverride ? target.scores.findIndex((piece, index) => index > 0 && !piece.goesHigh) : -1
   const insertAt = firstRegularIndex < 0 ? target.scores.length : firstRegularIndex
   const scores = [...target.scores]
-  scores.splice(insertAt, 0, candidate)
+  scores.splice(insertAt, 0, uniqueEntries([candidate], setList.performance.sets.flatMap((set) => set.scores))[0]!)
   const nextSet = { ...target, scores }
   if (!validPieceOrder(nextSet)) return setList
   const sets = setList.performance.sets.map((set, index) => index === setIndex ? nextSet : set)
@@ -149,7 +149,7 @@ export function addNewSet(setList: SavedSetList, starter: Score, updatedAt: stri
   if (setList.locked) return setList
   const candidate = snapshot(starter)
   if (!candidate?.canStart || !canAddPiece(setList, starter) || setList.performance.sets.length >= MAX_SETS) return setList
-  const sets = [...setList.performance.sets, { number: setList.performance.sets.length + 1, scores: [candidate] }]
+  const sets = [...setList.performance.sets, { number: setList.performance.sets.length + 1, scores: uniqueEntries([candidate], setList.performance.sets.flatMap((set) => set.scores)) }]
   return updated({ ...setList, performance: { ...setList.performance, setCount: sets.length, sets } }, updatedAt)
 }
 
@@ -162,16 +162,9 @@ export function createProgramFromStarter(starter: Score, now: string, id: string
 export function assertSavedPerformanceValid(performance: GeneratedPerformance): void {
   if (performance.sets.length < 1 || performance.sets.length > MAX_SETS) throw new Error('Invalid saved program: set count out of range.')
   if (performance.sets.length !== performance.setCount) throw new Error('Invalid saved program: set count mismatch.')
-  const ids = new Set<string>()
-  const numbers = new Set<string>()
   for (const [setIndex, set] of performance.sets.entries()) {
     if (set.number !== setIndex + 1 || set.scores.length < MIN_SCORES_PER_SET || set.scores.length > MAX_SCORES_PER_SET || !validPieceOrder(set)) {
       throw new Error(`Invalid saved program: malformed Set ${setIndex + 1}.`)
-    }
-    for (const score of set.scores) {
-      if (ids.has(score.id) || numbers.has(pieceKey(score))) throw new Error(`Invalid saved program: duplicate score ${score.id}.`)
-      ids.add(score.id)
-      numbers.add(pieceKey(score))
     }
   }
 }
@@ -179,14 +172,11 @@ export function assertSavedPerformanceValid(performance: GeneratedPerformance): 
 export function assertSavedSetValid(savedSet: SavedSet): void {
   if (savedSet.scores.length < MIN_SCORES_PER_SET || savedSet.scores.length > MAX_SCORES_PER_SET
     || !validPieceOrder({ number: 1, ...savedSet })) throw new Error('Invalid saved set.')
-  if (new Set(savedSet.scores.map((score) => score.id)).size !== savedSet.scores.length
-    || new Set(savedSet.scores.map(pieceKey)).size !== savedSet.scores.length) throw new Error('Invalid saved set: duplicate piece.')
 }
 
 export function canAddSavedSet(performance: GeneratedPerformance, savedSet: SavedSet): boolean {
-  const usedIds = new Set(performance.sets.flatMap((set) => set.scores.map((score) => score.id)))
-  const usedNumbers = new Set(performance.sets.flatMap((set) => set.scores.map(pieceKey)))
-  return performance.sets.length < MAX_SETS && savedSet.scores.every((score) => !usedIds.has(score.id) && !usedNumbers.has(pieceKey(score)))
+  if (performance.sets.length >= MAX_SETS) return false
+  try { assertSavedSetValid(savedSet); return true } catch { return false }
 }
 
 export function createProgramFromSavedSet(savedSet: SavedSet, now: string, id: string): SavedSetList {
@@ -197,7 +187,7 @@ export function createProgramFromSavedSet(savedSet: SavedSet, now: string, id: s
     seed: 0,
     setCount: 1,
     scoresPerSet: savedSet.scores.length,
-    sets: [{ number: 1, name: savedSet.name, savedSetId: savedSet.id, ...(savedSet.orderOverride === undefined ? {} : { orderOverride: savedSet.orderOverride }), scores: [...savedSet.scores] }],
+    sets: [{ number: 1, name: savedSet.name, savedSetId: savedSet.id, ...(savedSet.orderOverride === undefined ? {} : { orderOverride: savedSet.orderOverride }), scores: uniqueEntries(savedSet.scores) }],
     warnings: [],
   }
   assertSavedPerformanceValid(performance)
@@ -207,7 +197,7 @@ export function createProgramFromSavedSet(savedSet: SavedSet, now: string, id: s
 export function addSavedSetToProgram(setList: SavedSetList, savedSet: SavedSet, updatedAt: string): SavedSetList {
   if (setList.locked) return setList
   if (!canAddSavedSet(setList.performance, savedSet)) return setList
-  const sets = [...setList.performance.sets, { number: setList.performance.sets.length + 1, name: savedSet.name, savedSetId: savedSet.id, ...(savedSet.orderOverride === undefined ? {} : { orderOverride: savedSet.orderOverride }), scores: [...savedSet.scores] }]
+  const sets = [...setList.performance.sets, { number: setList.performance.sets.length + 1, name: savedSet.name, savedSetId: savedSet.id, ...(savedSet.orderOverride === undefined ? {} : { orderOverride: savedSet.orderOverride }), scores: uniqueEntries(savedSet.scores, setList.performance.sets.flatMap((set) => set.scores)) }]
   return updated({ ...setList, performance: { ...setList.performance, setCount: sets.length, sets } }, updatedAt)
 }
 

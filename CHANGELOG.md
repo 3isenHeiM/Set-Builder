@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Repeat pieces, starters, or saved sets when composing a program, with a small **(!)** beside every repeated appearance in editable, locked, Tonight, and shared views. Automatic generation remains unique (fixes [#14](https://github.com/3isenHeiM/Set-Builder/issues/14)).
+
 ## [2.3.0] - 2026-11-12
 
 *It's happening*

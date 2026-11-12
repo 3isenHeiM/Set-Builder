@@ -1,12 +1,12 @@
 import { MAX_SCORES_PER_SET, MAX_SETS } from './generator'
-import { readCollection, matchesDisplay, pieceKey, validCode } from './collections'
+import { readCollection, matchesDisplay, validCode } from './collections'
 import { readDrummerNotes } from './drummerNotes'
 import type { Hotness, PerformanceScoreSnapshot, Preset, SavedSetList } from './types'
 
 export const SET_LIST_BACKUP_FORMAT = 'piece-selector-set-list'
 export const SET_LIST_BACKUP_VERSION = 3
 
-type SetListBackupScore = Omit<PerformanceScoreSnapshot, 'id'>
+type SetListBackupScore = Omit<PerformanceScoreSnapshot, 'id' | 'entryId'>
 
 export interface SetListBackup {
   format: typeof SET_LIST_BACKUP_FORMAT
@@ -70,8 +70,9 @@ export function createSetListBackup(saved: SavedSetList, exportedAt: string): Se
       sets: saved.performance.sets.map((set) => ({
         name: set.name?.trim() ?? '',
         ...(set.orderOverride === undefined ? {} : { orderOverride: set.orderOverride }),
-        scores: set.scores.map(({ id: _, ...score }) => {
+        scores: set.scores.map(({ id: _, entryId: __, ...score }) => {
           void _
+          void __
           return score
         }),
       })),
@@ -111,7 +112,6 @@ export function parseSetListBackupJson(source: string): SetListBackup {
     warnings.push(warning)
   }
 
-  const numbers = new Set<string>()
   const sets = setList.sets.map((set) => {
     if (!isRecord(set) || typeof set.name !== 'string' || set.name.length > 120
       || !Array.isArray(set.scores) || set.scores.length < 1 || set.scores.length > MAX_SCORES_PER_SET) {
@@ -122,8 +122,6 @@ export function parseSetListBackupJson(source: string): SetListBackup {
     if (!scores[0]?.canStart) throw new Error('Every imported set must start with an eligible starter.')
     let regularPieceSeen = false
     for (const score of scores) {
-      if (numbers.has(pieceKey(score))) throw new Error('A piece appears more than once in the imported set list.')
-      numbers.add(pieceKey(score))
       if (!set.orderOverride && score !== scores[0] && score.goesHigh && regularPieceSeen) throw new Error('Pieces that go high must remain near the start of their set.')
       if (score !== scores[0]) regularPieceSeen ||= !score.goesHigh
     }

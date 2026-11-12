@@ -141,6 +141,8 @@ export interface FolderScan {
 
 export interface PerformanceScoreSnapshot {
   id: string
+  /** Identifies a repeated appearance; id continues to identify the library piece. */
+  entryId?: string
   scoreNumber: PieceCode
   collection?: string
   displayNumber: string

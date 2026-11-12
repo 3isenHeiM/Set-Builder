@@ -2,6 +2,7 @@ import type { PerformanceScoreSnapshot, SavedSetList } from './types'
 import { addNewSet, addPiece, addSavedSetToProgram, assertSavedPerformanceValid, assertSavedSetValid, canAddPiece, canAddSavedSet, canMoveBetweenSets, canMovePiece, createProgramFromSavedSet, createProgramFromStarter, linkSavedSet, moveBetweenSets, movePiece, moveSet, removePiece, removeSetFromProgram, renameSet, renameSetList, setOrderOverride } from './setList'
 import { MAX_SETS } from './generator'
 import { makePerformance, makeScore } from '../test/fixtures'
+import { entryKey } from './performanceEntries'
 
 function piece(id: string, goesHigh = false, canStart = false): PerformanceScoreSnapshot {
   return { id, scoreNumber: Number(id), displayNumber: id, title: `Piece ${id}`, hotness: 2, drumsIntro: false, goesHigh, canStart }
@@ -71,13 +72,13 @@ describe('editable set lists', () => {
     expect(() => assertSavedSetValid({ ...reusable, orderOverride: false })).toThrow('Invalid saved set')
   })
 
-  it('rejects duplicates and non-starters even when goes-high ordering is overridden', () => {
+  it('allows repeated pieces while still requiring starters when order is overridden', () => {
     const program = setOrderOverride(saved(), 0, true, 'enabled')
     program.performance.sets[0]!.scores[0]!.canStart = false
     expect(() => assertSavedPerformanceValid(program.performance)).toThrow('malformed')
     program.performance.sets[0]!.scores[0]!.canStart = true
     program.performance.sets[0]!.scores[1] = program.performance.sets[1]!.scores[1]!
-    expect(() => assertSavedPerformanceValid(program.performance)).toThrow('duplicate')
+    expect(() => assertSavedPerformanceValid(program.performance)).not.toThrow()
   })
 
   it('creates a program and a second set from unused ready starters', () => {
@@ -86,7 +87,9 @@ describe('editable set lists', () => {
     const program = createProgramFromStarter(first, '2026-01-01T00:00:00Z', 'program')
     const next = addNewSet(program, second, 'later')
     expect(next.performance.sets.map((set) => set.scores[0]?.id)).toEqual(['score-1', 'score-2'])
-    expect(addNewSet(next, first, 'later')).toBe(next)
+    const repeated = addNewSet(next, first, 'later')
+    expect(repeated.performance.sets[2]?.scores[0]?.id).toBe(first.id)
+    expect(entryKey(repeated.performance.sets[2]!.scores[0]!)).not.toBe(entryKey(repeated.performance.sets[0]!.scores[0]!))
     expect(() => assertSavedPerformanceValid(next.performance)).not.toThrow()
   })
 
@@ -120,13 +123,14 @@ describe('editable set lists', () => {
     expect(movePiece(saved(), 0, 3, 2, 'moved').performance.sets[0]?.scores.map((score) => score.id)).toEqual(['1', '2', '4', '3'])
   })
 
-  it('adds eligible unused pieces and removes non-starters', () => {
+  it('adds eligible pieces again and removes non-starters', () => {
     const program = saved()
     const newPiece = makeScore({ id: '9', scoreNumber: 9, displayNumber: '09', title: 'Africa' })
     const added = addPiece(program, 0, newPiece, 'added')
     expect(canAddPiece(program, newPiece)).toBe(true)
     expect(added.performance.sets[0]?.scores.map((score) => score.id)).toEqual(['1', '2', '3', '4', '9'])
-    expect(canAddPiece(added, newPiece)).toBe(false)
+    expect(canAddPiece(added, newPiece)).toBe(true)
+    expect(canAddPiece(added, { ...newPiece, enabled: false })).toBe(false)
     expect(removePiece(added, 0, 1, 'removed').performance.sets[0]?.scores.map((score) => score.id)).toEqual(['1', '3', '4', '9'])
     expect(removePiece(added, 0, 0, 'unchanged')).toBe(added)
     expect(() => assertSavedPerformanceValid(added.performance)).not.toThrow()
@@ -140,14 +144,18 @@ describe('editable set lists', () => {
     expect(() => assertSavedSetValid(reusable)).not.toThrow()
   })
 
-  it('builds a program from reusable sets without repeated pieces', () => {
+  it('builds a program from reusable sets and allows adding the same set again', () => {
     const first = { id: 'hot', name: 'Hot Set', createdAt: 'created', updatedAt: 'created', scores: [piece('1', false, true), piece('2')] }
     const second = { id: 'slow', name: 'Slow Set', createdAt: 'created', updatedAt: 'created', scores: [piece('3', false, true), piece('4')] }
     const program = createProgramFromSavedSet(first, 'created', 'program')
     expect(canAddSavedSet(program.performance, second)).toBe(true)
     const combined = addSavedSetToProgram(program, second, 'combined')
     expect(combined.performance.sets.map((set) => [set.number, set.name])).toEqual([[1, 'Hot Set'], [2, 'Slow Set']])
-    expect(canAddSavedSet(combined.performance, first)).toBe(false)
+    expect(canAddSavedSet(combined.performance, first)).toBe(true)
+    const repeated = addSavedSetToProgram(combined, first, 'repeated')
+    expect(repeated.performance.sets).toHaveLength(3)
+    const entries = repeated.performance.sets.flatMap((set) => set.scores.map(entryKey))
+    expect(new Set(entries).size).toBe(entries.length)
     expect(removeSetFromProgram(combined, 0, 'removed').performance.sets).toMatchObject([{ number: 1, name: 'Slow Set' }])
   })
 })

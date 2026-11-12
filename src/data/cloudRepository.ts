@@ -21,6 +21,7 @@ import type { PieceSelectorDatabase } from './database'
 import type { PerformanceRepository, ScoreRepository } from './repository'
 import { assertLockedProgramsUnchanged, assertSetListEditable, changeSetListLock } from '../domain/performanceLock'
 import { readTonight, saveTonight } from './tonight'
+import { normalizePerformanceEntries, uniqueEntries } from '../domain/performanceEntries'
 
 export type CloudFetch = (input: string, init?: RequestInit) => Promise<Response>
 
@@ -264,7 +265,7 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
   }
 
   saveLastPerformance(performance: GeneratedPerformance): Promise<void> {
-    return this.change((state) => ({ result: undefined, state: { ...state, lastPerformance: performance } }))
+    return this.change((state) => ({ result: undefined, state: { ...state, lastPerformance: normalizePerformanceEntries(performance) } }))
   }
 
   async getLastPerformance(): Promise<GeneratedPerformance | undefined> {
@@ -280,12 +281,13 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
   saveSetList(setList: SavedSetList): Promise<void> {
     return this.change((state) => {
       assertSetListEditable(state.setLists.find((saved) => saved.id === setList.id))
+      const performance = normalizePerformanceEntries(setList.performance)
       return {
         result: undefined,
         state: {
           ...state,
-          lastPerformance: setList.performance,
-          setLists: [setList, ...state.setLists.filter((saved) => saved.id !== setList.id)]
+          lastPerformance: performance,
+          setLists: [{ ...setList, performance }, ...state.setLists.filter((saved) => saved.id !== setList.id)]
             .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
         },
       }
@@ -315,7 +317,7 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
       result: undefined,
       state: {
         ...state,
-        savedSets: [savedSet, ...state.savedSets.filter((set) => set.id !== savedSet.id)]
+        savedSets: [{ ...savedSet, scores: uniqueEntries(savedSet.scores) }, ...state.savedSets.filter((set) => set.id !== savedSet.id)]
           .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
       },
     }))

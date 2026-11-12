@@ -18,6 +18,7 @@ import { readDrummerNotes, updateSavedDrummerNotes } from '../domain/drummerNote
 import { assignPiecesToCollection, collectionKey, collectionNames, comparePieces, createCollectionNames, pieceKey, renameCollectionData } from '../domain/collections'
 import { assertLockedProgramsUnchanged, assertSetListEditable, changeSetListLock } from '../domain/performanceLock'
 import { readTonight, saveTonight } from './tonight'
+import { normalizePerformanceEntries, uniqueEntries } from '../domain/performanceEntries'
 
 export interface ScoreRepository {
   listCollections: () => Promise<string[]>
@@ -178,6 +179,7 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
 
   async saveLastPerformance(performance: GeneratedPerformance): Promise<void> {
     await this.database.transaction('rw', this.database.performances, this.database.savedSetLists, async () => {
+      performance = normalizePerformanceEntries(performance)
       const lists = await this.listSetLists()
       assertLockedProgramsUnchanged(lists, lists, performance)
       await this.database.performances.put({ key: 'last', performance })
@@ -195,8 +197,9 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
   async saveSetList(setList: SavedSetList): Promise<void> {
     await this.database.transaction('rw', this.database.savedSetLists, this.database.performances, async () => {
       assertSetListEditable(await this.database.savedSetLists.get(setList.id))
-      await this.database.savedSetLists.put(setList)
-      await this.database.performances.put({ key: 'last', performance: setList.performance })
+      const performance = normalizePerformanceEntries(setList.performance)
+      await this.database.savedSetLists.put({ ...setList, performance })
+      await this.database.performances.put({ key: 'last', performance })
     })
   }
 
@@ -219,6 +222,6 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
   }
 
   async saveSavedSet(savedSet: SavedSet): Promise<void> {
-    await this.database.savedSets.put(savedSet)
+    await this.database.savedSets.put({ ...savedSet, scores: uniqueEntries(savedSet.scores) })
   }
 }

@@ -3,6 +3,7 @@ import { MAX_SCORES_PER_SET, MAX_SETS, MIN_SCORES_PER_SET, MIN_SETS, assertPerfo
 import { assertSavedPerformanceValid, assertSavedSetValid } from '../domain/setList'
 import { readCollection, collectionNames, comparePieces, matchesDisplay, pieceKey, validCode } from '../domain/collections'
 import { readDrummerNotes } from '../domain/drummerNotes'
+import { normalizePerformanceEntries, uniqueEntries } from '../domain/performanceEntries'
 import type {
   FolderScan,
   FolderScanSummary,
@@ -163,6 +164,7 @@ function readPerformanceScore(value: unknown): PerformanceScoreSnapshot {
   }
   return {
     id: idValue(value.id),
+    ...(value.entryId === undefined ? {} : { entryId: idValue(value.entryId) }),
     ...(value.collection === undefined ? {} : { collection: readCollection(value.collection) }),
     scoreNumber,
     displayNumber,
@@ -207,7 +209,7 @@ function readPerformance(value: unknown, allowVariableSetSize = false): Generate
   }
   if (allowVariableSetSize) assertSavedPerformanceValid(performance)
   else assertPerformanceValid(performance)
-  return performance
+  return normalizePerformanceEntries(performance)
 }
 
 function readScan(value: unknown): FolderScan {
@@ -253,7 +255,7 @@ function readSavedSet(value: unknown): SavedSet {
     createdAt: timestampValue(value.createdAt),
     updatedAt: timestampValue(value.updatedAt),
     ...readOrderOverride(value.orderOverride),
-    scores: value.scores.map(readPerformanceScore),
+    scores: uniqueEntries(value.scores.map(readPerformanceScore)),
   }
   assertSavedSetValid(savedSet)
   return savedSet
