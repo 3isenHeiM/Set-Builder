@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - Delete a piece from its detail page after explicit confirmation, preserving saved sets and programs (fixes [#6](https://github.com/3isenHeiM/Set-Builder/issues/6)).
+- Share a live, read-only link to a saved setlist without requiring viewers to sign in, and revoke it with **Stop sharing** (fixes [#7](https://github.com/3isenHeiM/Set-Builder/issues/7)).
 
 ## [2.2.1] - 2026-11-12
 

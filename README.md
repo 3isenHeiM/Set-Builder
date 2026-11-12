@@ -63,6 +63,22 @@ Choose a collection on the Build screen, or **All collections** to use every act
 
 Every generated performance becomes a saved set list containing independent score snapshots, and the most recently opened list opens automatically after relaunch. Set-list and individual-set names are editable. Arrow controls can reorder whole sets and pieces; the starter remains first and goes-high placement stays valid. Later folder alignment does not rewrite this historical output.
 
+## Read-only setlist sharing
+
+On the Sets page, open a saved program and choose **Share read-only link**, then **Copy link**. Anyone with the link can view that program without the band password. The link shows the latest saved program, refreshes every 30 seconds while visible, and supports manual refresh. **Stop sharing** immediately revokes future reads; creating another link after stopping generates a different token. Sharing requires an online connection. Recipients receive only the selected program's title, set names, piece names/order, collection labels, and drums-intro markers, with no library access or editing controls.
+
+Existing deployments must apply `migrations/0002_setlist_shares.sql` once before using sharing. In the Cloudflare D1 Console, execute:
+
+```sql
+CREATE TABLE IF NOT EXISTS setlist_shares (
+  set_list_id TEXT PRIMARY KEY,
+  token TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL
+);
+```
+
+Deploy the updated Worker and app together. No new binding or secret is required. The local Workers preview applies the migration through `npm run db:migrate:local`; the Vite-only development server does not provide the sharing API. Sharing links authorize read access to that one program, so share them only with intended viewers. Previously viewed or copied data cannot be recalled by revocation.
+
 ## Data, authentication, and offline behavior
 
 Authenticated D1 storage is the source of truth whenever the service is reachable. The shared band password unlocks one shared D1 state document containing filenames, relative paths, settings, alignment summary, and saved set lists.

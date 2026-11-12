@@ -5,6 +5,7 @@ import { MAX_SETS } from '../../domain/generator'
 import type { PerformanceSet, SavedSet, SavedSetList, Score } from '../../domain/types'
 import { UiIcon } from '../../app/UiIcon'
 import { localizedError, localizedKnownMessage, useI18n } from '../../app/i18n'
+import { ShareSetList } from './ShareSetList'
 
 interface PerformanceScreenProps {
   scores: Score[]
@@ -209,6 +210,7 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
         ))}
       </div>
 
+      <ShareSetList key={setList.id} id={setList.id} />
       <div className="set-list-actions">
         <button type="button" className="primary-action" disabled={saving} onClick={() => { let next = renameSetList(setList, listName, new Date().toISOString()); next.performance.sets.forEach((set, index) => { next = renameSet(next, index, setNames[set.scores[0]?.id ?? String(set.number)] ?? set.name ?? '', next.updatedAt) }); void save(next) }}>{t('saveProgram')}</button>
         <button type="button" className="secondary-action" disabled={saving} onClick={download}>{t('exportProgram')}</button>

@@ -1,5 +1,6 @@
 import { emptyCloudState, parseCloudState, type CloudState, type CloudStateEnvelope } from '../data/cloudState'
 import { AuthenticationUnavailable, assertAuthenticationConfigured, clearSessionCookie, createSessionCookie, hasValidSession, passwordMatches } from './auth'
+import { toSharedSetList } from '../domain/sharedSetList'
 
 const STATE_PATH = '/api/state'
 const LOGIN_PATH = '/api/login'
@@ -174,6 +175,13 @@ export async function handleRequest(request: Request, environment: WorkerEnviron
   const url = new URL(request.url)
   try {
     if (!url.pathname.startsWith('/api/')) return environment.ASSETS.fetch(request)
+    const publicShare = /^\/api\/shared\/([a-f0-9]{64})$/.exec(url.pathname)
+    if (publicShare?.[1]) {
+      if (request.method !== 'GET') return json({ error: 'Method not allowed.' }, 405, { allow: 'GET' })
+      const share = await environment.DB.prepare('SELECT set_list_id FROM setlist_shares WHERE token = ?').bind(publicShare[1]).first<{ set_list_id: string }>()
+      const saved = share ? (await readState(environment)).state.setLists.find((list) => list.id === share.set_list_id) : undefined
+      return saved ? json(toSharedSetList(saved), 200, { 'x-robots-tag': 'noindex, nofollow', 'referrer-policy': 'no-referrer' }) : json({ error: 'This shared setlist is unavailable.' }, 404)
+    }
     assertAuthenticationConfigured(environment)
     if (url.pathname === TURNSTILE_CONFIGURATION_PATH) {
       if (request.method !== 'GET') return json({ error: 'Method not allowed.' }, 405, { allow: 'GET' })
@@ -191,6 +199,23 @@ export async function handleRequest(request: Request, environment: WorkerEnviron
     }
     if (!await hasValidSession(request, environment)) return json({ error: 'Authentication is required.' }, 401)
     if (!isSameOrigin(request)) return json({ error: 'Request came from an invalid origin.' }, 403)
+
+    const shareControl = /^\/api\/setlists\/([^/]+)\/share$/.exec(url.pathname)
+    if (shareControl?.[1]) {
+      if (!['POST', 'DELETE'].includes(request.method)) return json({ error: 'Method not allowed.' }, 405, { allow: 'POST, DELETE' })
+      const id = decodeURIComponent(shareControl[1])
+      if (!(await readState(environment)).state.setLists.some((list) => list.id === id)) return json({ error: 'Setlist not found.' }, 404)
+      if (request.method === 'DELETE') {
+        await environment.DB.prepare('DELETE FROM setlist_shares WHERE set_list_id = ? RETURNING set_list_id').bind(id).first()
+        return new Response(null, { status: 204, headers: { 'cache-control': 'no-store' } })
+      }
+      const token = [...crypto.getRandomValues(new Uint8Array(32))].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+      const shared = await environment.DB.prepare(`INSERT INTO setlist_shares (set_list_id, token, created_at) VALUES (?, ?, ?)
+        ON CONFLICT(set_list_id) DO UPDATE SET set_list_id = excluded.set_list_id RETURNING token`)
+        .bind(id, token, new Date().toISOString()).first<{ token: string }>()
+      if (!shared) throw new Error('Sharing is unavailable.')
+      return json({ token: shared.token })
+    }
 
     if (url.pathname === STATE_PATH && request.method === 'GET') return json(await readState(environment))
     if (url.pathname === STATE_PATH && request.method === 'PUT') return json(await storeState(request, environment))
