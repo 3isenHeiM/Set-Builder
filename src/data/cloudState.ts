@@ -1,6 +1,7 @@
 import { configurationStatus } from '../domain/configuration'
 import { MAX_SCORES_PER_SET, MAX_SETS, MIN_SCORES_PER_SET, MIN_SETS, assertPerformanceValid } from '../domain/generator'
 import { assertSavedPerformanceValid, assertSavedSetValid } from '../domain/setList'
+import { readCollection, comparePieces, matchesDisplay, pieceKey, validCode } from '../domain/collections'
 import type {
   FolderScan,
   FolderScanSummary,
@@ -14,7 +15,7 @@ import type {
 } from '../domain/types'
 
 export const CLOUD_STATE_FORMAT = 'piece-selector-cloud-state'
-export const CLOUD_STATE_VERSION = 1
+export const CLOUD_STATE_VERSION = 2
 
 export interface CloudState {
   format: typeof CLOUD_STATE_FORMAT
@@ -109,14 +110,16 @@ function readScore(value: unknown): Score {
   }
   const expectedStatus = configurationStatus({ canStart, hotness, drumsIntro, goesHigh, enabled, in80s: normalizedTags.includes('80s') })
   if (expectedStatus !== value.configuration) throw new Error('Cloud state contains an inconsistent piece configuration.')
-  const scoreNumber = integerValue(value.scoreNumber, 1, Number.MAX_SAFE_INTEGER)
+  const scoreNumber = value.scoreNumber
+  if (!validCode(scoreNumber)) throw new Error('Cloud state contains an invalid piece identifier.')
   const displayNumber = stringValue(value.displayNumber, 100)
-  if (!/^\d+$/.test(displayNumber) || Number(displayNumber) !== scoreNumber) throw new Error('Cloud state contains an invalid display number.')
+  if (!matchesDisplay(scoreNumber, displayNumber)) throw new Error('Cloud state contains an invalid display number.')
   if (value.availability !== 'active' && value.availability !== 'missing') throw new Error('Cloud state contains an invalid availability.')
   const title = stringValue(value.title, 500)
   if (title.trim() === '') throw new Error('Cloud state contains a piece without a title.')
   return {
     id: idValue(value.id),
+    collection: readCollection(value.collection),
     scoreNumber,
     displayNumber,
     title,
@@ -139,9 +142,10 @@ function readScore(value: unknown): Score {
 function readPerformanceScore(value: unknown): PerformanceScoreSnapshot {
   if (!isRecord(value)) throw new Error('Cloud state contains a malformed set-list piece.')
   const displayNumber = stringValue(value.displayNumber, 100)
-  const scoreNumber = integerValue(value.scoreNumber, 1, Number.MAX_SAFE_INTEGER)
+  const scoreNumber = value.scoreNumber
+  if (!validCode(scoreNumber)) throw new Error('Cloud state contains an invalid piece identifier.')
   const title = stringValue(value.title, 500)
-  if (!/^\d+$/.test(displayNumber) || Number(displayNumber) !== scoreNumber || title.trim() === '') {
+  if (!matchesDisplay(scoreNumber, displayNumber) || title.trim() === '') {
     throw new Error('Cloud state contains a malformed set-list piece.')
   }
   if (typeof value.drumsIntro !== 'boolean' || typeof value.goesHigh !== 'boolean' || typeof value.canStart !== 'boolean') {
@@ -149,6 +153,7 @@ function readPerformanceScore(value: unknown): PerformanceScoreSnapshot {
   }
   return {
     id: idValue(value.id),
+    ...(value.collection === undefined ? {} : { collection: readCollection(value.collection) }),
     scoreNumber,
     displayNumber,
     title,
@@ -203,6 +208,7 @@ function readScan(value: unknown): FolderScan {
   const summary = Object.fromEntries(summaryKeys.map((key) => [key, integerValue(rawSummary[key], 0, 100_000)])) as unknown as FolderScanSummary
   return {
     id: idValue(value.id),
+    ...(value.collection === undefined ? {} : { collection: readCollection(value.collection) }),
     kind: value.kind,
     scannedAt: timestampValue(value.scannedAt),
     appliedAt: timestampValue(value.appliedAt),
@@ -240,14 +246,14 @@ function readSavedSet(value: unknown): SavedSet {
 }
 
 export function parseCloudState(value: unknown): CloudState {
-  if (!isRecord(value) || value.format !== CLOUD_STATE_FORMAT || value.version !== CLOUD_STATE_VERSION
+  if (!isRecord(value) || value.format !== CLOUD_STATE_FORMAT || (value.version !== 1 && value.version !== CLOUD_STATE_VERSION)
     || !Array.isArray(value.scores) || value.scores.length > 20_000
     || !Array.isArray(value.setLists) || value.setLists.length > 2_000) {
     throw new Error('The cloud library is malformed or unsupported.')
   }
   const scores = value.scores.map(readScore)
   const scoreIds = new Set(scores.map((score) => score.id))
-  const scoreNumbers = new Set(scores.map((score) => score.scoreNumber))
+  const scoreNumbers = new Set(scores.map(pieceKey))
   if (scoreIds.size !== scores.length || scoreNumbers.size !== scores.length) throw new Error('The cloud library contains duplicate pieces.')
   const setLists = value.setLists.map(readSetList)
   const setListIds = new Set(setLists.map((setList) => setList.id))
@@ -259,7 +265,7 @@ export function parseCloudState(value: unknown): CloudState {
   return {
     format: CLOUD_STATE_FORMAT,
     version: CLOUD_STATE_VERSION,
-    scores: scores.sort((left, right) => left.scoreNumber - right.scoreNumber || left.id.localeCompare(right.id)),
+    scores: scores.sort(comparePieces),
     lastScan: value.lastScan === null ? null : readScan(value.lastScan),
     lastPerformance: value.lastPerformance === null ? null : readPerformance(value.lastPerformance, true),
     setLists: setLists.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),

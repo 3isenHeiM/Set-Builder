@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Import numeric and lettered piece identifiers into named collections, with collection filters, scoped re-alignment, and collection renaming that preserves settings and saved programs.
 - Select multiple library pieces with a long press or the Select button and apply chosen settings to all of them.
 - Create programs and sets from a chosen starting piece, and move pieces between sets while preserving the program's ordering rules.
 

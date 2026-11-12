@@ -6,6 +6,7 @@ import type {
   RenumberingDecisions,
   Score,
 } from './types'
+import { collectionKey, comparePieces, DEFAULT_COLLECTION } from './collections'
 
 export const EIGHTIES_TAG = '80s'
 
@@ -19,6 +20,9 @@ function possibleId(scoreId: string, file: ParsedScoreFile): string {
 }
 
 export function classifyReconciliation(snapshot: FolderSnapshot, existing: readonly Score[]): ReconciliationPlan {
+  existing = existing.filter((score) => collectionKey(score.collection) === collectionKey(snapshot.collection))
+  const collection = snapshot.collection ?? DEFAULT_COLLECTION
+  snapshot = { ...snapshot, valid: snapshot.valid.map((file) => ({ ...file, collection })) }
   const byNumber = new Map(existing.map((score) => [score.scoreNumber, score]))
   // A conflicted number is present but untrusted: preserve any matching database record unchanged.
   const incomingNumbers = new Set([
@@ -53,7 +57,7 @@ export function classifyReconciliation(snapshot: FolderSnapshot, existing: reado
       continue
     }
 
-    const titleMatches = absentByTitle.get(normalizeTitle(file.title)) ?? []
+    const titleMatches = snapshot.mode === 'add' ? [] : absentByTitle.get(normalizeTitle(file.title)) ?? []
     if (titleMatches.length === 1 && incomingTitleCounts.get(normalizeTitle(file.title)) === 1) {
       const oldScore = titleMatches[0]
       if (oldScore) {
@@ -71,11 +75,12 @@ export function classifyReconciliation(snapshot: FolderSnapshot, existing: reado
   }
 
   return {
+    collection,
     scannedAt: snapshot.scannedAt,
     unchanged,
     renamed,
     added,
-    missing: absentExisting.map((score) => ({
+    missing: (snapshot.mode === 'add' ? [] : absentExisting).map((score) => ({
       scoreId: score.id,
       scoreNumber: score.scoreNumber,
       displayNumber: score.displayNumber,
@@ -165,12 +170,13 @@ export function applyReconciliation(
     }
   }
 
-  const scores = [...byId.values()].sort((a, b) => a.scoreNumber - b.scoreNumber || a.id.localeCompare(b.id))
+  const scores = [...byId.values()].sort(comparePieces)
   const duplicateFiles = plan.duplicates.reduce((total, conflict) => total + conflict.files.length, 0)
   return {
     scores,
     scan: {
       id: scanId,
+      ...(plan.collection ? { collection: plan.collection } : {}),
       kind: existing.length === 0 ? 'import' : 'realignment',
       scannedAt: plan.scannedAt,
       appliedAt,

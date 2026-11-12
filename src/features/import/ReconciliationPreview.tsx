@@ -34,6 +34,7 @@ export function ReconciliationPreview({ plan, applying, error, onApply, onCancel
   return (
     <section className="preview-panel" aria-labelledby="preview-title">
       <h1 id="preview-title">{t('folderReview')}</h1>
+      {plan.collection && <p className="eyebrow">{t('collection')}: {plan.collection}</p>}
       <ul className="summary-grid" aria-label={t('comparisonSummary')}>
         <Count value={plan.added.length} label={t('new')} />
         <Count value={plan.renamed.length} label={t('renamed')} />

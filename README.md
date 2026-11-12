@@ -11,9 +11,10 @@ Candidate filenames end in `.mscz` (case-insensitive) and follow:
 ```text
 XX - name.mscz
 01 - Take On Me.mscz
+A - Jingle Bells.mscz
 ```
 
-Whitespace and number width may vary. Leading zeroes are kept for display, while the positive integer value is used for matching and sorting. Malformed names and every file involved in a duplicate numeric number are shown under Needs attention and skipped.
+Whitespace and number width may vary. Leading zeroes are kept for display. Identifiers can be positive integers or 1–20 Latin letters (A–Z, AA, AB, etc.); letters are normalized to uppercase. Numeric identifiers and letters are distinct, and duplicates are checked within each collection. Malformed names and conflicting identifiers are shown under Needs attention and skipped.
 
 ## Local setup and scripts
 
@@ -38,9 +39,13 @@ The repository-owned scripts are:
 
 ## Import and manual re-alignment
 
-The selected folder is the source of truth for which files currently exist. Every import starts with **Import scores from this folder** and every later alignment starts with **Re-align with scores folder**; both open the picker manually and show an unapplied preview.
+Open **Import pieces**, choose an existing collection or type a new name (for example **Christmas**), then select the folder or files. **Add pieces** is the default: importing a partial folder adds or updates its pieces without marking absent pieces missing. The import preview names the target collection and must be confirmed before anything is saved. Existing libraries belong to **General** automatically.
 
-Normal matching uses the numeric score number. A title change under the same number keeps the score’s immutable internal ID and configuration. Absent records become missing rather than being deleted; reappearing numbers restore them. A unique normalized-title match under a different number is only a suggestion. Choose **Treat as same score** to preserve identity while renumbering, or **Add as new** to keep the previous record missing and create a new pending record. Title normalization is Unicode NFKC followed by lower-casing and is never used to alter displayed text.
+For a full folder comparison, choose **Re-align collection** and select its complete folder. Only absent pieces in that collection are marked missing. Other collections are never affected. Filter the Library or the Build screen by collection; **All collections** retains the existing Mix behavior of including every eligible piece.
+
+To rename a collection, select it in the Library's Collection filter, tap **Rename collection**, and save the new name. Piece IDs, settings, and saved programs are preserved; a name already used by another collection is rejected.
+
+Matching uses the collection name (case-insensitive) and identifier: **Christmas · A**, **General · A**, and **General · 1** are independent pieces. A title change under the same identifier keeps the immutable ID and configuration. Full re-alignment suggests unique normalized-title matches under a different identifier for explicit review. Choose **Treat as same score** to preserve identity or **Add as new** to keep the previous record missing. Title normalization is Unicode NFKC followed by lower-casing and never changes displayed text.
 
 Applying a reviewed scan updates scores and its alignment record in one D1 state write when connected. Scanning or cancelling does not mutate storage.
 
@@ -62,7 +67,7 @@ IndexedDB holds a cache for installed/offline use and at most one latest deferre
 
 The Worker accepts only a correctly signed, unexpired, 30-day session cookie before reading or changing D1. Login requires a server-validated Cloudflare Turnstile token before the password is checked and retains the per-network-location rate limit of ten attempts per minute. The password is represented only by its SHA-256 digest in an encrypted Worker Secret, and the independent session-signing key and Turnstile validation key are separate encrypted secrets. The static application shell is public and contains no library data or credentials. Turnstile loads only on the login page and sends no score filenames, settings, or set lists to its challenge service. There is no Zero Trust account, account database, WebDAV access, telemetry, or external font. The production service worker caches only the same-origin app shell and static assets; it does not cache Turnstile or selected `.mscz` files.
 
-Use **Download app settings** on the About screen to save a versioned, human-readable JSON file. Each entry contains the numeric score number, piece name, and its 80s, opener, hotness, goes-high, drums-intro, and enabled settings. Files, relative paths, internal IDs, alignment state, and generated performances are deliberately excluded. **Re-import app settings** parses only an explicitly selected settings JSON, shows a preview, and updates matched pieces after confirmation. Matching uses the numeric score number; name differences are shown for review, pieces absent from the current library are skipped, and pieces absent from the backup keep their settings.
+Use **Download app settings** on the About screen to save a versioned JSON file containing each piece's collection, identifier, name, and configuration. **Re-import app settings** matches by collection and identifier and shows a preview before confirmation. Older settings files without collections match **General**; after renaming a collection, export a fresh backup using its new name. Files, relative paths, internal IDs, alignment state, and performances are excluded. Missing pieces are skipped and unspecified pieces keep their settings.
 
 Use **Export set list** on the Sets screen to save the current named list as a separate, versioned JSON file. It includes set names, order, source generation details, score names and ordering, and the score metadata needed to display it independently of the library. **Import set list** validates an explicitly selected JSON file and saves it with fresh local IDs, so an import cannot overwrite another list. This set-list file remains separate from the app-settings backup.
 

@@ -15,7 +15,7 @@ describe('settings backup', () => {
     ], '2026-09-02T12:00:00.000Z')
     const json = settingsBackupToJson(backup)
 
-    expect(backup).toMatchObject({ format: SETTINGS_BACKUP_FORMAT, version: 3, pieces: [
+    expect(backup).toMatchObject({ format: SETTINGS_BACKUP_FORMAT, version: 4, pieces: [
       { scoreNumber: 2, name: 'Africa', settings: { in80s: true, hotness: 3, drumsIntro: true } },
       { scoreNumber: 8, name: 'Billie Jean', settings: { in80s: false } },
     ] })
@@ -69,6 +69,6 @@ describe('settings backup', () => {
       exportedAt: 'now',
       pieces: [{ scoreNumber: 2, name: 'Africa', settings: { in80s: false, canStart: true, hotness: 5, drumsIntro: false, enabled: true } }],
     }))
-    expect(restored).toMatchObject({ version: 3, pieces: [{ settings: { hotness: 3, goesHigh: null } }] })
+    expect(restored).toMatchObject({ version: 4, pieces: [{ settings: { hotness: 3, goesHigh: null } }] })
   })
 })

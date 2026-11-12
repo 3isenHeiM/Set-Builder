@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
 import type { BulkConfiguration, FolderScan, Score, ScoreConfiguration } from '../../domain/types'
-import { FolderPicker } from '../import/FolderPicker'
+import { CollectionImport } from '../import/CollectionImport'
+import { collectionKey, collectionName, DEFAULT_COLLECTION } from '../../domain/collections'
 import { ConfigurationEditor } from './ConfigurationEditor'
 import type { FolderSnapshot } from '../../domain/types'
 import { UiIcon } from '../../app/UiIcon'
 import { useI18n } from '../../app/i18n'
 import { BulkSettings } from './BulkSettings'
+import { CollectionRename } from './CollectionRename'
 
 type Filter = 'all' | 'pending' | 'active' | 'missing' | 'disabled' | '80s'
 
@@ -28,13 +30,16 @@ interface LibraryScreenProps {
   onFolder: (snapshot: FolderSnapshot) => void
   onSave: (id: string, configuration: ScoreConfiguration) => Promise<void>
   onBulkSave?: (ids: string[], changes: BulkConfiguration) => Promise<void>
+  onRenameCollection?: (previous: string, name: string) => Promise<void>
   onEditingChange?: ((editing: boolean) => void) | undefined
 }
 
-export function LibraryScreen({ scores, lastScan, onFolder, onSave, onBulkSave, onEditingChange }: LibraryScreenProps) {
+export function LibraryScreen({ scores, lastScan, onFolder, onSave, onBulkSave, onRenameCollection, onEditingChange }: LibraryScreenProps) {
   const { locale, t } = useI18n()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
+  const [collectionFilter, setCollectionFilter] = useState('')
+  const collections = [...new Map((scores.length ? scores.map((score) => collectionName(score.collection)) : [DEFAULT_COLLECTION]).map((name) => [collectionKey(name), name])).values()]
   const [queue, setQueue] = useState<string[] | null>(null)
   const [queueIndex, setQueueIndex] = useState(0)
   const [editing, setEditing] = useState<string | null>(null)
@@ -62,8 +67,8 @@ export function LibraryScreen({ scores, lastScan, onFolder, onSave, onBulkSave, 
     const text = `${score.displayNumber} ${score.title} ${score.relativePath}`.toLocaleLowerCase()
     const matchesQuery = text.includes(query.trim().toLocaleLowerCase())
     const matchesFilter = filter === 'all' || (filter === 'pending' && score.configuration === 'pending') || (filter === 'active' && score.availability === 'active') || score.availability === filter || (filter === 'disabled' && !score.enabled) || (filter === '80s' && score.tags.includes('80s'))
-    return matchesQuery && matchesFilter
-  }), [filter, query, scores])
+    return matchesQuery && matchesFilter && (!collectionFilter || collectionKey(score.collection) === collectionKey(collectionFilter))
+  }), [filter, query, scores, collectionFilter])
 
   if (activeEditor) {
     const isQueue = Boolean(queue)
@@ -77,7 +82,7 @@ export function LibraryScreen({ scores, lastScan, onFolder, onSave, onBulkSave, 
         <div className="hero-mark" aria-hidden="true"><UiIcon name="music" /></div>
         <h1>{t('buildTonightsSets')}</h1>
         <p>{t('filenameExample')} <strong>01 - Name.mscz</strong>.</p>
-        <FolderPicker mode="import" onSnapshot={onFolder} />
+        <CollectionImport collections={collections} onSnapshot={onFolder} />
       </section>
     )
   }
@@ -88,11 +93,13 @@ export function LibraryScreen({ scores, lastScan, onFolder, onSave, onBulkSave, 
       <div className="selection-toolbar">{selecting ? <><span role="status">{t('selectedCount', { count: selected.size })}</span><button type="button" className="secondary-action" disabled={selected.size === 0} onClick={() => setBulkEditing(true)}>{t('editSettings')}</button><button type="button" className="text-button" onClick={finishSelection}>{t('cancel')}</button></> : <button type="button" className="secondary-action" onClick={() => setSelecting(true)}>{t('selectPieces')}</button>}</div>
       {bulkEditing && <BulkSettings count={selected.size} onCancel={() => setBulkEditing(false)} onApply={async (changes) => { if (!onBulkSave) throw new Error('Save failed. Try again.'); await onBulkSave([...selected], changes); finishSelection() }} />}
       {lastScan && <p className="alignment-stamp">{t('lastAligned')} <time dateTime={lastScan.appliedAt}>{new Date(lastScan.appliedAt).toLocaleString(locale)}</time> · +{lastScan.summary.added} / −{lastScan.summary.missing}</p>}
-      <FolderPicker mode="realign" onSnapshot={onFolder} />
+      <details className="import-panel"><summary>{t('importPieces')}</summary><CollectionImport collections={collections} onSnapshot={onFolder} /></details>
+      <label><span>{t('collection')}</span><select value={collectionFilter} onChange={(event) => setCollectionFilter(event.target.value)}><option value="">{t('allCollections')}</option>{collections.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
+      {collectionFilter && onRenameCollection && <CollectionRename key={collectionFilter} name={collectionFilter} onRename={async (name) => { await onRenameCollection(collectionFilter, name); setCollectionFilter(collectionName(name)) }} />}
       <label className="search-label"><span>{t('search')}</span><input type="search" value={query} placeholder={t('numberTitlePath')} onChange={(event) => setQuery(event.target.value)} /></label>
       <label className="filter-label"><span>{t('filter')}</span><select value={filter} onChange={(event) => setFilter(readFilter(event.target.value))}><option value="all">{t('allScores')}</option><option value="pending">{t('pending')}</option><option value="active">{t('active')}</option><option value="missing">{t('missing')}</option><option value="disabled">{t('disabled')}</option><option value="80s">80s</option></select></label>
       <ul className="score-list" aria-live="polite">
-        {filtered.map((score) => <li key={score.id}><button type="button" className={`score-row ${selected.has(score.id) ? 'selected' : ''}`} aria-pressed={selecting ? selected.has(score.id) : undefined} onPointerDown={(event) => startPress(event, score.id)} onPointerMove={(event) => { if (press.current && Math.hypot(event.clientX - press.current.x, event.clientY - press.current.y) > 10) clearPress() }} onPointerUp={clearPress} onPointerCancel={clearPress} onContextMenu={(event) => event.preventDefault()} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return } if (selecting) toggle(score.id); else { setEditing(score.id); onEditingChange?.(true) } }}><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>{score.availability === 'missing' ? t('missing') : !score.enabled ? t('disabled') : score.configuration === 'pending' ? t('setupNeeded') : score.tags.includes('80s') ? t('ready80s') : t('ready')}</small></span>{selecting ? <span className="selection-indicator" aria-hidden="true">{selected.has(score.id) ? '✓' : ''}</span> : <span className={`status-dot ${score.availability} ${score.configuration}`} aria-hidden="true" />}</button></li>)}
+        {filtered.map((score) => <li key={score.id}><button type="button" className={`score-row ${selected.has(score.id) ? 'selected' : ''}`} aria-pressed={selecting ? selected.has(score.id) : undefined} onPointerDown={(event) => startPress(event, score.id)} onPointerMove={(event) => { if (press.current && Math.hypot(event.clientX - press.current.x, event.clientY - press.current.y) > 10) clearPress() }} onPointerUp={clearPress} onPointerCancel={clearPress} onContextMenu={(event) => event.preventDefault()} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return } if (selecting) toggle(score.id); else { setEditing(score.id); onEditingChange?.(true) } }}><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>{collectionName(score.collection)}</small><small>{score.availability === 'missing' ? t('missing') : !score.enabled ? t('disabled') : score.configuration === 'pending' ? t('setupNeeded') : score.tags.includes('80s') ? t('ready80s') : t('ready')}</small></span>{selecting ? <span className="selection-indicator" aria-hidden="true">{selected.has(score.id) ? '✓' : ''}</span> : <span className={`status-dot ${score.availability} ${score.configuration}`} aria-hidden="true" />}</button></li>)}
       </ul>
       {filtered.length === 0 && <p className="notice">{t('noMatches')}</p>}
     </section>

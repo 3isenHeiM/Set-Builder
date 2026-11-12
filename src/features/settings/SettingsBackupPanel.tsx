@@ -110,7 +110,7 @@ export function SettingsBackupPanel({ scores, onImport }: SettingsBackupPanelPro
               <summary>{t('renamedPieces')}</summary>
               <ul className="plain-list">
                 {preview.report.titleMismatches.map((item) => (
-                  <li key={item.scoreNumber}><strong>{item.scoreNumber}</strong>: {item.backupName} → {item.currentName}</li>
+                  <li key={`${item.collection ?? 'General'}:${item.scoreNumber}`}><strong>{item.collection ? `${item.collection} · ` : ''}{item.scoreNumber}</strong>: {item.backupName} → {item.currentName}</li>
                 ))}
               </ul>
             </details>

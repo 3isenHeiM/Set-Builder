@@ -160,6 +160,10 @@ details li strong { color: var(--forest); }
 .search-label, .filter-label, .number-fields label, .saved-list-picker, .set-list-name { display: grid; gap: 6px; color: var(--forest); font-size: 13px; font-weight: 800; }
 input[type="search"], input[type="number"], select, .set-list-name input { width: 100%; min-height: 48px; padding: 10px 12px; color: var(--ink); background: #fffdf8; border: 1px solid #aaa18f; border-radius: 12px; }
 .score-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.collection-import { display: grid; gap: 12px; padding: 12px 0; }
+.collection-import input { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; color: var(--ink); background: var(--paper); }
+.collection-import p { margin: 0; }
+.collection-import label > span { display: block; margin-bottom: 5px; font-weight: 700; }
 .score-row { width: 100%; min-height: 68px; display: grid; grid-template-columns: 42px 1fr 10px; gap: 8px; align-items: center; padding: 10px 11px; color: var(--ink); background: var(--paper); border: 1px solid var(--border); border-radius: 14px; cursor: pointer; text-align: left; }
 .score-row[aria-pressed] { grid-template-columns: 42px 1fr 24px; }
 .score-row.selected { border: 2px solid var(--forest-light); }

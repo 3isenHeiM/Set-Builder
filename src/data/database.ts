@@ -149,6 +149,10 @@ export class PieceSelectorDatabase extends Dexie {
       savedSets: 'id,updatedAt',
       cloudSync: 'key',
     })
+    this.version(10).stores({
+      scores: 'id,scoreNumber,collection,availability,configuration,enabled,*tags',
+      scans: 'id,appliedAt', performances: 'key', savedSetLists: 'id,updatedAt', savedSets: 'id,updatedAt', cloudSync: 'key',
+    }).upgrade((transaction: Transaction) => transaction.table<Score, string>('scores').toCollection().modify((score) => { score.collection ??= 'General' }))
   }
 }
 

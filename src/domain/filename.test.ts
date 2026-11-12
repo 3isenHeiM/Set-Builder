@@ -1,6 +1,13 @@
 import { buildFolderSnapshot, parseScoreFileName, type FileMetadata } from './filename'
 
 describe('parseScoreFileName', () => {
+  it('preserves letter identifiers and separates them from numeric ones', () => {
+    const snapshot = buildFolderSnapshot([{ name: '42 - Regular.mscz' }, { name: 'a - Christmas.mscz' }, { name: 'B - Bells.MSCZ' }], 'now')
+    expect(snapshot.valid.map((file) => [file.scoreNumber, file.displayNumber])).toEqual([[42, '42'], ['A', 'A'], ['B', 'B']])
+    const conflict = buildFolderSnapshot([{ name: 'a - One.mscz' }, { name: 'A - Two.mscz' }], 'now')
+    expect(conflict.valid).toHaveLength(0)
+    expect(conflict.duplicates[0]?.files).toHaveLength(2)
+  })
   it('parses the filename contract and preserves display zeroes', () => {
     expect(parseScoreFileName('01 - Take On Me.mscz')).toEqual({
       ok: true,
