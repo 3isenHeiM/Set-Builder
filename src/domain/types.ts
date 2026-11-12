@@ -33,6 +33,8 @@ export interface ScoreConfiguration {
   in80s: boolean
 }
 
+export type BulkConfiguration = Partial<ScoreConfiguration>
+
 export type MalformedReason =
   | 'not-mscz'
   | 'invalid-format'

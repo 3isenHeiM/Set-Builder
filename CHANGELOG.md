@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Select multiple library pieces with a long press or the Select button and apply chosen settings to all of them.
 - Create programs and sets from a chosen starting piece, and move pieces between sets while preserving the program's ordering rules.
 
 ## [2.1.0] - 2026-09-10

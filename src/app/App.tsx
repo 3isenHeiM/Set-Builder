@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { classifyReconciliation } from '../domain/reconciliation'
 import { createProgramFromSavedSet, createProgramFromStarter } from '../domain/setList'
 import type { SettingsBackup } from '../domain/settingsBackup'
-import type { FolderScan, FolderSnapshot, GeneratedPerformance, PerformanceSet, ReconciliationPlan, RenumberingDecisions, SavedSet, SavedSetList, Score, ScoreConfiguration } from '../domain/types'
+import type { BulkConfiguration, FolderScan, FolderSnapshot, GeneratedPerformance, PerformanceSet, ReconciliationPlan, RenumberingDecisions, SavedSet, SavedSetList, Score, ScoreConfiguration } from '../domain/types'
 import { restoreSetList, type SetListBackup } from '../domain/setListBackup'
 import { authentication as cloudAuthentication, repository as browserRepository } from '../data/client'
 import { CloudApiError } from '../data/cloudRepository'
@@ -104,6 +104,11 @@ export function App({ repository = browserRepository, authentication = cloudAuth
     setScores(await repository.listScores())
   }
 
+  const saveBulkConfiguration = async (ids: string[], changes: BulkConfiguration) => {
+    await repository.saveBulkConfiguration(ids, changes, new Date().toISOString())
+    setScores(await repository.listScores())
+  }
+
   const savePerformance = async (generated: GeneratedPerformance) => {
     const saved: SavedSetList = { id: generated.id, name: '', createdAt: generated.generatedAt, updatedAt: generated.generatedAt, performance: generated }
     await repository.saveSetList(saved)
@@ -172,7 +177,7 @@ export function App({ repository = browserRepository, authentication = cloudAuth
       <InstallGuide />
       <UpdateBanner />
       <main id="main-content">
-        {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} /> : page === 'library' ? <LibraryScreen scores={scores} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onEditingChange={setEditingScore} /> : page === 'generate' ? <GenerateScreen scores={scores} hasPerformance={Boolean(currentSetList)} onGenerated={savePerformance} /> : page === 'performance' ? <PerformanceScreen scores={scores} setList={currentSetList} savedSetLists={setLists} savedSets={savedSets} onSave={saveSetList} onSaveSavedSet={saveReusableSet} onCreateProgram={createProgram} onCreateManualProgram={createManualProgram} onSelect={selectSetList} onImport={importSetList} onRegenerate={() => setPage('generate')} /> : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} />{authentication && <SignOutButton onLogout={async () => { await authentication.logout(); window.location.reload() }} />}</AboutScreen>}
+        {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} /> : page === 'library' ? <LibraryScreen scores={scores} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onBulkSave={saveBulkConfiguration} onEditingChange={setEditingScore} /> : page === 'generate' ? <GenerateScreen scores={scores} hasPerformance={Boolean(currentSetList)} onGenerated={savePerformance} /> : page === 'performance' ? <PerformanceScreen scores={scores} setList={currentSetList} savedSetLists={setLists} savedSets={savedSets} onSave={saveSetList} onSaveSavedSet={saveReusableSet} onCreateProgram={createProgram} onCreateManualProgram={createManualProgram} onSelect={selectSetList} onImport={importSetList} onRegenerate={() => setPage('generate')} /> : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} />{authentication && <SignOutButton onLogout={async () => { await authentication.logout(); window.location.reload() }} />}</AboutScreen>}
       </main>
       {!preview && !editingScore && <nav className="bottom-nav" aria-label={t('primaryNavigation')}>{([['library', t('library')], ['generate', t('build')], ['performance', t('sets')], ['about', t('about')]] as const).map(([target, label]) => <button type="button" key={target} aria-current={page === target ? 'page' : undefined} onClick={() => setPage(target)}><UiIcon name={target === 'library' ? 'library' : target === 'generate' ? 'sparkles' : target === 'performance' ? 'sets' : 'info'} />{label}</button>)}</nav>}
     </div>

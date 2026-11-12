@@ -161,6 +161,19 @@ details li strong { color: var(--forest); }
 input[type="search"], input[type="number"], select, .set-list-name input { width: 100%; min-height: 48px; padding: 10px 12px; color: var(--ink); background: #fffdf8; border: 1px solid #aaa18f; border-radius: 12px; }
 .score-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .score-row { width: 100%; min-height: 68px; display: grid; grid-template-columns: 42px 1fr 10px; gap: 8px; align-items: center; padding: 10px 11px; color: var(--ink); background: var(--paper); border: 1px solid var(--border); border-radius: 14px; cursor: pointer; text-align: left; }
+.score-row[aria-pressed] { grid-template-columns: 42px 1fr 24px; }
+.score-row.selected { border: 2px solid var(--forest-light); }
+.selection-indicator { width: 24px; height: 24px; display: grid; place-items: center; color: #fff; background: var(--forest-light); border-radius: 50%; font-weight: 900; }
+.selection-indicator:empty { background: transparent; border: 2px solid var(--muted); }
+.selection-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.selection-toolbar span { font-weight: 800; margin-right: auto; }
+.bulk-settings { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--paper); }
+.bulk-settings h2, .bulk-settings p { margin: 0; }
+.bulk-settings > p { color: var(--muted); }
+.bulk-fields { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.bulk-fields label span { display: block; margin-bottom: 4px; font-weight: 700; }
+.bulk-fields select { width: 100%; min-height: 44px; }
+.bulk-actions { display: flex; gap: 8px; }
 .score-copy { min-width: 0; display: grid; gap: 3px; }
 .score-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .score-copy small { color: var(--muted); }

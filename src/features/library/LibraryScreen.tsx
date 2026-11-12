@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
-import type { FolderScan, Score, ScoreConfiguration } from '../../domain/types'
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
+import type { BulkConfiguration, FolderScan, Score, ScoreConfiguration } from '../../domain/types'
 import { FolderPicker } from '../import/FolderPicker'
 import { ConfigurationEditor } from './ConfigurationEditor'
 import type { FolderSnapshot } from '../../domain/types'
 import { UiIcon } from '../../app/UiIcon'
 import { useI18n } from '../../app/i18n'
+import { BulkSettings } from './BulkSettings'
 
 type Filter = 'all' | 'pending' | 'active' | 'missing' | 'disabled' | '80s'
 
@@ -26,16 +27,33 @@ interface LibraryScreenProps {
   lastScan: FolderScan | undefined
   onFolder: (snapshot: FolderSnapshot) => void
   onSave: (id: string, configuration: ScoreConfiguration) => Promise<void>
+  onBulkSave?: (ids: string[], changes: BulkConfiguration) => Promise<void>
   onEditingChange?: ((editing: boolean) => void) | undefined
 }
 
-export function LibraryScreen({ scores, lastScan, onFolder, onSave, onEditingChange }: LibraryScreenProps) {
+export function LibraryScreen({ scores, lastScan, onFolder, onSave, onBulkSave, onEditingChange }: LibraryScreenProps) {
   const { locale, t } = useI18n()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [queue, setQueue] = useState<string[] | null>(null)
   const [queueIndex, setQueueIndex] = useState(0)
   const [editing, setEditing] = useState<string | null>(null)
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(() => new Set())
+  const [bulkEditing, setBulkEditing] = useState(false)
+  const press = useRef<{ timer: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null)
+  const suppressClick = useRef(false)
+  const clearPress = () => { if (press.current) clearTimeout(press.current.timer); press.current = null }
+  useEffect(() => () => clearPress(), [])
+  const toggle = (id: string) => setSelected((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  const startPress = (event: PointerEvent<HTMLButtonElement>, id: string) => {
+    suppressClick.current = false
+    if (selecting || event.button !== 0) return
+    clearPress()
+    const { clientX: x, clientY: y } = event
+    press.current = { x, y, timer: setTimeout(() => { press.current = null; suppressClick.current = true; setSelecting(true); setSelected(new Set([id])) }, 550) }
+  }
+  const finishSelection = () => { setSelecting(false); setSelected(new Set()); setBulkEditing(false) }
   const pending = scores.filter((score) => score.availability === 'active' && score.configuration === 'pending')
   const activeEditorId = queue?.[queueIndex] ?? editing
   const activeEditor = scores.find((score) => score.id === activeEditorId)
@@ -67,12 +85,14 @@ export function LibraryScreen({ scores, lastScan, onFolder, onSave, onEditingCha
   return (
     <section className="screen-section" aria-labelledby="library-title">
       <div className="title-row"><div><div className="eyebrow">{t('activeScores', { count: scores.filter((score) => score.availability === 'active').length })}</div><h1 id="library-title">{t('library')}</h1></div>{pending.length > 0 && <button className="pill-button" type="button" onClick={() => { setQueue(pending.map((score) => score.id)); setQueueIndex(0); onEditingChange?.(true) }}>{t('configure', { count: pending.length })}</button>}</div>
+      <div className="selection-toolbar">{selecting ? <><span role="status">{t('selectedCount', { count: selected.size })}</span><button type="button" className="secondary-action" disabled={selected.size === 0} onClick={() => setBulkEditing(true)}>{t('editSettings')}</button><button type="button" className="text-button" onClick={finishSelection}>{t('cancel')}</button></> : <button type="button" className="secondary-action" onClick={() => setSelecting(true)}>{t('selectPieces')}</button>}</div>
+      {bulkEditing && <BulkSettings count={selected.size} onCancel={() => setBulkEditing(false)} onApply={async (changes) => { if (!onBulkSave) throw new Error('Save failed. Try again.'); await onBulkSave([...selected], changes); finishSelection() }} />}
       {lastScan && <p className="alignment-stamp">{t('lastAligned')} <time dateTime={lastScan.appliedAt}>{new Date(lastScan.appliedAt).toLocaleString(locale)}</time> · +{lastScan.summary.added} / −{lastScan.summary.missing}</p>}
       <FolderPicker mode="realign" onSnapshot={onFolder} />
       <label className="search-label"><span>{t('search')}</span><input type="search" value={query} placeholder={t('numberTitlePath')} onChange={(event) => setQuery(event.target.value)} /></label>
       <label className="filter-label"><span>{t('filter')}</span><select value={filter} onChange={(event) => setFilter(readFilter(event.target.value))}><option value="all">{t('allScores')}</option><option value="pending">{t('pending')}</option><option value="active">{t('active')}</option><option value="missing">{t('missing')}</option><option value="disabled">{t('disabled')}</option><option value="80s">80s</option></select></label>
       <ul className="score-list" aria-live="polite">
-        {filtered.map((score) => <li key={score.id}><button type="button" className="score-row" onClick={() => { setEditing(score.id); onEditingChange?.(true) }}><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>{score.availability === 'missing' ? t('missing') : !score.enabled ? t('disabled') : score.configuration === 'pending' ? t('setupNeeded') : score.tags.includes('80s') ? t('ready80s') : t('ready')}</small></span><span className={`status-dot ${score.availability} ${score.configuration}`} aria-hidden="true" /></button></li>)}
+        {filtered.map((score) => <li key={score.id}><button type="button" className={`score-row ${selected.has(score.id) ? 'selected' : ''}`} aria-pressed={selecting ? selected.has(score.id) : undefined} onPointerDown={(event) => startPress(event, score.id)} onPointerMove={(event) => { if (press.current && Math.hypot(event.clientX - press.current.x, event.clientY - press.current.y) > 10) clearPress() }} onPointerUp={clearPress} onPointerCancel={clearPress} onContextMenu={(event) => event.preventDefault()} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return } if (selecting) toggle(score.id); else { setEditing(score.id); onEditingChange?.(true) } }}><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>{score.availability === 'missing' ? t('missing') : !score.enabled ? t('disabled') : score.configuration === 'pending' ? t('setupNeeded') : score.tags.includes('80s') ? t('ready80s') : t('ready')}</small></span>{selecting ? <span className="selection-indicator" aria-hidden="true">{selected.has(score.id) ? '✓' : ''}</span> : <span className={`status-dot ${score.availability} ${score.configuration}`} aria-hidden="true" />}</button></li>)}
       </ul>
       {filtered.length === 0 && <p className="notice">{t('noMatches')}</p>}
     </section>

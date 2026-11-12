@@ -1,9 +1,40 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { makeScore } from '../../test/fixtures'
 import { LibraryScreen } from './LibraryScreen'
 
 describe('library configuration UI', () => {
+  it('selects multiple pieces and applies only chosen settings', async () => {
+    const user = userEvent.setup()
+    const onBulkSave = vi.fn(() => Promise.resolve())
+    render(<LibraryScreen scores={[makeScore(), makeScore({ id: 'two', scoreNumber: 2, displayNumber: '02', title: 'Africa' })]} lastScan={undefined} onFolder={vi.fn()} onSave={vi.fn()} onBulkSave={onBulkSave} />)
+    await user.click(screen.getByRole('button', { name: 'Select pieces' }))
+    await user.click(screen.getByRole('button', { name: /Take On Me/ }))
+    await user.click(screen.getByRole('button', { name: /Africa/ }))
+    expect(screen.getByRole('status')).toHaveTextContent('2 selected')
+    await user.click(screen.getByRole('button', { name: 'Edit settings' }))
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Drums intro' }), 'true')
+    await user.selectOptions(screen.getByRole('combobox', { name: '80s repertoire' }), 'false')
+    await user.click(screen.getByRole('button', { name: 'Apply to selected' }))
+    expect(onBulkSave).toHaveBeenCalledWith(['score-1', 'two'], { drumsIntro: true, in80s: false })
+    expect(await screen.findByRole('button', { name: 'Select pieces' })).toBeVisible()
+  })
+
+  it('enters selection on long press without opening the piece', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('PointerEvent', MouseEvent)
+    try {
+      render(<LibraryScreen scores={[makeScore()]} lastScan={undefined} onFolder={vi.fn()} onSave={vi.fn()} />)
+      const row = screen.getByRole('button', { name: /Take On Me/ })
+      fireEvent.pointerDown(row, { button: 0, clientX: 10, clientY: 10 })
+      await act(() => { vi.advanceTimersByTime(550); return Promise.resolve() })
+      fireEvent.pointerUp(row)
+      fireEvent.click(row)
+      expect(screen.getByRole('status')).toHaveTextContent('1 selected')
+      expect(row).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.queryByRole('button', { name: 'Save score' })).not.toBeInTheDocument()
+    } finally { vi.useRealTimers(); vi.unstubAllGlobals() }
+  })
   it('shows empty onboarding with the filename contract', () => {
     render(<LibraryScreen scores={[]} lastScan={undefined} onFolder={vi.fn()} onSave={vi.fn(() => Promise.resolve())} />)
     expect(screen.getByRole('heading', { name: /Build tonight’s sets/ })).toBeVisible()

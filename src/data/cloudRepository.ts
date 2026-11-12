@@ -1,9 +1,10 @@
-import { configurationStatus } from '../domain/configuration'
+import { applyBulkConfiguration, configurationStatus } from '../domain/configuration'
 import { applyReconciliation as applyReconciliationToScores } from '../domain/reconciliation'
 import { applySettingsBackup } from '../domain/settingsBackup'
 import type { SettingsBackup, SettingsImportReport } from '../domain/settingsBackup'
 import type {
   FolderScan,
+  BulkConfiguration,
   GeneratedPerformance,
   ReconciliationPlan,
   RenumberingDecisions,
@@ -189,6 +190,14 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
         updatedAt,
       }
       return { result: undefined, state: { ...state, scores: state.scores.map((score) => score.id === id ? updated : score) } }
+    })
+  }
+
+  saveBulkConfiguration(ids: string[], changes: BulkConfiguration, updatedAt: string): Promise<void> {
+    return this.change((state) => {
+      const selected = new Set(ids)
+      if (state.scores.filter((score) => selected.has(score.id)).length !== selected.size) throw new Error('This score no longer exists.')
+      return { result: undefined, state: { ...state, scores: state.scores.map((score) => selected.has(score.id) ? applyBulkConfiguration(score, changes, updatedAt) : score) } }
     })
   }
 

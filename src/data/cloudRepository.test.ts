@@ -18,6 +18,20 @@ function bodySource(body: BodyInit | null | undefined): string {
 }
 
 describe('cloud repository', () => {
+  it('saves a bulk edit in one cloud state update', async () => {
+    const database = new PieceSelectorDatabase(databaseName())
+    const initial = { ...emptyCloudState(), scores: [makeScore(), makeScore({ id: 'two', scoreNumber: 2, displayNumber: '02', hotness: 3 })] }
+    const fetchRequest = vi.fn((_input: string, init?: RequestInit) => {
+      if (init?.method !== 'PUT') return Promise.resolve(response(1, initial))
+      const upload = JSON.parse(bodySource(init.body)) as { state: ReturnType<typeof emptyCloudState> }
+      return Promise.resolve(response(2, upload.state))
+    })
+    const repository = new CloudRepository(database, new CloudStateTransport(fetchRequest))
+    await repository.saveBulkConfiguration(['score-1', 'two'], { in80s: true }, '2026-09-10T10:00:00.000Z')
+    expect(fetchRequest).toHaveBeenCalledTimes(2)
+    expect((await repository.listScores()).map((score) => [score.hotness, score.tags])).toEqual([[2, ['80s']], [3, ['80s']]])
+    database.close()
+  })
   it('migrates an existing device library when authenticated D1 storage is empty', async () => {
     const database = new PieceSelectorDatabase(databaseName())
     await database.scores.put(makeScore())

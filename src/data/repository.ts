@@ -3,6 +3,7 @@ import { applySettingsBackup } from '../domain/settingsBackup'
 import type { SettingsBackup, SettingsImportReport } from '../domain/settingsBackup'
 import type {
   FolderScan,
+  BulkConfiguration,
   GeneratedPerformance,
   ReconciliationPlan,
   RenumberingDecisions,
@@ -12,12 +13,13 @@ import type {
   ScoreConfiguration,
 } from '../domain/types'
 import { PieceSelectorDatabase } from './database'
-import { configurationStatus } from '../domain/configuration'
+import { applyBulkConfiguration, configurationStatus } from '../domain/configuration'
 
 export interface ScoreRepository {
   listScores: () => Promise<Score[]>
   getScore: (id: string) => Promise<Score | undefined>
   saveConfiguration: (id: string, configuration: ScoreConfiguration, updatedAt: string) => Promise<void>
+  saveBulkConfiguration: (ids: string[], changes: BulkConfiguration, updatedAt: string) => Promise<void>
   applyReconciliation: (
     plan: ReconciliationPlan,
     decisions: RenumberingDecisions,
@@ -62,6 +64,15 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
         configuration: configurationStatus(configuration),
         updatedAt,
       })
+    })
+  }
+
+  async saveBulkConfiguration(ids: string[], changes: BulkConfiguration, updatedAt: string): Promise<void> {
+    await this.database.transaction('rw', this.database.scores, async () => {
+      const uniqueIds = [...new Set(ids)]
+      const scores = await this.database.scores.bulkGet(uniqueIds)
+      if (scores.some((score) => !score)) throw new Error('This score no longer exists.')
+      await this.database.scores.bulkPut(scores.map((score) => applyBulkConfiguration(score!, changes, updatedAt)))
     })
   }
 
