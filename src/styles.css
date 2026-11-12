@@ -208,6 +208,15 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
 .shared-title { max-width: none; overflow-wrap: anywhere; }
 .shared-view .set-card h2 { padding: 16px 12px 0; margin: 0; }
 .shared-view .score-copy strong { white-space: normal; overflow-wrap: anywhere; }
+.notes-field { display: grid; gap: 8px; color: var(--forest); }
+.notes-field > span { display: flex; justify-content: space-between; gap: 12px; }
+.notes-field small { color: var(--muted); font-size: 12px; }
+.notes-field > small { text-align: right; }
+.notes-field textarea { display: block; width: 100%; min-height: 120px; padding: 14px; color: var(--ink); background: var(--paper); border: 1px solid var(--border); border-radius: 14px; font: inherit; line-height: 1.5; resize: vertical; }
+.notes-field textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.drummer-notes { display: flex; gap: 7px; padding: 8px 10px; margin-top: 4px; color: var(--ink); background: var(--amber-soft); border-radius: 10px; font-size: 14px; line-height: 1.45; }
+.drummer-notes .ui-icon { width: 18px; height: 18px; margin-top: 2px; }
+.drummer-notes > span { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .score-copy { min-width: 0; display: grid; gap: 3px; }
 .score-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .score-copy small { color: var(--muted); }

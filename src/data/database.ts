@@ -160,6 +160,7 @@ export class PieceSelectorDatabase extends Dexie {
       const names = new Map([['general', 'General'], ...scores.map((score): [string, string] => [collectionKey(score.collection), collectionName(score.collection)])])
       await transaction.table('collections').bulkPut([...names].map(([key, name]) => ({ key, name })))
     })
+    this.version(12).stores({}).upgrade((transaction: Transaction) => transaction.table<Score, string>('scores').toCollection().modify((score) => { score.drummerNotes ??= '' }))
   }
 }
 

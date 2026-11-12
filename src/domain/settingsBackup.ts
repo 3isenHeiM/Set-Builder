@@ -1,9 +1,10 @@
 import type { Hotness, PieceCode, Score } from './types'
 import { readCollection, comparePieces, pieceKey, validCode } from './collections'
 import { configurationStatus } from './configuration'
+import { readDrummerNotes } from './drummerNotes'
 
 export const SETTINGS_BACKUP_FORMAT = 'piece-selector-settings'
-export const SETTINGS_BACKUP_VERSION = 4
+export const SETTINGS_BACKUP_VERSION = 5
 
 export interface BackedUpScoreSettings {
   scoreNumber: PieceCode
@@ -14,6 +15,7 @@ export interface BackedUpScoreSettings {
     canStart: boolean | null
     hotness: Hotness | null
     drumsIntro: boolean | null
+    drummerNotes?: string
     goesHigh: boolean | null
     enabled: boolean
   }
@@ -67,6 +69,7 @@ export function createSettingsBackup(scores: readonly Score[], exportedAt: strin
           canStart: score.canStart,
           hotness: score.hotness,
           drumsIntro: score.drumsIntro,
+          drummerNotes: readDrummerNotes(score.drummerNotes),
           goesHigh: score.goesHigh,
           enabled: score.enabled,
         },
@@ -91,7 +94,7 @@ export function parseSettingsBackupJson(source: string): SettingsBackup {
   }
   const usesFiveLevelHotness = raw.version === 1
   const predatesGoesHigh = raw.version === 1 || raw.version === 2
-  if (!predatesGoesHigh && raw.version !== 3 && raw.version !== SETTINGS_BACKUP_VERSION) {
+  if (!predatesGoesHigh && raw.version !== 3 && raw.version !== 4 && raw.version !== SETTINGS_BACKUP_VERSION) {
     throw new Error('This settings file version is not supported.')
   }
   if (typeof raw.exportedAt !== 'string' || !Array.isArray(raw.pieces)) {
@@ -124,6 +127,7 @@ export function parseSettingsBackupJson(source: string): SettingsBackup {
       || !isNullableBoolean(settings.drumsIntro)
       || !(isNullableBoolean(settings.goesHigh) || (predatesGoesHigh && settings.goesHigh === undefined))
       || typeof settings.enabled !== 'boolean'
+      || (raw.version === SETTINGS_BACKUP_VERSION && typeof settings.drummerNotes !== 'string')
     ) {
       throw new Error(`Score number ${piece.scoreNumber} has malformed settings.`)
     }
@@ -137,6 +141,7 @@ export function parseSettingsBackupJson(source: string): SettingsBackup {
         canStart: settings.canStart,
         hotness: settings.hotness === 4 || settings.hotness === 5 ? 3 : settings.hotness,
         drumsIntro: settings.drumsIntro,
+        ...(settings.drummerNotes === undefined ? {} : { drummerNotes: readDrummerNotes(settings.drummerNotes) }),
         goesHigh: settings.goesHigh === undefined ? null : settings.goesHigh,
         enabled: settings.enabled,
       },
@@ -179,6 +184,7 @@ export function applySettingsBackup(
         canStart: settings.canStart,
         hotness: settings.hotness,
         drumsIntro: settings.drumsIntro,
+        drummerNotes: settings.drummerNotes === undefined ? readDrummerNotes(score.drummerNotes) : readDrummerNotes(settings.drummerNotes),
         goesHigh: settings.goesHigh,
         enabled: settings.enabled,
         tags: [...score.tags.filter((tag) => tag !== '80s'), ...(settings.in80s ? ['80s'] : [])],

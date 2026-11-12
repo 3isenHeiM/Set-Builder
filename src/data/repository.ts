@@ -14,7 +14,8 @@ import type {
 } from '../domain/types'
 import { PieceSelectorDatabase } from './database'
 import { applyBulkConfiguration, configurationStatus } from '../domain/configuration'
-import { assignPiecesToCollection, collectionKey, collectionNames, comparePieces, createCollectionNames, renameCollectionData } from '../domain/collections'
+import { readDrummerNotes, updateSavedDrummerNotes } from '../domain/drummerNotes'
+import { assignPiecesToCollection, collectionKey, collectionNames, comparePieces, createCollectionNames, pieceKey, renameCollectionData } from '../domain/collections'
 
 export interface ScoreRepository {
   listCollections: () => Promise<string[]>
@@ -101,20 +102,30 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
   }
 
   async saveConfiguration(id: string, configuration: ScoreConfiguration, updatedAt: string): Promise<void> {
-    await this.database.transaction('rw', this.database.scores, async () => {
+    await this.database.transaction('rw', [this.database.scores, this.database.performances, this.database.savedSetLists, this.database.savedSets], async () => {
       const score = await this.database.scores.get(id)
       if (!score) throw new Error('This score no longer exists.')
       await this.database.scores.update(id, {
         canStart: configuration.canStart,
         hotness: configuration.hotness,
         drumsIntro: configuration.drumsIntro,
+        drummerNotes: configuration.drummerNotes === undefined ? readDrummerNotes(score.drummerNotes) : readDrummerNotes(configuration.drummerNotes),
         goesHigh: configuration.goesHigh,
         enabled: configuration.enabled,
         tags: configuration.in80s === undefined ? score.tags : configuration.in80s ? ['80s'] : [],
         configuration: configurationStatus(configuration),
         updatedAt,
       })
+      if (configuration.drummerNotes !== undefined) await this.updateSavedNotes([{ ...score, drummerNotes: readDrummerNotes(configuration.drummerNotes) }], updatedAt)
     })
+  }
+
+  private async updateSavedNotes(scores: Score[], updatedAt: string): Promise<void> {
+    const [stored, setLists, savedSets] = await Promise.all([this.database.performances.get('last'), this.listSetLists(), this.listSavedSets()])
+    const next = updateSavedDrummerNotes({ lastPerformance: stored?.performance ?? null, setLists, savedSets }, scores, updatedAt)
+    await this.database.savedSetLists.bulkPut(next.setLists)
+    await this.database.savedSets.bulkPut(next.savedSets)
+    if (next.lastPerformance) await this.database.performances.put({ key: 'last', performance: next.lastPerformance })
   }
 
   async saveBulkConfiguration(ids: string[], changes: BulkConfiguration, updatedAt: string): Promise<void> {
@@ -149,10 +160,12 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
   }
 
   async importSettings(backup: SettingsBackup, updatedAt: string): Promise<SettingsImportReport> {
-    return this.database.transaction('rw', this.database.scores, async () => {
+    return this.database.transaction('rw', [this.database.scores, this.database.performances, this.database.savedSetLists, this.database.savedSets], async () => {
       const existing = await this.database.scores.toArray()
       const result = applySettingsBackup(existing, backup, updatedAt)
       await this.database.scores.bulkPut(result.scores)
+      const noteKeys = new Set(backup.pieces.filter((piece) => piece.settings.drummerNotes !== undefined).map(pieceKey))
+      await this.updateSavedNotes(result.scores.filter((score) => noteKeys.has(pieceKey(score))), updatedAt)
       return result.report
     })
   }

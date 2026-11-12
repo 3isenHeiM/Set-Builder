@@ -105,6 +105,14 @@ export function App({ repository = browserRepository, authentication = cloudAuth
   const saveConfiguration = async (id: string, configuration: ScoreConfiguration) => {
     await repository.saveConfiguration(id, configuration, new Date().toISOString())
     setScores(await repository.listScores())
+    if (configuration.drummerNotes !== undefined) await refreshSavedNotes()
+  }
+
+  const refreshSavedNotes = async () => {
+    const [lists, reusable, last] = await Promise.all([repository.listSetLists(), repository.listSavedSets(), repository.getLastPerformance()])
+    setSetLists(lists)
+    setSavedSets(reusable)
+    setCurrentSetList((current) => current ? lists.find((list) => list.id === current.id) ?? (last?.id === current.id ? { ...current, performance: last } : current) : current)
   }
 
   const saveBulkConfiguration = async (ids: string[], changes: BulkConfiguration) => {
@@ -193,6 +201,7 @@ export function App({ repository = browserRepository, authentication = cloudAuth
   const importSettings = async (backup: SettingsBackup) => {
     const report = await repository.importSettings(backup, new Date().toISOString())
     setScores(await repository.listScores())
+    await refreshSavedNotes()
     return report
   }
 

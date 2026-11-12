@@ -13,6 +13,7 @@ export function makeScore(overrides: Partial<Score> = {}): Score {
     canStart: true,
     hotness: 2,
     drumsIntro: false,
+    drummerNotes: '',
     goesHigh: false,
     enabled: true,
     tags: [],

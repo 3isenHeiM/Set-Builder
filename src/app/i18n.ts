@@ -47,6 +47,10 @@ const en = {
   downloadSettings: 'Download settings',
   drums: 'Drums',
   drumsIntro: 'Drums intro',
+  drummerNotes: 'Drummer notes',
+  drummerNotesPlaceholder: 'Count-in, groove, breaks, ending…',
+  optional: 'Optional',
+  drummerNotesInvalid: 'Drummer notes must be text of at most 2000 characters.',
   drumsRelaxed: 'The drums-intro spacing preference was relaxed because no alternative was available.',
   duplicatesSkipped: 'Duplicates · skipped ({{count}})',
   eligible: 'eligible',
@@ -348,6 +352,10 @@ const fr: Copy = {
   downloadSettings: 'Télécharger les réglages',
   drums: 'Batterie',
   drumsIntro: 'Intro batterie',
+  drummerNotes: 'Notes pour les batteurs',
+  drummerNotesPlaceholder: 'Décompte, rythme, breaks, fin…',
+  optional: 'Facultatif',
+  drummerNotesInvalid: 'Les notes doivent être du texte de 2000 caractères maximum.',
   drumsRelaxed: 'Les intros batterie consécutives n’ont pas pu être évitées.',
   duplicatesSkipped: 'Doublons · ignorés ({{count}})',
   eligible: 'éligibles',
@@ -624,6 +632,7 @@ export function localizedKnownMessage(message: string, locale: Locale): string |
   if (locale === 'en') return message
   const t = (key: keyof Copy, values: Record<string, string | number> = {}) => interpolate(fr[key], values)
   const exact: Partial<Record<string, keyof Copy>> = {
+    'Drummer notes must be text of at most 2000 characters.': 'drummerNotesInvalid',
     'Sharing is unavailable. Try again online.': 'sharingUnavailable',
     'This shared setlist is unavailable.': 'sharedUnavailable',
     'A collection already uses this name.': 'collectionConflict',

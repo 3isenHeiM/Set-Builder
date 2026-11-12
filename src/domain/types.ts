@@ -18,6 +18,7 @@ export interface Score {
   canStart: boolean | null
   hotness: Hotness | null
   drumsIntro: boolean | null
+  drummerNotes?: string
   goesHigh: boolean | null
   enabled: boolean
   tags: string[]
@@ -30,13 +31,14 @@ export interface ScoreConfiguration {
   canStart: boolean | null
   hotness: Hotness | null
   drumsIntro: boolean | null
+  drummerNotes?: string
   goesHigh: boolean | null
   enabled: boolean
   /** Accepted for legacy settings clients; current configuration uses collections. */
   in80s?: boolean
 }
 
-export type BulkConfiguration = Partial<Omit<ScoreConfiguration, 'in80s'>>
+export type BulkConfiguration = Partial<Omit<ScoreConfiguration, 'in80s' | 'drummerNotes'>>
 
 export type MalformedReason =
   | 'not-mscz'
@@ -145,6 +147,7 @@ export interface PerformanceScoreSnapshot {
   title: string
   hotness: Hotness
   drumsIntro: boolean
+  drummerNotes?: string
   goesHigh: boolean
   canStart: boolean
 }

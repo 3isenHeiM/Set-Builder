@@ -32,6 +32,7 @@ function snapshot(score: Score): PerformanceScoreSnapshot | undefined {
     title: score.title,
     hotness: score.hotness,
     drumsIntro: score.drumsIntro,
+    ...(score.drummerNotes ? { drummerNotes: score.drummerNotes } : {}),
     goesHigh: score.goesHigh,
     canStart: score.canStart,
   }
