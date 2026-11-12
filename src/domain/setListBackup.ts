@@ -1,8 +1,9 @@
 import { MAX_SCORES_PER_SET, MAX_SETS } from './generator'
+import { readCollection, matchesDisplay, pieceKey, validCode } from './collections'
 import type { Hotness, PerformanceScoreSnapshot, Preset, SavedSetList } from './types'
 
 export const SET_LIST_BACKUP_FORMAT = 'piece-selector-set-list'
-export const SET_LIST_BACKUP_VERSION = 1
+export const SET_LIST_BACKUP_VERSION = 2
 
 type SetListBackupScore = Omit<PerformanceScoreSnapshot, 'id'>
 
@@ -30,8 +31,8 @@ function isIsoDate(value: unknown): value is string {
 
 function readScore(value: unknown): SetListBackupScore {
   if (!isRecord(value)
-    || !Number.isSafeInteger(value.scoreNumber) || Number(value.scoreNumber) <= 0
-    || typeof value.displayNumber !== 'string' || !/^\d+$/.test(value.displayNumber)
+    || !validCode(value.scoreNumber)
+    || typeof value.displayNumber !== 'string' || !matchesDisplay(value.scoreNumber, value.displayNumber)
     || typeof value.title !== 'string' || value.title.trim() === ''
     || !Number.isInteger(value.hotness) || Number(value.hotness) < 1 || Number(value.hotness) > 3
     || typeof value.drumsIntro !== 'boolean'
@@ -40,7 +41,8 @@ function readScore(value: unknown): SetListBackupScore {
     throw new Error('This Piece Selector set-list file is malformed.')
   }
   return {
-    scoreNumber: Number(value.scoreNumber),
+    scoreNumber: value.scoreNumber,
+    ...(value.collection === undefined ? {} : { collection: readCollection(value.collection) }),
     displayNumber: value.displayNumber,
     title: value.title.trim(),
     hotness: Number(value.hotness) as Hotness,
@@ -84,7 +86,7 @@ export function parseSetListBackupJson(source: string): SetListBackup {
     throw new Error('Set-list file is not valid JSON.')
   }
   if (!isRecord(raw) || raw.format !== SET_LIST_BACKUP_FORMAT) throw new Error('This is not a Piece Selector set-list file.')
-  if (raw.version !== SET_LIST_BACKUP_VERSION) throw new Error('This set-list file version is not supported.')
+  if (raw.version !== 1 && raw.version !== SET_LIST_BACKUP_VERSION) throw new Error('This set-list file version is not supported.')
   if (!isIsoDate(raw.exportedAt) || !isRecord(raw.setList)) throw new Error('This Piece Selector set-list file is malformed.')
 
   const { setList } = raw
@@ -103,7 +105,7 @@ export function parseSetListBackupJson(source: string): SetListBackup {
     warnings.push(warning)
   }
 
-  const numbers = new Set<number>()
+  const numbers = new Set<string>()
   const sets = setList.sets.map((set) => {
     if (!isRecord(set) || typeof set.name !== 'string' || set.name.length > 120
       || !Array.isArray(set.scores) || set.scores.length < 1 || set.scores.length > MAX_SCORES_PER_SET) {
@@ -113,8 +115,8 @@ export function parseSetListBackupJson(source: string): SetListBackup {
     if (!scores[0]?.canStart) throw new Error('Every imported set must start with an eligible starter.')
     let regularPieceSeen = false
     for (const score of scores) {
-      if (numbers.has(score.scoreNumber)) throw new Error('A piece appears more than once in the imported set list.')
-      numbers.add(score.scoreNumber)
+      if (numbers.has(pieceKey(score))) throw new Error('A piece appears more than once in the imported set list.')
+      numbers.add(pieceKey(score))
       if (score !== scores[0] && score.goesHigh && regularPieceSeen) throw new Error('Pieces that go high must remain near the start of their set.')
       if (score !== scores[0]) regularPieceSeen ||= !score.goesHigh
     }

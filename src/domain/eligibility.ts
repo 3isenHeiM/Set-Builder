@@ -33,6 +33,7 @@ export function toPerformanceSnapshot(score: EligibleScore): PerformanceScoreSna
   return {
     id: score.id,
     scoreNumber: score.scoreNumber,
+    ...(score.collection ? { collection: score.collection } : {}),
     displayNumber: score.displayNumber,
     title: score.title,
     hotness: score.hotness,

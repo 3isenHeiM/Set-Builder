@@ -3,10 +3,12 @@ export type Availability = 'active' | 'missing'
 export type ConfigurationStatus = 'pending' | 'complete'
 export type Hotness = 1 | 2 | 3
 export type Preset = '80s' | 'mix'
+export type PieceCode = number | string
 
 export interface Score {
   id: string
-  scoreNumber: number
+  scoreNumber: PieceCode
+  collection?: string
   displayNumber: string
   title: string
   fileName: string
@@ -33,6 +35,8 @@ export interface ScoreConfiguration {
   in80s: boolean
 }
 
+export type BulkConfiguration = Partial<ScoreConfiguration>
+
 export type MalformedReason =
   | 'not-mscz'
   | 'invalid-format'
@@ -41,7 +45,8 @@ export type MalformedReason =
   | 'empty-title'
 
 export interface ParsedScoreFile {
-  scoreNumber: number
+  scoreNumber: PieceCode
+  collection?: string
   displayNumber: string
   title: string
   fileName: string
@@ -55,11 +60,13 @@ export interface MalformedScoreFile {
 }
 
 export interface DuplicateScoreNumber {
-  scoreNumber: number
+  scoreNumber: PieceCode
   files: ParsedScoreFile[]
 }
 
 export interface FolderSnapshot {
+  collection?: string
+  mode?: 'add' | 'realign'
   scannedAt: IsoTimestamp
   valid: ParsedScoreFile[]
   malformed: MalformedScoreFile[]
@@ -78,7 +85,7 @@ export interface AddChange {
 
 export interface MissingChange {
   scoreId: string
-  scoreNumber: number
+  scoreNumber: PieceCode
   displayNumber: string
   title: string
 }
@@ -86,12 +93,13 @@ export interface MissingChange {
 export interface PossibleRenumbering {
   id: string
   scoreId: string
-  oldScoreNumber: number
+  oldScoreNumber: PieceCode
   oldDisplayNumber: string
   file: ParsedScoreFile
 }
 
 export interface ReconciliationPlan {
+  collection?: string
   scannedAt: IsoTimestamp
   unchanged: ReconcileChange[]
   renamed: ReconcileChange[]
@@ -120,6 +128,7 @@ export interface FolderScanSummary {
 }
 
 export interface FolderScan {
+  collection?: string
   id: string
   kind: 'import' | 'realignment'
   scannedAt: IsoTimestamp
@@ -129,7 +138,8 @@ export interface FolderScan {
 
 export interface PerformanceScoreSnapshot {
   id: string
-  scoreNumber: number
+  scoreNumber: PieceCode
+  collection?: string
   displayNumber: string
   title: string
   hotness: Hotness

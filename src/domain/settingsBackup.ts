@@ -1,11 +1,13 @@
-import type { Hotness, Score } from './types'
+import type { Hotness, PieceCode, Score } from './types'
+import { readCollection, comparePieces, pieceKey, validCode } from './collections'
 import { configurationStatus } from './configuration'
 
 export const SETTINGS_BACKUP_FORMAT = 'piece-selector-settings'
-export const SETTINGS_BACKUP_VERSION = 3
+export const SETTINGS_BACKUP_VERSION = 4
 
 export interface BackedUpScoreSettings {
-  scoreNumber: number
+  scoreNumber: PieceCode
+  collection?: string
   name: string
   settings: {
     in80s: boolean
@@ -25,7 +27,8 @@ export interface SettingsBackup {
 }
 
 export interface SettingsTitleMismatch {
-  scoreNumber: number
+  scoreNumber: PieceCode
+  collection?: string
   backupName: string
   currentName: string
 }
@@ -45,7 +48,7 @@ function isNullableBoolean(value: unknown): value is boolean | null {
 }
 
 function isHotness(value: unknown): value is Hotness {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 3
 }
 
 export function createSettingsBackup(scores: readonly Score[], exportedAt: string): SettingsBackup {
@@ -54,9 +57,10 @@ export function createSettingsBackup(scores: readonly Score[], exportedAt: strin
     version: SETTINGS_BACKUP_VERSION,
     exportedAt,
     pieces: [...scores]
-      .sort((left, right) => left.scoreNumber - right.scoreNumber)
+      .sort(comparePieces)
       .map((score) => ({
         scoreNumber: score.scoreNumber,
+        collection: readCollection(score.collection),
         name: score.title,
         settings: {
           in80s: score.tags.includes('80s'),
@@ -87,25 +91,27 @@ export function parseSettingsBackupJson(source: string): SettingsBackup {
   }
   const usesFiveLevelHotness = raw.version === 1
   const predatesGoesHigh = raw.version === 1 || raw.version === 2
-  if (!predatesGoesHigh && raw.version !== SETTINGS_BACKUP_VERSION) {
+  if (!predatesGoesHigh && raw.version !== 3 && raw.version !== SETTINGS_BACKUP_VERSION) {
     throw new Error('This settings file version is not supported.')
   }
   if (typeof raw.exportedAt !== 'string' || !Array.isArray(raw.pieces)) {
     throw new Error('This Piece Selector settings file is malformed.')
   }
 
-  const seen = new Set<number>()
+  const seen = new Set<string>()
   const pieces = raw.pieces.map((piece, index): BackedUpScoreSettings => {
     if (!isRecord(piece) || !isRecord(piece.settings)) {
       throw new Error(`Piece ${index + 1} has malformed settings.`)
     }
-    if (typeof piece.scoreNumber !== 'number' || !Number.isSafeInteger(piece.scoreNumber) || piece.scoreNumber <= 0) {
+    if (!validCode(piece.scoreNumber)) {
       throw new Error(`Piece ${index + 1} has an invalid score number.`)
     }
-    if (seen.has(piece.scoreNumber)) {
+    const collection = readCollection(piece.collection)
+    const key = pieceKey({ scoreNumber: piece.scoreNumber, collection })
+    if (seen.has(key)) {
       throw new Error(`Score number ${piece.scoreNumber} appears more than once in the settings file.`)
     }
-    seen.add(piece.scoreNumber)
+    seen.add(key)
     if (typeof piece.name !== 'string' || piece.name.trim() === '') {
       throw new Error(`Score number ${piece.scoreNumber} has no name.`)
     }
@@ -124,6 +130,7 @@ export function parseSettingsBackupJson(source: string): SettingsBackup {
 
     return {
       scoreNumber: piece.scoreNumber,
+      collection,
       name: piece.name.trim(),
       settings: {
         in80s: settings.in80s,
@@ -140,16 +147,16 @@ export function parseSettingsBackupJson(source: string): SettingsBackup {
 }
 
 export function previewSettingsImport(scores: readonly Score[], backup: SettingsBackup): SettingsImportReport {
-  const currentByNumber = new Map(scores.map((score) => [score.scoreNumber, score]))
+  const currentByNumber = new Map(scores.map((score) => [pieceKey(score), score]))
   const titleMismatches: SettingsTitleMismatch[] = []
   let matched = 0
 
   for (const piece of backup.pieces) {
-    const current = currentByNumber.get(piece.scoreNumber)
+    const current = currentByNumber.get(pieceKey(piece))
     if (!current) continue
     matched += 1
     if (current.title !== piece.name) {
-      titleMismatches.push({ scoreNumber: piece.scoreNumber, backupName: piece.name, currentName: current.title })
+      titleMismatches.push({ scoreNumber: piece.scoreNumber, ...(piece.collection && piece.collection !== 'General' ? { collection: piece.collection } : {}), backupName: piece.name, currentName: current.title })
     }
   }
 
@@ -161,11 +168,11 @@ export function applySettingsBackup(
   backup: SettingsBackup,
   updatedAt: string,
 ): { scores: Score[]; report: SettingsImportReport } {
-  const settingsByNumber = new Map(backup.pieces.map((piece) => [piece.scoreNumber, piece.settings]))
+  const settingsByNumber = new Map(backup.pieces.map((piece) => [pieceKey(piece), piece.settings]))
 
   return {
     scores: scores.map((score) => {
-      const settings = settingsByNumber.get(score.scoreNumber)
+      const settings = settingsByNumber.get(pieceKey(score))
       if (!settings) return score
       return {
         ...score,

@@ -10,6 +10,8 @@ function storedRepository(performance: GeneratedPerformance) {
     listScores: (): Promise<Score[]> => Promise.resolve(scores),
     getScore: (): Promise<Score | undefined> => Promise.resolve(undefined),
     saveConfiguration: (): Promise<void> => Promise.resolve(),
+    saveBulkConfiguration: (): Promise<void> => Promise.resolve(),
+    renameCollection: (): Promise<void> => Promise.resolve(),
     applyReconciliation: (): Promise<FolderScan> => Promise.reject(new Error('unused')),
     getLastScan: (): Promise<FolderScan | undefined> => Promise.resolve(undefined),
     importSettings: (): Promise<SettingsImportReport> => Promise.resolve({ matched: 0, notFound: 0, titleMismatches: [] }),

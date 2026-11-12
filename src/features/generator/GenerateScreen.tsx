@@ -4,6 +4,7 @@ import { eligibleScores } from '../../domain/eligibility'
 import type { GeneratedPerformance, Preset, Score } from '../../domain/types'
 import { createLocalId, createSeed } from '../../app/id'
 import { localizedError, localizedKnownMessage, useI18n } from '../../app/i18n'
+import { collectionKey, collectionName } from '../../domain/collections'
 
 interface GenerateScreenProps {
   scores: Score[]
@@ -18,16 +19,19 @@ export function GenerateScreen({ scores, hasPerformance, onGenerated }: Generate
   const [scoresPerSet, setScoresPerSet] = useState(8)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
-  const eligible = eligibleScores(scores, preset)
+  const [collection, setCollection] = useState('')
+  const collections = [...new Set(scores.map((score) => collectionName(score.collection)))]
+  const scopedScores = collection ? scores.filter((score) => collectionKey(score.collection) === collectionKey(collection)) : scores
+  const eligible = eligibleScores(scopedScores, preset)
   const starterCount = eligible.filter((score) => score.canStart).length
-  const feasibility = validateFeasibility(scores, { preset, setCount, scoresPerSet, seed: 0 })
+  const feasibility = validateFeasibility(scopedScores, { preset, setCount, scoresPerSet, seed: 0 })
 
   const generate = async () => {
     setError('')
     setSaving(true)
     try {
       const performance = generatePerformance(
-        scores,
+        scopedScores,
         { preset, setCount, scoresPerSet, seed: createSeed() },
         { now: new Date().toISOString(), createId: createLocalId },
       )
@@ -45,6 +49,7 @@ export function GenerateScreen({ scores, hasPerformance, onGenerated }: Generate
     <section className="screen-section" aria-labelledby="generate-title">
       <div className="eyebrow">{t('noRepeats')}</div>
       <h1 id="generate-title">{t('buildSets')}</h1>
+      <label><span>{t('collection')}</span><select value={collection} onChange={(event) => setCollection(event.target.value)}><option value="">{t('allCollections')}</option>{collections.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
       {hasPerformance && <p className="notice">{t('createsSavedSetList')}</p>}
       <fieldset className="preset-field">
         <legend>{t('repertoire')}</legend>

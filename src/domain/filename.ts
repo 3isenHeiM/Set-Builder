@@ -4,7 +4,9 @@ import type {
   MalformedReason,
   MalformedScoreFile,
   ParsedScoreFile,
+  PieceCode,
 } from './types'
+import { compareCodes } from './collections'
 
 export type ParseScoreFileResult =
   | { ok: true; value: ParsedScoreFile }
@@ -16,7 +18,7 @@ export interface FileMetadata {
 }
 
 const finalMsczExtension = /\.mscz$/i
-const contract = /^\s*(\d+)\s*-\s*(.+?)\s*\.mscz$/i
+const contract = /^\s*(\d+|[a-z]{1,20})\s*-\s*(.+?)\s*\.mscz$/i
 
 export function parseScoreFileName(fileName: string, relativePath = fileName): ParseScoreFileResult {
   if (!finalMsczExtension.test(fileName)) return { ok: false, reason: 'not-mscz' }
@@ -31,13 +33,13 @@ export function parseScoreFileName(fileName: string, relativePath = fileName): P
     return { ok: false, reason: 'invalid-format' }
   }
 
-  const displayNumber = match[1]
+  const displayNumber = match[1]?.toUpperCase()
   const title = match[2]?.trim()
   if (!displayNumber) return { ok: false, reason: 'invalid-format' }
   if (!title) return { ok: false, reason: 'empty-title' }
-  const scoreNumber = Number(displayNumber)
-  if (!Number.isSafeInteger(scoreNumber)) return { ok: false, reason: 'number-too-large' }
-  if (scoreNumber <= 0) return { ok: false, reason: 'non-positive-number' }
+  const scoreNumber = /^\d+$/.test(displayNumber) ? Number(displayNumber) : displayNumber
+  if (typeof scoreNumber === 'number' && !Number.isSafeInteger(scoreNumber)) return { ok: false, reason: 'number-too-large' }
+  if (typeof scoreNumber === 'number' && scoreNumber <= 0) return { ok: false, reason: 'non-positive-number' }
 
   return {
     ok: true,
@@ -58,7 +60,7 @@ export function buildFolderSnapshot(files: Iterable<FileMetadata>, scannedAt: st
     else malformed.push({ fileName: file.name, relativePath, reason: result.reason })
   }
 
-  const byNumber = new Map<number, ParsedScoreFile[]>()
+  const byNumber = new Map<PieceCode, ParsedScoreFile[]>()
   for (const file of parsed) {
     const group = byNumber.get(file.scoreNumber) ?? []
     group.push(file)
@@ -75,7 +77,7 @@ export function buildFolderSnapshot(files: Iterable<FileMetadata>, scannedAt: st
     }
   }
 
-  valid.sort((a, b) => a.scoreNumber - b.scoreNumber || a.title.localeCompare(b.title))
-  duplicates.sort((a, b) => a.scoreNumber - b.scoreNumber)
+  valid.sort((a, b) => compareCodes(a.scoreNumber, b.scoreNumber) || a.title.localeCompare(b.title))
+  duplicates.sort((a, b) => compareCodes(a.scoreNumber, b.scoreNumber))
   return { scannedAt, valid, malformed, duplicates, ignoredCount }
 }

@@ -3,6 +3,7 @@ import { applySettingsBackup } from '../domain/settingsBackup'
 import type { SettingsBackup, SettingsImportReport } from '../domain/settingsBackup'
 import type {
   FolderScan,
+  BulkConfiguration,
   GeneratedPerformance,
   ReconciliationPlan,
   RenumberingDecisions,
@@ -12,12 +13,15 @@ import type {
   ScoreConfiguration,
 } from '../domain/types'
 import { PieceSelectorDatabase } from './database'
-import { configurationStatus } from '../domain/configuration'
+import { applyBulkConfiguration, configurationStatus } from '../domain/configuration'
+import { comparePieces, renameCollectionData } from '../domain/collections'
 
 export interface ScoreRepository {
+  renameCollection: (previous: string, name: string) => Promise<void>
   listScores: () => Promise<Score[]>
   getScore: (id: string) => Promise<Score | undefined>
   saveConfiguration: (id: string, configuration: ScoreConfiguration, updatedAt: string) => Promise<void>
+  saveBulkConfiguration: (ids: string[], changes: BulkConfiguration, updatedAt: string) => Promise<void>
   applyReconciliation: (
     plan: ReconciliationPlan,
     decisions: RenumberingDecisions,
@@ -40,8 +44,19 @@ export interface PerformanceRepository {
 export class PieceSelectorRepository implements ScoreRepository, PerformanceRepository {
   constructor(readonly database: PieceSelectorDatabase) {}
 
+  async renameCollection(previous: string, name: string): Promise<void> {
+    await this.database.transaction('rw', [this.database.scores, this.database.performances, this.database.savedSetLists, this.database.savedSets], async () => {
+      const [scores, stored, setLists, savedSets] = await Promise.all([this.listScores(), this.database.performances.get('last'), this.listSetLists(), this.listSavedSets()])
+      const renamed = renameCollectionData({ scores, lastPerformance: stored?.performance ?? null, setLists, savedSets }, previous, name)
+      await this.database.scores.bulkPut(renamed.scores)
+      await this.database.savedSetLists.bulkPut(renamed.setLists)
+      await this.database.savedSets.bulkPut(renamed.savedSets)
+      if (renamed.lastPerformance) await this.database.performances.put({ key: 'last', performance: renamed.lastPerformance })
+    })
+  }
+
   async listScores(): Promise<Score[]> {
-    return this.database.scores.orderBy('scoreNumber').toArray()
+    return (await this.database.scores.toArray()).sort(comparePieces)
   }
 
   async getScore(id: string): Promise<Score | undefined> {
@@ -62,6 +77,15 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
         configuration: configurationStatus(configuration),
         updatedAt,
       })
+    })
+  }
+
+  async saveBulkConfiguration(ids: string[], changes: BulkConfiguration, updatedAt: string): Promise<void> {
+    await this.database.transaction('rw', this.database.scores, async () => {
+      const uniqueIds = [...new Set(ids)]
+      const scores = await this.database.scores.bulkGet(uniqueIds)
+      if (scores.some((score) => !score)) throw new Error('This score no longer exists.')
+      await this.database.scores.bulkPut(scores.map((score) => applyBulkConfiguration(score!, changes, updatedAt)))
     })
   }
 

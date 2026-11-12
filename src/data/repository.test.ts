@@ -12,6 +12,17 @@ function databaseName(): string {
 }
 
 describe('IndexedDB persistence', () => {
+  it('applies partial settings atomically while preserving other values and tags', async () => {
+    const database = new PieceSelectorDatabase(databaseName())
+    const repository = new PieceSelectorRepository(database)
+    await database.scores.bulkPut([makeScore({ tags: ['other', '80s'] }), makeScore({ id: 'two', scoreNumber: 2, displayNumber: '02', hotness: 3, tags: ['other'] })])
+    await repository.saveBulkConfiguration(['score-1', 'two'], { drumsIntro: true, in80s: false }, '2026-09-10T10:00:00.000Z')
+    expect(await repository.getScore('score-1')).toMatchObject({ drumsIntro: true, hotness: 2, tags: ['other'] })
+    expect(await repository.getScore('two')).toMatchObject({ drumsIntro: true, hotness: 3, tags: ['other'] })
+    await expect(repository.saveBulkConfiguration(['score-1', 'missing'], { hotness: 1 }, '2026-09-10T11:00:00.000Z')).rejects.toThrow('no longer exists')
+    expect((await repository.getScore('score-1'))?.hotness).toBe(2)
+    database.close()
+  })
   it('migrates legacy data without losing settings or a saved performance', async () => {
     const name = databaseName()
     const original = makeScore({ tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, enabled: false })

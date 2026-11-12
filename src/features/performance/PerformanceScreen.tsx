@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { addPiece, addSavedSetToProgram, assertSavedPerformanceValid, canAddPiece, canAddSavedSet, canMovePiece, linkSavedSet, movePiece, moveSet, removePiece, removeSetFromProgram, renameSet, renameSetList } from '../../domain/setList'
+import { addNewSet, addPiece, addSavedSetToProgram, assertSavedPerformanceValid, canAddPiece, canAddSavedSet, canMoveBetweenSets, canMovePiece, linkSavedSet, moveBetweenSets, movePiece, moveSet, removePiece, removeSetFromProgram, renameSet, renameSetList } from '../../domain/setList'
 import { createSetListBackup, parseSetListBackupJson, setListBackupToJson, type SetListBackup } from '../../domain/setListBackup'
+import { MAX_SETS } from '../../domain/generator'
 import type { PerformanceSet, SavedSet, SavedSetList, Score } from '../../domain/types'
 import { UiIcon } from '../../app/UiIcon'
 import { localizedError, localizedKnownMessage, useI18n } from '../../app/i18n'
@@ -13,6 +14,7 @@ interface PerformanceScreenProps {
   onSave: (setList: SavedSetList) => Promise<void>
   onSaveSavedSet: (set: PerformanceSet) => Promise<SavedSet>
   onCreateProgram: (savedSet: SavedSet) => Promise<void>
+  onCreateManualProgram?: (starter: Score) => Promise<void>
   onSelect: (id: string) => Promise<void>
   onImport: (backup: SetListBackup) => Promise<void>
   onRegenerate: () => void
@@ -22,7 +24,7 @@ function downloadName(exportedAt: string): string {
   return `piece-selector-program-${exportedAt.slice(0, 10)}.json`
 }
 
-export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, onSave, onSaveSavedSet, onCreateProgram, onSelect, onImport, onRegenerate }: PerformanceScreenProps) {
+export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, onSave, onSaveSavedSet, onCreateProgram, onCreateManualProgram, onSelect, onImport, onRegenerate }: PerformanceScreenProps) {
   const { locale, t } = useI18n()
   const fileInput = useRef<HTMLInputElement>(null)
   const [listName, setListName] = useState(setList?.name ?? '')
@@ -32,6 +34,7 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
   const [pieceSelections, setPieceSelections] = useState<Record<number, string>>({})
   const [setNames, setSetNames] = useState<Record<string, string>>({})
   const [savedSetSelection, setSavedSetSelection] = useState('')
+  const [starterSelection, setStarterSelection] = useState('')
 
   useEffect(() => {
     setListName(setList?.name ?? '')
@@ -142,6 +145,9 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
 
   const allSetLists = setList && !savedSetLists.some((saved) => saved.id === setList.id) ? [setList, ...savedSetLists] : savedSetLists
   const selectedSavedSet = savedSets.find((saved) => saved.id === savedSetSelection)
+  const starters = scores.filter((score) => score.availability === 'active' && score.enabled && score.configuration === 'complete' && score.canStart === true && score.hotness !== null && score.drumsIntro !== null && score.goesHigh !== null && (!setList || canAddPiece(setList, score)))
+  const allStarters = scores.filter((score) => score.availability === 'active' && score.enabled && score.configuration === 'complete' && score.canStart === true && score.hotness !== null && score.drumsIntro !== null && score.goesHigh !== null)
+  const manualBuilder = <div className="manual-builder"><label><span>{t('chooseStarter')}</span><select value={starterSelection} onChange={(event) => setStarterSelection(event.target.value)}><option value="">{t('chooseStarter')}</option>{allStarters.map((score) => <option value={score.id} key={score.id}>{score.collection || 'General'} · {score.displayNumber} · {score.title}</option>)}</select></label><div className="manual-actions">{setList && <button type="button" className="secondary-action" disabled={saving || setList.performance.sets.length >= MAX_SETS || !starters.some((score) => score.id === starterSelection)} onClick={() => { const starter = starters.find((score) => score.id === starterSelection); if (starter) void save(addNewSet(setList, starter, new Date().toISOString())); setStarterSelection('') }}>{t('addNewSet')}</button>}<button type="button" className="secondary-action" disabled={saving || !starterSelection} onClick={() => { const starter = allStarters.find((score) => score.id === starterSelection); if (!starter || !onCreateManualProgram) return; setSaving(true); void onCreateManualProgram(starter).catch((caught: unknown) => setError(localizedError(caught, locale, t('programSaveFailed')))).finally(() => setSaving(false)); setStarterSelection('') }}>{t('createFromScratch')}</button></div></div>
   const composer = (
     <div className="program-composer">
       <div><h2>{t('buildProgram')}</h2><p>{t('combineSavedSets')}</p></div>
@@ -157,8 +163,8 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
     <section className="empty-state compact">
       <div className="hero-mark" aria-hidden="true"><UiIcon name="sets" /></div>
       <h1>{t('programs')}</h1>
+      {manualBuilder}
       {composer}
-      {savedSets.length === 0 && <p>{t('saveSetFirst')}</p>}
       <button className="primary-action" type="button" onClick={onRegenerate}>{t('buildSets')}</button>
       <button className="secondary-action" type="button" onClick={() => fileInput.current?.click()}>{t('importSetList')}</button>
       <input ref={fileInput} className="hidden-input" type="file" accept=".json,application/json" onChange={(event) => { void selectFile(event) }} />
@@ -176,6 +182,7 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
       <label className="saved-list-picker"><span>{t('savedPrograms')}</span><select value={setList.id} onChange={(event) => { void select(event.target.value) }}>{allSetLists.map((saved) => <option value={saved.id} key={saved.id}>{saved.name || t('setsTitle')} · {new Date(saved.createdAt).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' })}</option>)}</select></label>
       <label className="set-list-name"><span>{t('programName')}</span><input type="text" value={listName} maxLength={120} placeholder={t('setsTitle')} onChange={(event) => setListName(event.target.value)} onBlur={() => { if (listName.trim() !== setList.name) saveSetName(renameSetList(setList, listName, new Date().toISOString())) }} /></label>
       {composer}
+      {manualBuilder}
 
       <p className="alignment-stamp"><time dateTime={setList.performance.generatedAt}>{new Date(setList.performance.generatedAt).toLocaleString(locale)}</time></p>
       {setList.performance.warnings.map((warning) => <p className="notice" role="status" key={warning}>{localizedKnownMessage(warning, locale) ?? warning}</p>)}
@@ -192,10 +199,10 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
             </div>
             <div className="set-card-toolbar"><span>{set.scores.length} {t(set.scores.length === 1 ? 'piece' : 'pieces')}</span><button type="button" disabled={saving} onClick={() => { void saveReusableSet(setIndex) }}>{set.savedSetId && savedSets.some((saved) => saved.id === set.savedSetId) ? t('updateSavedSet') : t('saveThisSet')}</button></div>
             <ol>
-              {set.scores.map((score, scoreIndex) => <li key={score.id}><span className="position">{scoreIndex + 1}</span><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>{t('hotnessShort')}{score.hotness}{score.goesHigh ? ` · ${t('highPiece')}` : ''}{score.drumsIntro ? ` · ${t('drums')}` : ''}{scoreIndex === 0 ? ` · ${t('start')}` : ''}</small></span>{scoreIndex > 0 && <span className="piece-order-controls"><button type="button" aria-label={t('movePieceUp', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex - 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex - 1, new Date().toISOString())) }}><UiIcon name="up" /></button><button type="button" aria-label={t('movePieceDown', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex + 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex + 1, new Date().toISOString())) }}><UiIcon name="down" /></button><button type="button" aria-label={t('removePiece', { title: score.title, number: set.number })} disabled={saving} onClick={() => { void save(removePiece(setList, setIndex, scoreIndex, new Date().toISOString())) }}><UiIcon name="minus" /></button></span>}</li>)}
+              {set.scores.map((score, scoreIndex) => <li key={score.id}><span className="position">{scoreIndex + 1}</span><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>{score.collection || 'General'}</small><small>{t('hotnessShort')}{score.hotness}{score.goesHigh ? ` · ${t('highPiece')}` : ''}{score.drumsIntro ? ` · ${t('drums')}` : ''}{scoreIndex === 0 ? ` · ${t('start')}` : ''}</small>{setList.performance.sets.some((_, target) => canMoveBetweenSets(setList, setIndex, scoreIndex, target)) && <select aria-label={t('movePieceToSet', { title: score.title })} value="" disabled={saving} onChange={(event) => { if (event.target.value !== '') void save(moveBetweenSets(setList, setIndex, scoreIndex, Number(event.target.value), new Date().toISOString())) }}><option value="">{t('moveToSet')}</option>{setList.performance.sets.map((target, targetIndex) => canMoveBetweenSets(setList, setIndex, scoreIndex, targetIndex) && <option key={target.number} value={targetIndex}>{target.name || `${t('set')} ${target.number}`}</option>)}</select>}</span><span className="piece-order-controls">{scoreIndex > 0 && <><button type="button" aria-label={t('movePieceUp', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex - 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex - 1, new Date().toISOString())) }}><UiIcon name="up" /></button><button type="button" aria-label={t('movePieceDown', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex + 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex + 1, new Date().toISOString())) }}><UiIcon name="down" /></button></>}<button type="button" aria-label={t('removePiece', { title: score.title, number: set.number })} disabled={saving || removePiece(setList, setIndex, scoreIndex, '') === setList} onClick={() => { void save(removePiece(setList, setIndex, scoreIndex, new Date().toISOString())) }}><UiIcon name="minus" /></button></span></li>)}
             </ol>
             <div className="set-piece-editor">
-              <label><span>{t('addPiece')}</span><select value={pieceSelections[set.number] ?? ''} disabled={saving || availableScores.length === 0} onChange={(event) => setPieceSelections((current) => ({ ...current, [set.number]: event.target.value }))}><option value="">{availableScores.length === 0 ? t('noAvailablePieces') : t('choosePiece')}</option>{availableScores.map((score) => <option key={score.id} value={score.id}>{score.displayNumber} · {score.title}</option>)}</select></label>
+              <label><span>{t('addPiece')}</span><select value={pieceSelections[set.number] ?? ''} disabled={saving || availableScores.length === 0} onChange={(event) => setPieceSelections((current) => ({ ...current, [set.number]: event.target.value }))}><option value="">{availableScores.length === 0 ? t('noAvailablePieces') : t('choosePiece')}</option>{availableScores.map((score) => <option key={score.id} value={score.id}>{score.collection || 'General'} · {score.displayNumber} · {score.title}</option>)}</select></label>
               <button type="button" className="set-add-button" aria-label={t('addPieceToSet', { number: set.number })} disabled={saving || !(pieceSelections[set.number] ?? '')} onClick={() => { const score = scores.find((candidate) => candidate.id === pieceSelections[set.number]); if (score) { void save(addPiece(setList, setIndex, score, new Date().toISOString())); setPieceSelections((current) => ({ ...current, [set.number]: '' })) } }}><UiIcon name="plus" />{t('add')}</button>
             </div>
           </section>

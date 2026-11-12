@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-11-12
+
+### Added
+
+- Create programs and sets from a chosen starting piece, edit and save existing sets, and move pieces between sets while preserving starter, high-piece, and whole-program uniqueness rules (fixes [#2](https://github.com/3isenHeiM/Set-Builder/issues/2)).
+- Select multiple library pieces with a long press or **Select pieces**, then apply chosen settings together while keeping other settings unchanged (fixes [#3](https://github.com/3isenHeiM/Set-Builder/issues/3)).
+- Import numeric and lettered piece identifiers into named collections. Filter the Library and Build screens by collection, add pieces without marking absent pieces missing, re-align a complete collection, and rename collections while preserving piece settings and saved programs (fixes [#4](https://github.com/3isenHeiM/Set-Builder/issues/4)).
+
+### Changed
+
+- Existing libraries migrate to **General**. Settings and set-list backups now include collection identifiers; older backups remain supported and pieces without a collection belong to **General**. Export a fresh settings backup after renaming a collection so future imports use its new name.
+
+### Fixed
+
+- Use the app's music icon for the iOS Home Screen and installed PWA icons, with an explicit 180px Apple touch icon (fixes [#1](https://github.com/3isenHeiM/Set-Builder/issues/1)).
+
 ## [2.1.0] - 2026-09-10
 
 ### Added
@@ -68,7 +84,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Initial mobile-first offline PWA for importing and re-aligning `.mscz` filename metadata, configuring pieces, generating valid performances, saving the latest performance, and backing up piece settings.
 
-[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/3isenHeiM/Set-Builder/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/3isenHeiM/Set-Builder/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/3isenHeiM/Set-Builder/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/3isenHeiM/Set-Builder/compare/v1.0.0...v2.0.0

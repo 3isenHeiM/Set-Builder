@@ -1,9 +1,10 @@
-import { configurationStatus } from '../domain/configuration'
+import { applyBulkConfiguration, configurationStatus } from '../domain/configuration'
 import { applyReconciliation as applyReconciliationToScores } from '../domain/reconciliation'
 import { applySettingsBackup } from '../domain/settingsBackup'
 import type { SettingsBackup, SettingsImportReport } from '../domain/settingsBackup'
 import type {
   FolderScan,
+  BulkConfiguration,
   GeneratedPerformance,
   ReconciliationPlan,
   RenumberingDecisions,
@@ -14,6 +15,7 @@ import type {
 } from '../domain/types'
 import { hasCloudData, type CloudState, type CloudStateEnvelope, parseCloudEnvelope } from './cloudState'
 import { readCachedState, readSyncRecord, replaceCachedState } from './cloudCache'
+import { renameCollectionData } from '../domain/collections'
 import type { PieceSelectorDatabase } from './database'
 import type { PerformanceRepository, ScoreRepository } from './repository'
 
@@ -87,6 +89,10 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
   private writeChain = Promise.resolve()
 
   constructor(private readonly database: PieceSelectorDatabase, private readonly transport: CloudStateTransport) {}
+
+  renameCollection(previous: string, name: string): Promise<void> {
+    return this.change((state) => ({ result: undefined, state: { ...state, ...renameCollectionData(state, previous, name) } }))
+  }
 
   private ready(): Promise<void> {
     this.initialization ??= this.initialize()
@@ -189,6 +195,14 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
         updatedAt,
       }
       return { result: undefined, state: { ...state, scores: state.scores.map((score) => score.id === id ? updated : score) } }
+    })
+  }
+
+  saveBulkConfiguration(ids: string[], changes: BulkConfiguration, updatedAt: string): Promise<void> {
+    return this.change((state) => {
+      const selected = new Set(ids)
+      if (state.scores.filter((score) => selected.has(score.id)).length !== selected.size) throw new Error('This score no longer exists.')
+      return { result: undefined, state: { ...state, scores: state.scores.map((score) => selected.has(score.id) ? applyBulkConfiguration(score, changes, updatedAt) : score) } }
     })
   }
 

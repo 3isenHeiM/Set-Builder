@@ -10,6 +10,27 @@ function saved(performance: GeneratedPerformance = makePerformance()): SavedSetL
 }
 
 describe('saved set lists', () => {
+  it('creates a program from a chosen starter', async () => {
+    const user = userEvent.setup()
+    const starter = makeScore()
+    const onCreateManualProgram = vi.fn(() => Promise.resolve())
+    render(<PerformanceScreen scores={[starter]} setList={undefined} savedSetLists={[]} savedSets={[]} onSave={vi.fn()} onSaveSavedSet={vi.fn()} onCreateProgram={vi.fn()} onCreateManualProgram={onCreateManualProgram} onSelect={vi.fn()} onImport={vi.fn()} onRegenerate={vi.fn()} />)
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Choose a starting piece' }), starter.id)
+    await user.click(screen.getByRole('button', { name: 'Create a new program' }))
+    expect(onCreateManualProgram).toHaveBeenCalledWith(starter)
+  })
+
+  it('moves a piece to another set with a labelled selector', async () => {
+    const user = userEvent.setup()
+    const first = makePerformance().sets[0]!.scores[0]!
+    const other = { ...first, id: 'two', scoreNumber: 2, displayNumber: '02', title: 'Africa', canStart: false }
+    const starter = { ...first, id: 'three', scoreNumber: 3, displayNumber: '03', title: 'Third' }
+    const setList = saved(makePerformance({ setCount: 2, sets: [{ number: 1, scores: [first, other] }, { number: 2, scores: [starter] }] }))
+    const onSave = vi.fn<(list: SavedSetList) => Promise<void>>(() => Promise.resolve())
+    render(<PerformanceScreen scores={[]} setList={setList} savedSetLists={[setList]} savedSets={[]} onSave={onSave} onSaveSavedSet={vi.fn()} onCreateProgram={vi.fn()} onSelect={vi.fn()} onImport={vi.fn()} onRegenerate={vi.fn()} />)
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Move Africa to another set' }), '1')
+    expect(onSave.mock.calls[0]?.[0].performance.sets[1]?.scores.map((score) => score.title)).toEqual(['Third', 'Africa'])
+  })
   it('renames a set list and imports an exported snapshot', async () => {
     const user = userEvent.setup()
     const setList = saved()

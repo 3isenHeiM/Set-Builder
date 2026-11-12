@@ -1,5 +1,5 @@
 import type { PerformanceScoreSnapshot, SavedSetList } from './types'
-import { addPiece, addSavedSetToProgram, assertSavedPerformanceValid, assertSavedSetValid, canAddPiece, canAddSavedSet, canMovePiece, createProgramFromSavedSet, linkSavedSet, movePiece, moveSet, removePiece, removeSetFromProgram, renameSet, renameSetList } from './setList'
+import { addNewSet, addPiece, addSavedSetToProgram, assertSavedPerformanceValid, assertSavedSetValid, canAddPiece, canAddSavedSet, canMoveBetweenSets, canMovePiece, createProgramFromSavedSet, createProgramFromStarter, linkSavedSet, moveBetweenSets, movePiece, moveSet, removePiece, removeSetFromProgram, renameSet, renameSetList } from './setList'
 import { makePerformance, makeScore } from '../test/fixtures'
 
 function piece(id: string, goesHigh = false, canStart = false): PerformanceScoreSnapshot {
@@ -24,6 +24,25 @@ function saved(): SavedSetList {
 }
 
 describe('editable set lists', () => {
+  it('creates a program and a second set from unused ready starters', () => {
+    const first = makeScore()
+    const second = makeScore({ id: 'score-2', scoreNumber: 2, displayNumber: '02' })
+    const program = createProgramFromStarter(first, '2026-01-01T00:00:00Z', 'program')
+    const next = addNewSet(program, second, 'later')
+    expect(next.performance.sets.map((set) => set.scores[0]?.id)).toEqual(['score-1', 'score-2'])
+    expect(addNewSet(next, first, 'later')).toBe(next)
+    expect(() => assertSavedPerformanceValid(next.performance)).not.toThrow()
+  })
+
+  it('moves a piece between sets while retaining valid starters and high-piece ordering', () => {
+    const original = saved()
+    expect(canMoveBetweenSets(original, 0, 1, 1)).toBe(true)
+    const result = moveBetweenSets(original, 0, 1, 1, 'moved')
+    expect(result.performance.sets[0]?.scores.map((score) => score.id)).toEqual(['1', '3', '4'])
+    expect(result.performance.sets[1]?.scores.map((score) => score.id)).toEqual(['5', '6', '2', '7', '8'])
+    expect(canMoveBetweenSets(original, 0, 0, 1)).toBe(false)
+    expect(() => assertSavedPerformanceValid(result.performance)).not.toThrow()
+  })
   it('renames lists and individual sets', () => {
     const list = renameSetList(saved(), '  Parade  ', 'renamed')
     expect(list).toMatchObject({ name: 'Parade', updatedAt: 'renamed' })
