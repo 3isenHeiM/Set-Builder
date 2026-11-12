@@ -4,10 +4,10 @@ import type { FolderSnapshot } from '../../domain/types'
 import { useI18n } from '../../app/i18n'
 import { FolderPicker } from './FolderPicker'
 
-export function CollectionImport({ collections, onSnapshot }: { collections: string[]; onSnapshot: (snapshot: FolderSnapshot) => void }) {
+export function CollectionImport({ collections, onSnapshot, initialCollection = DEFAULT_COLLECTION }: { collections: string[]; onSnapshot: (snapshot: FolderSnapshot) => void; initialCollection?: string }) {
   const { t } = useI18n()
   const id = useId()
-  const [collection, setCollection] = useState(DEFAULT_COLLECTION)
+  const [collection, setCollection] = useState(initialCollection)
   const [mode, setMode] = useState<'add' | 'realign'>('add')
   const target = collectionName(collection)
   return <div className="collection-import">

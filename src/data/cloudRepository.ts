@@ -15,7 +15,7 @@ import type {
 } from '../domain/types'
 import { hasCloudData, type CloudState, type CloudStateEnvelope, parseCloudEnvelope } from './cloudState'
 import { readCachedState, readSyncRecord, replaceCachedState } from './cloudCache'
-import { renameCollectionData } from '../domain/collections'
+import { assignPiecesToCollection, collectionKey, collectionNames, createCollectionNames, renameCollectionData } from '../domain/collections'
 import type { PieceSelectorDatabase } from './database'
 import type { PerformanceRepository, ScoreRepository } from './repository'
 
@@ -89,6 +89,23 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
   private writeChain = Promise.resolve()
 
   constructor(private readonly database: PieceSelectorDatabase, private readonly transport: CloudStateTransport) {}
+
+  async listCollections(): Promise<string[]> {
+    await this.ready()
+    return this.state?.collections ?? ['General']
+  }
+
+  createCollection(name: string): Promise<void> {
+    return this.change((state) => ({ result: undefined, state: { ...state, collections: createCollectionNames(state.scores, state.collections, name) } }))
+  }
+
+  assignCollection(ids: string[], name: string, updatedAt: string): Promise<void> {
+    return this.change((state) => {
+      const target = state.collections.find((value) => collectionKey(value) === collectionKey(name))
+      if (!target) throw new Error('Collection no longer exists.')
+      return { result: undefined, state: { ...state, scores: assignPiecesToCollection(state.scores, ids, target, updatedAt) } }
+    })
+  }
 
   renameCollection(previous: string, name: string): Promise<void> {
     return this.change((state) => ({ result: undefined, state: { ...state, ...renameCollectionData(state, previous, name) } }))
@@ -190,7 +207,7 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
         drumsIntro: configuration.drumsIntro,
         goesHigh: configuration.goesHigh,
         enabled: configuration.enabled,
-        tags: configuration.in80s ? ['80s'] : [],
+        tags: configuration.in80s === undefined ? current.tags : configuration.in80s ? ['80s'] : [],
         configuration: configurationStatus(configuration),
         updatedAt,
       }
@@ -215,7 +232,7 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
     return this.change((state) => {
       const scanId = createId()
       const reconciliation = applyReconciliationToScores(state.scores, plan, decisions, appliedAt, createId, scanId)
-      return { result: reconciliation.scan, state: { ...state, scores: reconciliation.scores, lastScan: reconciliation.scan } }
+      return { result: reconciliation.scan, state: { ...state, scores: reconciliation.scores, collections: collectionNames(reconciliation.scores, [...state.collections, ...(plan.collection ? [plan.collection] : [])]), lastScan: reconciliation.scan } }
     })
   }
 

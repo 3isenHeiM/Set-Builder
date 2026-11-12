@@ -1,7 +1,7 @@
 import { configurationStatus } from '../domain/configuration'
 import { MAX_SCORES_PER_SET, MAX_SETS, MIN_SCORES_PER_SET, MIN_SETS, assertPerformanceValid } from '../domain/generator'
 import { assertSavedPerformanceValid, assertSavedSetValid } from '../domain/setList'
-import { readCollection, comparePieces, matchesDisplay, pieceKey, validCode } from '../domain/collections'
+import { readCollection, collectionNames, comparePieces, matchesDisplay, pieceKey, validCode } from '../domain/collections'
 import type {
   FolderScan,
   FolderScanSummary,
@@ -15,12 +15,13 @@ import type {
 } from '../domain/types'
 
 export const CLOUD_STATE_FORMAT = 'piece-selector-cloud-state'
-export const CLOUD_STATE_VERSION = 2
+export const CLOUD_STATE_VERSION = 3
 
 export interface CloudState {
   format: typeof CLOUD_STATE_FORMAT
   version: typeof CLOUD_STATE_VERSION
   scores: Score[]
+  collections: string[]
   lastScan: FolderScan | null
   lastPerformance: GeneratedPerformance | null
   setLists: SavedSetList[]
@@ -42,6 +43,7 @@ export function emptyCloudState(): CloudState {
     format: CLOUD_STATE_FORMAT,
     version: CLOUD_STATE_VERSION,
     scores: [],
+    collections: ['General'],
     lastScan: null,
     lastPerformance: null,
     setLists: [],
@@ -50,7 +52,7 @@ export function emptyCloudState(): CloudState {
 }
 
 export function hasCloudData(state: CloudState): boolean {
-  return state.scores.length > 0 || state.lastScan !== null || state.lastPerformance !== null || state.setLists.length > 0 || state.savedSets.length > 0
+  return state.collections.some((name) => name !== 'General') || state.scores.length > 0 || state.lastScan !== null || state.lastPerformance !== null || state.setLists.length > 0 || state.savedSets.length > 0
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -246,12 +248,16 @@ function readSavedSet(value: unknown): SavedSet {
 }
 
 export function parseCloudState(value: unknown): CloudState {
-  if (!isRecord(value) || value.format !== CLOUD_STATE_FORMAT || (value.version !== 1 && value.version !== CLOUD_STATE_VERSION)
+  if (!isRecord(value) || value.format !== CLOUD_STATE_FORMAT || (value.version !== 1 && value.version !== 2 && value.version !== CLOUD_STATE_VERSION)
     || !Array.isArray(value.scores) || value.scores.length > 20_000
     || !Array.isArray(value.setLists) || value.setLists.length > 2_000) {
     throw new Error('The cloud library is malformed or unsupported.')
   }
   const scores = value.scores.map(readScore)
+  const rawCollections = value.collections === undefined && value.version !== CLOUD_STATE_VERSION ? [] : value.collections
+  if (!Array.isArray(rawCollections) || rawCollections.length > 20_000) throw new Error('Cloud state contains invalid collections.')
+  const collections = rawCollections.map((name) => readCollection(stringValue(name, 120)))
+  if (new Set(collections.map((name) => name.toLocaleLowerCase('en'))).size !== collections.length) throw new Error('Cloud state contains duplicate collections.')
   const scoreIds = new Set(scores.map((score) => score.id))
   const scoreNumbers = new Set(scores.map(pieceKey))
   if (scoreIds.size !== scores.length || scoreNumbers.size !== scores.length) throw new Error('The cloud library contains duplicate pieces.')
@@ -266,6 +272,7 @@ export function parseCloudState(value: unknown): CloudState {
     format: CLOUD_STATE_FORMAT,
     version: CLOUD_STATE_VERSION,
     scores: scores.sort(comparePieces),
+    collections: collectionNames(scores, collections),
     lastScan: value.lastScan === null ? null : readScan(value.lastScan),
     lastPerformance: value.lastPerformance === null ? null : readPerformance(value.lastPerformance, true),
     setLists: setLists.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),

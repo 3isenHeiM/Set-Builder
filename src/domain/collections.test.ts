@@ -4,7 +4,7 @@ import { applyReconciliation, classifyReconciliation } from './reconciliation'
 import { comparePieces, pieceKey } from './collections'
 import { createSettingsBackup, parseSettingsBackupJson, settingsBackupToJson, applySettingsBackup } from './settingsBackup'
 import { createSetListBackup, parseSetListBackupJson, restoreSetList } from './setListBackup'
-import { parseCloudState, emptyCloudState } from '../data/cloudState'
+import { parseCloudState, emptyCloudState, CLOUD_STATE_VERSION } from '../data/cloudState'
 import { PieceSelectorDatabase } from '../data/database'
 import { PieceSelectorRepository } from '../data/repository'
 import { makePerformance, makeScore } from '../test/fixtures'
@@ -41,7 +41,7 @@ describe('collections', () => {
     expect(result.scores.map((score) => score.hotness)).toEqual([2, 3, 2])
     expect(result.report.matched).toBe(3)
     const migrated = parseCloudState({ ...emptyCloudState(), version: 1, scores: [makeScore()] })
-    expect(migrated.version).toBe(2)
+    expect(migrated.version).toBe(CLOUD_STATE_VERSION)
     expect(migrated.scores[0]).toMatchObject({ id: 'score-1', collection: 'General', hotness: 2 })
   })
 

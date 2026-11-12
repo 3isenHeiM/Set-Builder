@@ -32,10 +32,11 @@ export interface ScoreConfiguration {
   drumsIntro: boolean | null
   goesHigh: boolean | null
   enabled: boolean
-  in80s: boolean
+  /** Accepted for legacy settings clients; current configuration uses collections. */
+  in80s?: boolean
 }
 
-export type BulkConfiguration = Partial<ScoreConfiguration>
+export type BulkConfiguration = Partial<Omit<ScoreConfiguration, 'in80s'>>
 
 export type MalformedReason =
   | 'not-mscz'
