@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { sharing, type SharingClient } from '../../data/sharing'
 import type { SharedSetList } from '../../domain/sharedSetList'
 import { UiIcon } from '../../app/UiIcon'
-import { useI18n } from '../../app/i18n'
+import { localizedKnownMessage, useI18n } from '../../app/i18n'
 import { DrummerNotes } from './DrummerNotes'
 
 export function SharedSetListScreen({ token, client = sharing }: { token: string; client?: SharingClient }) {
@@ -31,12 +31,14 @@ export function SharedSetListScreen({ token, client = sharing }: { token: string
       {failed ? <><h1>{t('sharedUnavailable')}</h1><p className="notice">{t('sharedUnavailableHelp')}</p><button type="button" className="secondary-action" onClick={() => setAttempt((value) => value + 1)}>{t('tryAgain')}</button></> : saved ? <>
         <h1 className="shared-title">{saved.name || t('setsTitle')}</h1>
         <p className="secondary">{t('sharedUpdated')} <time dateTime={saved.updatedAt}>{new Date(saved.updatedAt).toLocaleString(locale)}</time></p>
+        {saved.generatedAt && <p className="secondary"><time dateTime={saved.generatedAt}>{new Date(saved.generatedAt).toLocaleString(locale)}</time></p>}
+        {saved.warnings?.map((warning) => <p className="notice" role="status" key={warning}>{localizedKnownMessage(warning, locale) ?? warning}</p>)}
         {saved.sets.map((set, index) => <section className="set-card" key={index} aria-label={set.name || `${t('set')} ${index + 1}`}>
-          <h2>{set.name || `${t('set')} ${index + 1}`}</h2><ol>{set.scores.map((piece, position) => <li key={position}><span className="position">{position + 1}</span><span className="score-number">{piece.displayNumber}</span><span className="score-copy"><strong>{piece.title}</strong><small>{piece.collection}{piece.drumsIntro ? ` · ${t('drums')}` : ''}</small><DrummerNotes value={piece.drummerNotes} /></span></li>)}</ol>
+          <div className="set-card-header"><div><span>{t('set')} {index + 1}</span><h2>{set.name || `${t('set')} ${index + 1}`}</h2></div><span className="shared-set-size">{set.scores.length} {t(set.scores.length === 1 ? 'piece' : 'pieces')}</span></div>
+          <ol>{set.scores.map((piece, position) => <li key={position}><span className="position">{position + 1}</span><span className="score-number">{piece.displayNumber}</span><span className="score-copy"><strong>{piece.title}</strong><small>{piece.collection}</small><small>{piece.hotness === undefined ? '' : `${t('hotnessShort')}${piece.hotness}`}{piece.goesHigh ? ` · ${t('highPiece')}` : ''}{piece.drumsIntro ? ` · ${t('drums')}` : ''}{position === 0 ? ` · ${t('start')}` : ''}</small><DrummerNotes value={piece.drummerNotes} /></span></li>)}</ol>
         </section>)}
         <button type="button" className="secondary-action" onClick={() => setAttempt((value) => value + 1)}>{t('refreshSetList')}</button>
       </> : <p role="status">{t('loadingShared')}</p>}
-      <a className="text-button" href="/">{t('openApp')}</a>
     </main>
   </div>
 }

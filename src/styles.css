@@ -207,6 +207,8 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
 .shared-view { padding-bottom: env(safe-area-inset-bottom); }
 .shared-title { max-width: none; overflow-wrap: anywhere; }
 .shared-view .set-card h2 { padding: 16px 12px 0; margin: 0; }
+.shared-view .set-card-header h2 { padding: 0; margin: 0; color: inherit; font-size: 23px; letter-spacing: -.03em; overflow-wrap: anywhere; }
+.shared-set-size { color: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .shared-view .score-copy strong { white-space: normal; overflow-wrap: anywhere; }
 .notes-field { display: grid; gap: 8px; color: var(--forest); }
 .notes-field > span { display: flex; justify-content: space-between; gap: 12px; }

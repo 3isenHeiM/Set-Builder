@@ -7,7 +7,7 @@ import { AppEntry } from '../../app/AppEntry'
 import { repository } from '../../data/client'
 
 const token = 'a'.repeat(64)
-const shared = { name: 'Evening', updatedAt: '2026-11-12T17:00:00Z', sets: [{ name: 'Opening', scores: [{ displayNumber: 'A', title: 'Bells', collection: 'Christmas', drumsIntro: true }] }] }
+const shared = { name: 'Evening', updatedAt: '2026-11-12T17:00:00Z', warnings: ['Keep the ending short'], sets: [{ name: 'Opening', scores: [{ displayNumber: 'A', title: 'Bells', collection: 'Christmas', drumsIntro: true, hotness: 3 as const, goesHigh: true, canStart: true, drummerNotes: 'Four bar count-in' }] }] }
 
 describe('setlist sharing UI', () => {
   it('publishes only on request, copies the link, and lets the owner revoke it', async () => {
@@ -33,6 +33,11 @@ describe('setlist sharing UI', () => {
     expect(await screen.findByRole('heading', { name: 'Evening' })).toBeVisible()
     expect(screen.getByText('Bells')).toBeVisible()
     expect(screen.getByText('Read only')).toBeVisible()
+    expect(screen.getByText('Keep the ending short')).toBeVisible()
+    expect(screen.getByRole('note')).toHaveTextContent('Four bar count-in')
+    expect(screen.getByText(/^H3/)).toHaveTextContent('Drums')
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Save|Import|Edit/ })).not.toBeInTheDocument()
     fetchRequest.mockImplementation(() => Promise.resolve(Response.json({ ...shared, name: 'Updated program' })))
     await user.click(screen.getByRole('button', { name: 'Refresh setlist' }))

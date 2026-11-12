@@ -67,7 +67,7 @@ Every generated performance becomes a saved set list containing independent scor
 
 ## Read-only setlist sharing
 
-On the Sets page, open a saved program and choose **Share read-only link**, then **Copy link**. Anyone with the link can view that program without the band password. The link shows the latest saved program, refreshes every 30 seconds while visible, and supports manual refresh. **Stop sharing** immediately revokes future reads; creating another link after stopping generates a different token. Sharing requires an online connection. Recipients receive only the selected program's title, set names, piece names/order, collection labels, and drums-intro markers, with no library access or editing controls.
+On the Sets page, open a saved program and choose **Share read-only link**, then **Copy link**. Anyone with the link can view that program without the band password. The link mirrors the latest saved program: its title, set names and sizes, piece order, collections, hotness, goes-high and drums-intro markers, starting pieces, warnings, and drummer notes. It refreshes every 30 seconds while visible and supports manual refresh. **Stop sharing** immediately revokes future reads; creating another link after stopping generates a different token. Sharing requires an online connection. The shared page has no editing controls or private-app navigation, and the public API accepts read requests only. It never exposes the rest of the library, filenames, or internal IDs.
 
 Existing deployments must apply `migrations/0002_setlist_shares.sql` once before using sharing. In the Cloudflare D1 Console, execute:
 

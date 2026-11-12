@@ -70,7 +70,7 @@ describe('read-only setlist sharing', () => {
     expect(response.headers.get('cache-control')).toBe('no-store')
     expect(response.headers.get('x-robots-tag')).toContain('noindex')
     const body = await response.json() as unknown
-    expect(body).toMatchObject({ name: 'Evening', sets: [{ scores: [{ title: 'Take On Me', displayNumber: '01' }] }] })
+    expect(body).toMatchObject({ name: 'Evening', warnings: [], sets: [{ scores: [{ title: 'Take On Me', displayNumber: '01', hotness: 2, canStart: true, goesHigh: false, drumsIntro: false }] }] })
     for (const privateField of ['Private filename', 'score-1', 'firstImportedAt', 'fileName', 'relativePath', 'seed']) expect(JSON.stringify(body)).not.toContain(privateField)
   })
 
