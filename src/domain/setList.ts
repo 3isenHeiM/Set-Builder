@@ -94,10 +94,44 @@ export function addPiece(setList: SavedSetList, setIndex: number, score: Score, 
 
 export function removePiece(setList: SavedSetList, setIndex: number, scoreIndex: number, updatedAt: string): SavedSetList {
   const target = setList.performance.sets[setIndex]
-  if (!target || scoreIndex <= 0 || target.scores.length <= MIN_SCORES_PER_SET || scoreIndex >= target.scores.length) return setList
+  if (!target || scoreIndex < 0 || target.scores.length <= MIN_SCORES_PER_SET || scoreIndex >= target.scores.length) return setList
   const scores = target.scores.filter((_score, index) => index !== scoreIndex)
+  if (!validPieceOrder({ ...target, scores })) return setList
   const sets = setList.performance.sets.map((set, index) => index === setIndex ? { ...set, scores } : set)
   return updated({ ...setList, performance: { ...setList.performance, sets } }, updatedAt)
+}
+
+export function canMoveBetweenSets(setList: SavedSetList, from: number, scoreIndex: number, to: number): boolean {
+  const source = setList.performance.sets[from]
+  const destination = setList.performance.sets[to]
+  const score = source?.scores[scoreIndex]
+  if (!source || !destination || !score || from === to || source.scores.length <= MIN_SCORES_PER_SET || destination.scores.length >= MAX_SCORES_PER_SET) return false
+  return validPieceOrder({ ...source, scores: source.scores.filter((_, index) => index !== scoreIndex) })
+}
+
+export function moveBetweenSets(setList: SavedSetList, from: number, scoreIndex: number, to: number, updatedAt: string): SavedSetList {
+  if (!canMoveBetweenSets(setList, from, scoreIndex, to)) return setList
+  const source = setList.performance.sets[from]!
+  const destination = setList.performance.sets[to]!
+  const score = source.scores[scoreIndex]!
+  const scores = [...destination.scores]
+  const firstRegular = score.goesHigh ? scores.findIndex((piece, index) => index > 0 && !piece.goesHigh) : -1
+  scores.splice(firstRegular < 0 ? scores.length : firstRegular, 0, score)
+  const sets = setList.performance.sets.map((set, index) => index === from ? { ...set, scores: source.scores.filter((_, i) => i !== scoreIndex) } : index === to ? { ...set, scores } : set)
+  return updated({ ...setList, performance: { ...setList.performance, sets } }, updatedAt)
+}
+
+export function addNewSet(setList: SavedSetList, starter: Score, updatedAt: string): SavedSetList {
+  const candidate = snapshot(starter)
+  if (!candidate?.canStart || !canAddPiece(setList, starter) || setList.performance.sets.length >= MAX_SETS) return setList
+  const sets = [...setList.performance.sets, { number: setList.performance.sets.length + 1, scores: [candidate] }]
+  return updated({ ...setList, performance: { ...setList.performance, setCount: sets.length, sets } }, updatedAt)
+}
+
+export function createProgramFromStarter(starter: Score, now: string, id: string): SavedSetList {
+  const candidate = snapshot(starter)
+  if (!candidate?.canStart) throw new Error('Choose a ready starter.')
+  return { id, name: '', createdAt: now, updatedAt: now, performance: { id, generatedAt: now, preset: 'mix', seed: 0, setCount: 1, scoresPerSet: 1, sets: [{ number: 1, scores: [candidate] }], warnings: [] } }
 }
 
 export function assertSavedPerformanceValid(performance: GeneratedPerformance): void {

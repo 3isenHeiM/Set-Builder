@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Create programs and sets from a chosen starting piece, and move pieces between sets while preserving the program's ordering rules.
+
 ## [2.1.0] - 2026-09-10
 
 ### Added
