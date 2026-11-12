@@ -248,6 +248,8 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
 .availability-card strong { color: var(--forest); font-size: 24px; line-height: 1; }
 
 .performance h1 { max-width: 100%; }
+.program-summary { position: sticky; top: calc(8px + env(safe-area-inset-top)); z-index: 4; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-height: 48px; margin: 0; padding: 10px 14px; color: var(--muted); background: var(--paper); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 16px #00000012; font-size: 14px; }
+.program-summary strong { color: var(--forest); font-size: 20px; font-weight: 850; font-variant-numeric: tabular-nums; }
 .set-list { display: grid; gap: 14px; }
 .set-card { overflow: hidden; background: var(--paper); border: 1px solid var(--border); border-radius: 17px; }
 .set-card-header { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; color: #fff; background: var(--forest); }

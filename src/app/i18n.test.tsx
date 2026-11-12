@@ -20,6 +20,7 @@ describe('browser language', () => {
     render(<GenerateScreen scores={[makeScore()]} hasPerformance={false} onGenerated={vi.fn(() => Promise.resolve())} />)
     expect(screen.getByRole('heading', { name: 'Créer des sets' })).toBeVisible()
     expect(screen.getByRole('alert')).toHaveTextContent('Il faut 24 morceaux éligibles')
+    expect(screen.getByRole('status', { name: 'Résumé du programme' })).toHaveTextContent('3 sets · 24 morceaux')
   })
 
   it('translates validation messages with their details', () => {

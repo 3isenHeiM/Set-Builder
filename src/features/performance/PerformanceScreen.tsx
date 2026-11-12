@@ -10,6 +10,7 @@ import { DrummerNotes } from './DrummerNotes'
 import { SetCard } from './SetCard'
 import { ReadOnlySetList } from './ReadOnlySetList'
 import { MovePieceControl } from './MovePieceControl'
+import { ProgramSummary } from './ProgramSummary'
 
 interface PerformanceScreenProps {
   scores: Score[]
@@ -194,10 +195,13 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
     </div>
   )
 
+  const summary = <ProgramSummary setCount={setList?.performance.sets.length ?? 0} pieceCount={setList?.performance.sets.reduce((total, set) => total + set.scores.length, 0) ?? 0} />
+
   if (!setList) return (
     <section className="empty-state compact">
       <div className="hero-mark" aria-hidden="true"><UiIcon name="sets" /></div>
       <h1>{t('programs')}</h1>
+      {summary}
       {manualBuilder}
       {composer}
       <button className="primary-action" type="button" onClick={onRegenerate}>{t('buildSets')}</button>
@@ -212,6 +216,7 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
   if (setList.locked) return <section className="screen-section performance" aria-labelledby="performance-title">
     <div className="locked-badge"><UiIcon name="lock" />{t('locked')}</div>
     <h1 id="performance-title">{setList.name || t('setsTitle')}</h1>
+    {summary}
     <label className="saved-list-picker"><span>{t('savedPrograms')}</span><select value={setList.id} disabled={saving} onChange={(event) => { void select(event.target.value) }}>{allSetLists.map((saved) => <option value={saved.id} key={saved.id}>{saved.name || t('setsTitle')}</option>)}</select></label>
     <p className="notice">{t('lockedHelp')}</p>
     {onTonight && <button type="button" className="primary-action" disabled={saving} onClick={() => { setSaving(true); setError(''); void onTonight(setList).catch((caught: unknown) => setError(localizedError(caught, locale, t('tonightSaveFailed')))).finally(() => setSaving(false)) }}><UiIcon name="moon" />{t('loadTonight')}</button>}
@@ -225,6 +230,7 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
     <section className="screen-section performance" aria-labelledby="performance-title">
       <div className="eyebrow">{t('program')} · {setList.performance.preset === '80s' ? '80s' : t('mix')}</div>
       <h1 id="performance-title">{setList.name || t('setsTitle')}</h1>
+      {summary}
 
       {onLockChange && <button type="button" className="secondary-action lock-setlist" aria-pressed="false" disabled={saving} onClick={() => { void changeLock(true) }}><UiIcon name="lock" />{t('lockSetlist')}</button>}
 

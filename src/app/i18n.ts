@@ -1,6 +1,9 @@
 export type Locale = 'en' | 'fr'
 
 const en = {
+  programSummary: 'Program summary',
+  summarySet: 'set',
+  summarySets: 'sets',
   tonight: 'Tonight',
   performanceMode: 'Performance mode',
   locked: 'Locked',
@@ -335,6 +338,9 @@ const en = {
 type Copy = typeof en
 
 const fr: Copy = {
+  programSummary: 'Résumé du programme',
+  summarySet: 'set',
+  summarySets: 'sets',
   tonight: 'Ce soir',
   performanceMode: 'Mode concert',
   locked: 'Verrouillé',

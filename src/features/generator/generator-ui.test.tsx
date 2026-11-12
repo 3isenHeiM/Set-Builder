@@ -10,6 +10,23 @@ function saved(performance: GeneratedPerformance = makePerformance()): SavedSetL
 }
 
 describe('performance UI', () => {
+  it('updates the requested program totals and shows a placeholder for incomplete or invalid inputs', async () => {
+    const user = userEvent.setup()
+    render(<GenerateScreen scores={[]} hasPerformance={false} onGenerated={vi.fn()} />)
+    const summary = screen.getByRole('status', { name: 'Program summary' })
+    expect(summary).toHaveTextContent('3 sets · 24 pieces')
+    await user.click(screen.getByRole('button', { name: 'Increase Sets' }))
+    expect(summary).toHaveTextContent('4 sets · 32 pieces')
+    await user.clear(screen.getByRole('spinbutton', { name: 'Pieces per set' }))
+    expect(summary).toHaveTextContent('4 sets · — pieces')
+    await user.type(screen.getByRole('spinbutton', { name: 'Pieces per set' }), '1')
+    expect(summary).toHaveTextContent('4 sets · 4 pieces')
+    await user.clear(screen.getByRole('spinbutton', { name: 'Sets' }))
+    await user.type(screen.getByRole('spinbutton', { name: 'Sets' }), '13')
+    expect(summary).toHaveTextContent('— sets · — pieces')
+    expect(summary).not.toHaveTextContent(/NaN|Infinity/)
+  })
+
   it.each([5, 12])('generates %i sets with touch controls and enforces the documented maximum', async (count) => {
     const user = userEvent.setup()
     const scores = Array.from({ length: 96 }, (_, index) => makeScore({ id: `piece-${index}`, scoreNumber: index + 1, displayNumber: String(index + 1) }))
