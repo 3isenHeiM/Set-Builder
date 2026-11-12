@@ -195,6 +195,11 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
 .bulk-fields select { width: 100%; min-height: 44px; }
 .bulk-actions { display: flex; gap: 8px; }
 .bulk-actions > * { min-width: 0; }
+.danger-text, .danger-action { color: var(--danger); }
+.delete-confirmation { display: grid; gap: 12px; padding: 16px; background: var(--paper); border: 1px solid var(--danger); border-radius: 16px; }
+.delete-confirmation p { margin: 0; line-height: 1.45; }
+.delete-confirmation .bulk-actions { flex-wrap: wrap; }
+.delete-confirmation .danger-action { border-color: var(--danger); }
 .score-copy { min-width: 0; display: grid; gap: 3px; }
 .score-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .score-copy small { color: var(--muted); }

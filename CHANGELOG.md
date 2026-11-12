@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Delete a piece from its detail page after explicit confirmation, preserving saved sets and programs (fixes [#6](https://github.com/3isenHeiM/Set-Builder/issues/6)).
+
+## [2.2.1] - 2026-11-12
+
+### Added
+
 - Create and save empty collections, then import pieces directly into them. Move selected library pieces to another collection together or return them to **General**, preserving settings and saved programs (fixes [#5](https://github.com/3isenHeiM/Set-Builder/issues/5)).
 
 ### Changed
@@ -92,7 +98,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Initial mobile-first offline PWA for importing and re-aligning `.mscz` filename metadata, configuring pieces, generating valid performances, saving the latest performance, and backing up piece settings.
 
-[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.2.1...HEAD
+[2.2.1]: https://github.com/3isenHeiM/Set-Builder/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/3isenHeiM/Set-Builder/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/3isenHeiM/Set-Builder/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/3isenHeiM/Set-Builder/compare/v2.0.0...v2.0.1

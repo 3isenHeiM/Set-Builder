@@ -12,6 +12,7 @@ function storedRepository(performance: GeneratedPerformance) {
     assignCollection: (): Promise<void> => Promise.resolve(),
     listScores: (): Promise<Score[]> => Promise.resolve(scores),
     getScore: (): Promise<Score | undefined> => Promise.resolve(undefined),
+    deleteScore: (): Promise<void> => Promise.resolve(),
     saveConfiguration: (): Promise<void> => Promise.resolve(),
     saveBulkConfiguration: (): Promise<void> => Promise.resolve(),
     renameCollection: (): Promise<void> => Promise.resolve(),

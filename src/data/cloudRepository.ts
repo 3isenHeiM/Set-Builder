@@ -196,6 +196,13 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
     return this.state?.scores.find((score) => score.id === id)
   }
 
+  deleteScore(id: string): Promise<void> {
+    return this.change((state) => {
+      if (!state.scores.some((score) => score.id === id)) throw new Error('This score no longer exists.')
+      return { result: undefined, state: { ...state, scores: state.scores.filter((score) => score.id !== id) } }
+    })
+  }
+
   saveConfiguration(id: string, configuration: ScoreConfiguration, updatedAt: string): Promise<void> {
     return this.change((state) => {
       const current = state.scores.find((score) => score.id === id)

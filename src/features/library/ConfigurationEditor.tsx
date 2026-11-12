@@ -3,6 +3,7 @@ import type { Hotness, Score, ScoreConfiguration } from '../../domain/types'
 import { UiIcon } from '../../app/UiIcon'
 import { localizedError, useI18n } from '../../app/i18n'
 import { configurationStatus } from '../../domain/configuration'
+import { DeletePiece } from './DeletePiece'
 
 function configurationFromScore(score: Score): ScoreConfiguration {
   return {
@@ -21,6 +22,7 @@ interface ConfigurationFieldsProps {
   onSave: (configuration: ScoreConfiguration) => Promise<void>
   onDraftChange?: ((configuration: ScoreConfiguration) => Promise<void>) | undefined
   onClose: () => void
+  onDelete?: (() => Promise<void>) | undefined
 }
 
 function BinarySwitch({ name, value, onChange }: { name: string; value: boolean | null; onChange: (value: boolean) => void }) {
@@ -37,7 +39,7 @@ function BinarySwitch({ name, value, onChange }: { name: string; value: boolean 
   )
 }
 
-export function ConfigurationEditor({ score, saveLabel = 'Save score', progress, onSave, onDraftChange, onClose }: ConfigurationFieldsProps) {
+export function ConfigurationEditor({ score, saveLabel = 'Save score', progress, onSave, onDraftChange, onClose, onDelete }: ConfigurationFieldsProps) {
   const { locale, t } = useI18n()
   const [draft, setDraft] = useState(() => configurationFromScore(score))
   const [saving, setSaving] = useState(false)
@@ -105,6 +107,7 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
       {!valid && <p className="notice" role="status">{t('completeFourFields')}</p>}
       {message && <p className={message === t('saved') ? 'success' : 'error'} role="status">{message}</p>}
       <button type="button" className="primary-action sticky-action" onClick={() => void save()} disabled={saving || !valid}>{saving ? t('saving') : saveLabel}</button>
+      {onDelete && <DeletePiece title={score.title} onDelete={onDelete} />}
     </section>
   )
 }

@@ -127,6 +127,12 @@ export function App({ repository = browserRepository, authentication = cloudAuth
     setCollections(await repository.listCollections())
   }
 
+  const deleteScore = async (id: string) => {
+    await repository.deleteScore(id)
+    setScores(await repository.listScores())
+    setCollections(await repository.listCollections())
+  }
+
   const assignCollection = async (ids: string[], name: string) => {
     await repository.assignCollection(ids, name, new Date().toISOString())
     setScores(await repository.listScores())
@@ -202,7 +208,7 @@ export function App({ repository = browserRepository, authentication = cloudAuth
       <UpdateBanner />
       <main id="main-content">
         {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} />
-          : page === 'library' ? <LibraryScreen scores={scores} collections={collections} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onBulkSave={saveBulkConfiguration} onRenameCollection={renameCollection} onCreateCollection={createCollection} onAssignCollection={assignCollection} onEditingChange={setEditingScore} />
+          : page === 'library' ? <LibraryScreen scores={scores} collections={collections} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onBulkSave={saveBulkConfiguration} onRenameCollection={renameCollection} onCreateCollection={createCollection} onAssignCollection={assignCollection} onDelete={deleteScore} onEditingChange={setEditingScore} />
             : page === 'generate' ? <GenerateScreen scores={scores} collections={collections} hasPerformance={Boolean(currentSetList)} onGenerated={savePerformance} />
               : page === 'performance' ? <PerformanceScreen scores={scores} setList={currentSetList} savedSetLists={setLists} savedSets={savedSets} onSave={saveSetList} onSaveSavedSet={saveReusableSet} onCreateProgram={createProgram} onCreateManualProgram={createManualProgram} onSelect={selectSetList} onImport={importSetList} onRegenerate={() => setPage('generate')} />
                 : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} />{authentication && <SignOutButton onLogout={async () => { await authentication.logout(); window.location.reload() }} />}</AboutScreen>}

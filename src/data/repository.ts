@@ -23,6 +23,7 @@ export interface ScoreRepository {
   renameCollection: (previous: string, name: string) => Promise<void>
   listScores: () => Promise<Score[]>
   getScore: (id: string) => Promise<Score | undefined>
+  deleteScore: (id: string) => Promise<void>
   saveConfiguration: (id: string, configuration: ScoreConfiguration, updatedAt: string) => Promise<void>
   saveBulkConfiguration: (ids: string[], changes: BulkConfiguration, updatedAt: string) => Promise<void>
   applyReconciliation: (
@@ -88,6 +89,15 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
 
   async getScore(id: string): Promise<Score | undefined> {
     return this.database.scores.get(id)
+  }
+
+  async deleteScore(id: string): Promise<void> {
+    await this.database.transaction('rw', [this.database.scores, this.database.collections], async () => {
+      if (!await this.database.scores.get(id)) throw new Error('This score no longer exists.')
+      const names = await this.listCollections()
+      await this.database.collections.bulkPut(names.map((name) => ({ key: collectionKey(name), name })))
+      await this.database.scores.delete(id)
+    })
   }
 
   async saveConfiguration(id: string, configuration: ScoreConfiguration, updatedAt: string): Promise<void> {
