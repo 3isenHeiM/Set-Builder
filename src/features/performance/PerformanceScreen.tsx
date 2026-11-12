@@ -7,6 +7,7 @@ import { UiIcon } from '../../app/UiIcon'
 import { localizedError, localizedKnownMessage, useI18n } from '../../app/i18n'
 import { ShareSetList } from './ShareSetList'
 import { DrummerNotes } from './DrummerNotes'
+import { SetCard } from './SetCard'
 
 interface PerformanceScreenProps {
   scores: Score[]
@@ -193,15 +194,20 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
       {setList.performance.warnings.map((warning) => <p className="notice" role="status" key={warning}>{localizedKnownMessage(warning, locale) ?? warning}</p>)}
       <div className="set-list">
         {setList.performance.sets.map((set, setIndex) => (
-          <section className="set-card" key={`${setList.id}-${set.scores[0]?.id ?? set.number}`} aria-labelledby={`set-${set.number}`}>
-            <div className="set-card-header">
-              <div><span>{t('set')} {set.number}</span><label><span className="sr-only">{t('setName', { number: set.number })}</span><input id={`set-${set.number}`} type="text" value={setNames[set.scores[0]?.id ?? String(set.number)] ?? set.name ?? ''} maxLength={120} placeholder={`${t('set')} ${set.number}`} onChange={(event) => { const key = set.scores[0]?.id ?? String(set.number); setSetNames((current) => ({ ...current, [key]: event.target.value })) }} onBlur={(event) => { if (event.currentTarget.value.trim() !== (set.name ?? '')) saveSetName(renameSet(setList, setIndex, event.currentTarget.value, new Date().toISOString())) }} /></label></div>
+          <SetCard
+            key={`${setList.id}-${set.scores[0]?.id ?? set.number}`}
+            number={set.number}
+            title={setNames[set.scores[0]?.id ?? String(set.number)] ?? set.name ?? ''}
+            count={set.scores.length}
+            actions={
               <div className="order-controls">
                 <button type="button" aria-label={t('moveSetUp', { number: set.number })} disabled={saving || setIndex === 0} onClick={() => { void save(moveSet(setList, setIndex, setIndex - 1, new Date().toISOString())) }}><UiIcon name="up" /></button>
                 <button type="button" aria-label={t('moveSetDown', { number: set.number })} disabled={saving || setIndex === setList.performance.sets.length - 1} onClick={() => { void save(moveSet(setList, setIndex, setIndex + 1, new Date().toISOString())) }}><UiIcon name="down" /></button>
                 <button type="button" aria-label={t('removeSet', { number: set.number })} disabled={saving || setList.performance.sets.length <= 1} onClick={() => { void save(removeSetFromProgram(setList, setIndex, new Date().toISOString())) }}><UiIcon name="close" /></button>
               </div>
-            </div>
+            }
+          >
+            <label className="set-name-editor"><span>{t('setName', { number: set.number })}</span><input id={`set-${set.number}`} type="text" value={setNames[set.scores[0]?.id ?? String(set.number)] ?? set.name ?? ''} maxLength={120} placeholder={`${t('set')} ${set.number}`} onChange={(event) => { const key = set.scores[0]?.id ?? String(set.number); setSetNames((current) => ({ ...current, [key]: event.target.value })) }} onBlur={(event) => { if (event.currentTarget.value.trim() !== (set.name ?? '')) saveSetName(renameSet(setList, setIndex, event.currentTarget.value, new Date().toISOString())) }} /></label>
             <div className="set-card-toolbar"><span>{set.scores.length} {t(set.scores.length === 1 ? 'piece' : 'pieces')}</span><button type="button" disabled={saving} onClick={() => { void saveReusableSet(setIndex) }}>{set.savedSetId && savedSets.some((saved) => saved.id === set.savedSetId) ? t('updateSavedSet') : t('saveThisSet')}</button></div>
             <div className="order-override">
               <button type="button" aria-pressed={set.orderOverride === true} aria-describedby={`order-help-${set.number}`} disabled={saving} onClick={() => { void save(setOrderOverride(setList, setIndex, !set.orderOverride, new Date().toISOString())) }}>{t('overridePieceOrder', { number: set.number })}</button>
@@ -214,7 +220,7 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
               <label><span>{t('addPiece')}</span><select value={pieceSelections[set.number] ?? ''} disabled={saving || availableScores.length === 0} onChange={(event) => setPieceSelections((current) => ({ ...current, [set.number]: event.target.value }))}><option value="">{availableScores.length === 0 ? t('noAvailablePieces') : t('choosePiece')}</option>{availableScores.map((score) => <option key={score.id} value={score.id}>{score.collection || 'General'} · {score.displayNumber} · {score.title}</option>)}</select></label>
               <button type="button" className="set-add-button" aria-label={t('addPieceToSet', { number: set.number })} disabled={saving || !(pieceSelections[set.number] ?? '')} onClick={() => { const score = scores.find((candidate) => candidate.id === pieceSelections[set.number]); if (score) { void save(addPiece(setList, setIndex, score, new Date().toISOString())); setPieceSelections((current) => ({ ...current, [set.number]: '' })) } }}><UiIcon name="plus" />{t('add')}</button>
             </div>
-          </section>
+          </SetCard>
         ))}
       </div>
 

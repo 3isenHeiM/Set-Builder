@@ -4,6 +4,7 @@ import type { SharedSetList } from '../../domain/sharedSetList'
 import { UiIcon } from '../../app/UiIcon'
 import { localizedKnownMessage, useI18n } from '../../app/i18n'
 import { DrummerNotes } from './DrummerNotes'
+import { SetCard } from './SetCard'
 
 export function SharedSetListScreen({ token, client = sharing }: { token: string; client?: SharingClient }) {
   const { locale, t } = useI18n()
@@ -33,10 +34,9 @@ export function SharedSetListScreen({ token, client = sharing }: { token: string
         <p className="secondary">{t('sharedUpdated')} <time dateTime={saved.updatedAt}>{new Date(saved.updatedAt).toLocaleString(locale)}</time></p>
         {saved.generatedAt && <p className="secondary"><time dateTime={saved.generatedAt}>{new Date(saved.generatedAt).toLocaleString(locale)}</time></p>}
         {saved.warnings?.map((warning) => <p className="notice" role="status" key={warning}>{localizedKnownMessage(warning, locale) ?? warning}</p>)}
-        {saved.sets.map((set, index) => <section className="set-card" key={index} aria-label={set.name || `${t('set')} ${index + 1}`}>
-          <div className="set-card-header"><div><span>{t('set')} {index + 1}</span><h2>{set.name || `${t('set')} ${index + 1}`}</h2></div><span className="shared-set-size">{set.scores.length} {t(set.scores.length === 1 ? 'piece' : 'pieces')}</span></div>
+        {saved.sets.map((set, index) => <SetCard key={JSON.stringify([set.scores[0]?.collection, set.scores[0]?.displayNumber])} number={index + 1} title={set.name} count={set.scores.length}>
           <ol>{set.scores.map((piece, position) => <li key={position}><span className="position">{position + 1}</span><span className="score-number">{piece.displayNumber}</span><span className="score-copy"><strong>{piece.title}</strong><small>{piece.collection}</small><small>{piece.hotness === undefined ? '' : `${t('hotnessShort')}${piece.hotness}`}{piece.goesHigh ? ` · ${t('highPiece')}` : ''}{piece.drumsIntro ? ` · ${t('drums')}` : ''}{position === 0 ? ` · ${t('start')}` : ''}</small><DrummerNotes value={piece.drummerNotes} /></span></li>)}</ol>
-        </section>)}
+        </SetCard>)}
         <button type="button" className="secondary-action" onClick={() => setAttempt((value) => value + 1)}>{t('refreshSetList')}</button>
       </> : <p role="status">{t('loadingShared')}</p>}
     </main>

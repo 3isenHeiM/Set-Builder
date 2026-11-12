@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Fold or expand individual sets by tapping their ribbons in editable and shared read-only programs, with keyboard support and visible state indicators (fixes [#12](https://github.com/3isenHeiM/Set-Builder/issues/12)).
 - Delete a piece from its detail page after explicit confirmation, preserving saved sets and programs (fixes [#6](https://github.com/3isenHeiM/Set-Builder/issues/6)).
 - Share a live, read-only mirror of a saved setlist, including its piece metrics, warnings, and notes, without requiring viewers to sign in; revoke access with **Stop sharing** (fixes [#7](https://github.com/3isenHeiM/Set-Builder/issues/7)).
 - Add optional multiline drummer notes to pieces, retain them in backups, and update those notes in existing sets, programs, and shared views (fixes [#8](https://github.com/3isenHeiM/Set-Builder/issues/8)).

@@ -1,6 +1,8 @@
 export type Locale = 'en' | 'fr'
 
 const en = {
+  collapseSet: 'Collapse {{name}}',
+  expandSet: 'Expand {{name}}',
   about: 'About',
   active: 'Active',
   activeScores: '{{count}} active scores',
@@ -315,6 +317,8 @@ const en = {
 type Copy = typeof en
 
 const fr: Copy = {
+  collapseSet: 'Replier {{name}}',
+  expandSet: 'Déplier {{name}}',
   about: 'À propos',
   active: 'Actifs',
   activeScores: '{{count}} morceaux actifs',
