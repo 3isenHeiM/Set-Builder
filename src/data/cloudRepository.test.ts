@@ -43,9 +43,9 @@ describe('cloud repository', () => {
       return Promise.resolve(response(2, upload.state))
     })
     const repository = new CloudRepository(database, new CloudStateTransport(fetchRequest))
-    await repository.saveBulkConfiguration(['score-1', 'two'], { in80s: true }, '2026-09-10T10:00:00.000Z')
+    await repository.saveBulkConfiguration(['score-1', 'two'], { drumsIntro: true }, '2026-09-10T10:00:00.000Z')
     expect(fetchRequest).toHaveBeenCalledTimes(2)
-    expect((await repository.listScores()).map((score) => [score.hotness, score.tags])).toEqual([[2, ['80s']], [3, ['80s']]])
+    expect((await repository.listScores()).map((score) => [score.hotness, score.drumsIntro, score.tags])).toEqual([[2, true, []], [3, true, []]])
     database.close()
   })
   it('migrates an existing device library when authenticated D1 storage is empty', async () => {

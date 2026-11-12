@@ -14,9 +14,12 @@ import type {
 } from '../domain/types'
 import { PieceSelectorDatabase } from './database'
 import { applyBulkConfiguration, configurationStatus } from '../domain/configuration'
-import { comparePieces, renameCollectionData } from '../domain/collections'
+import { assignPiecesToCollection, collectionKey, collectionNames, comparePieces, createCollectionNames, renameCollectionData } from '../domain/collections'
 
 export interface ScoreRepository {
+  listCollections: () => Promise<string[]>
+  createCollection: (name: string) => Promise<void>
+  assignCollection: (ids: string[], name: string, updatedAt: string) => Promise<void>
   renameCollection: (previous: string, name: string) => Promise<void>
   listScores: () => Promise<Score[]>
   getScore: (id: string) => Promise<Score | undefined>
@@ -44,10 +47,34 @@ export interface PerformanceRepository {
 export class PieceSelectorRepository implements ScoreRepository, PerformanceRepository {
   constructor(readonly database: PieceSelectorDatabase) {}
 
+  async listCollections(): Promise<string[]> {
+    return collectionNames(await this.listScores(), (await this.database.collections.toArray()).map((value) => value.name))
+  }
+
+  async createCollection(name: string): Promise<void> {
+    await this.database.transaction('rw', [this.database.scores, this.database.collections], async () => {
+      const names = createCollectionNames(await this.listScores(), await this.listCollections(), name)
+      await this.database.collections.bulkPut(names.map((value) => ({ key: collectionKey(value), name: value })))
+    })
+  }
+
+  async assignCollection(ids: string[], name: string, updatedAt: string): Promise<void> {
+    await this.database.transaction('rw', [this.database.scores, this.database.collections], async () => {
+      const names = await this.listCollections()
+      const target = names.find((value) => collectionKey(value) === collectionKey(name))
+      if (!target) throw new Error('Collection no longer exists.')
+      const scores = assignPiecesToCollection(await this.listScores(), ids, target, updatedAt)
+      await this.database.scores.bulkPut(scores)
+      await this.database.collections.bulkPut(names.map((value) => ({ key: collectionKey(value), name: value })))
+    })
+  }
+
   async renameCollection(previous: string, name: string): Promise<void> {
-    await this.database.transaction('rw', [this.database.scores, this.database.performances, this.database.savedSetLists, this.database.savedSets], async () => {
-      const [scores, stored, setLists, savedSets] = await Promise.all([this.listScores(), this.database.performances.get('last'), this.listSetLists(), this.listSavedSets()])
-      const renamed = renameCollectionData({ scores, lastPerformance: stored?.performance ?? null, setLists, savedSets }, previous, name)
+    await this.database.transaction('rw', [this.database.scores, this.database.performances, this.database.savedSetLists, this.database.savedSets, this.database.collections], async () => {
+      const [scores, stored, setLists, savedSets, collections] = await Promise.all([this.listScores(), this.database.performances.get('last'), this.listSetLists(), this.listSavedSets(), this.listCollections()])
+      const renamed = renameCollectionData({ scores, collections, lastPerformance: stored?.performance ?? null, setLists, savedSets }, previous, name)
+      await this.database.collections.clear()
+      await this.database.collections.bulkPut(renamed.collections.map((value) => ({ key: collectionKey(value), name: value })))
       await this.database.scores.bulkPut(renamed.scores)
       await this.database.savedSetLists.bulkPut(renamed.setLists)
       await this.database.savedSets.bulkPut(renamed.savedSets)
@@ -73,7 +100,7 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
         drumsIntro: configuration.drumsIntro,
         goesHigh: configuration.goesHigh,
         enabled: configuration.enabled,
-        tags: configuration.in80s ? ['80s'] : [],
+        tags: configuration.in80s === undefined ? score.tags : configuration.in80s ? ['80s'] : [],
         configuration: configurationStatus(configuration),
         updatedAt,
       })
@@ -95,12 +122,14 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
     appliedAt: string,
     createId: () => string,
   ): Promise<FolderScan> {
-    return this.database.transaction('rw', this.database.scores, this.database.scans, async () => {
+    return this.database.transaction('rw', this.database.scores, this.database.scans, this.database.collections, async () => {
       const existing = await this.database.scores.toArray()
       const scanId = createId()
       const result = applyReconciliation(existing, plan, decisions, appliedAt, createId, scanId)
       await this.database.scores.bulkPut(result.scores)
       await this.database.scans.put(result.scan)
+      const names = collectionNames(result.scores, [...await this.listCollections(), ...(plan.collection ? [plan.collection] : [])])
+      await this.database.collections.bulkPut(names.map((value) => ({ key: collectionKey(value), name: value })))
       return result.scan
     })
   }

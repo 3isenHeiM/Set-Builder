@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
 import type { FolderScan, GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, SavedSet, SavedSetList, Score, StoredPerformance } from '../domain/types'
 import type { CloudState } from './cloudState'
+import { collectionKey, collectionName } from '../domain/collections'
 
 export const DATABASE_NAME = 'piece-selector'
 
@@ -19,6 +20,7 @@ type UpgradePerformanceV3 = Omit<GeneratedPerformance, 'sets'> & { sets: Upgrade
 type UpgradeStoredPerformanceV3 = Omit<StoredPerformance, 'performance'> & { performance: UpgradePerformanceV3 }
 
 export class PieceSelectorDatabase extends Dexie {
+  collections!: EntityTable<{ key: string; name: string }, 'key'>
   scores!: EntityTable<Score, 'id'>
   scans!: EntityTable<FolderScan, 'id'>
   performances!: EntityTable<StoredPerformance, 'key'>
@@ -153,6 +155,11 @@ export class PieceSelectorDatabase extends Dexie {
       scores: 'id,scoreNumber,collection,availability,configuration,enabled,*tags',
       scans: 'id,appliedAt', performances: 'key', savedSetLists: 'id,updatedAt', savedSets: 'id,updatedAt', cloudSync: 'key',
     }).upgrade((transaction: Transaction) => transaction.table<Score, string>('scores').toCollection().modify((score) => { score.collection ??= 'General' }))
+    this.version(11).stores({ collections: 'key' }).upgrade(async (transaction: Transaction) => {
+      const scores = await transaction.table<Score, string>('scores').toArray()
+      const names = new Map([['general', 'General'], ...scores.map((score): [string, string] => [collectionKey(score.collection), collectionName(score.collection)])])
+      await transaction.table('collections').bulkPut([...names].map(([key, name]) => ({ key, name })))
+    })
   }
 }
 

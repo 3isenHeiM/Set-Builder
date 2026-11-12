@@ -7,6 +7,9 @@ import { App } from './App'
 function storedRepository(performance: GeneratedPerformance) {
   const scores: Score[] = []
   return {
+    listCollections: () => Promise.resolve(['General']),
+    createCollection: (): Promise<void> => Promise.resolve(),
+    assignCollection: (): Promise<void> => Promise.resolve(),
     listScores: (): Promise<Score[]> => Promise.resolve(scores),
     getScore: (): Promise<Score | undefined> => Promise.resolve(undefined),
     saveConfiguration: (): Promise<void> => Promise.resolve(),

@@ -9,7 +9,7 @@ export function BulkSettings({ count, onApply, onCancel }: { count: number; onAp
   const [error, setError] = useState('')
   const fields = [
     ['canStart', t('canStartSet')], ['hotness', t('hotness')], ['drumsIntro', t('drumsIntro')],
-    ['goesHigh', t('goesHigh')], ['in80s', t('repertoire80s')], ['enabled', t('enabled')],
+    ['goesHigh', t('goesHigh')], ['enabled', t('enabled')],
   ] as const
   const apply = async () => {
     const changes: BulkConfiguration = {}

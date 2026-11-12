@@ -11,7 +11,6 @@ function configurationFromScore(score: Score): ScoreConfiguration {
     drumsIntro: score.drumsIntro,
     goesHigh: score.goesHigh,
     enabled: score.enabled,
-    in80s: score.tags.includes('80s'),
   }
 }
 
@@ -100,7 +99,6 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
       </div>
 
       <div className="preference-stack">
-        <label className="toggle-row toggle-80s"><span className="toggle-copy"><strong>{t('repertoire80s')}</strong><small>{t('include80sSets')}</small></span><input role="switch" type="checkbox" checked={draft.in80s} onChange={(event) => change({ ...draft, in80s: event.target.checked })} /><span className="switch-control" aria-hidden="true"><span /></span></label>
         <label className="toggle-row toggle-enabled"><span className="toggle-copy"><strong>{t('enabled')}</strong><small>{t('includeGeneratedSets')}</small></span><input role="switch" type="checkbox" checked={draft.enabled} onChange={(event) => change({ ...draft, enabled: event.target.checked })} /><span className="switch-control" aria-hidden="true"><span /></span></label>
       </div>
 

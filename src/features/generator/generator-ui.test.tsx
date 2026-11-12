@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { makePerformance, makeScore } from '../../test/fixtures'
 import { GenerateScreen } from './GenerateScreen'
 import { PerformanceScreen } from '../performance/PerformanceScreen'
@@ -9,6 +10,18 @@ function saved(performance: GeneratedPerformance = makePerformance()): SavedSetL
 }
 
 describe('performance UI', () => {
+  it('uses collections for generation without a separate 80s repertoire option', async () => {
+    const user = userEvent.setup()
+    render(<GenerateScreen scores={[makeScore({ collection: 'Christmas' }), makeScore({ id: 'other', scoreNumber: 2, displayNumber: '02', collection: 'General' })]} collections={['General', 'Christmas']} hasPerformance={false} onGenerated={vi.fn()} />)
+    expect(screen.queryByRole('radio', { name: /80s/ })).not.toBeInTheDocument()
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Collection' }), 'Christmas')
+    expect(screen.getByRole('alert')).toHaveTextContent('but 1 are available')
+    await user.clear(screen.getByRole('spinbutton', { name: 'Sets' }))
+    await user.type(screen.getByRole('spinbutton', { name: 'Sets' }), '1')
+    await user.clear(screen.getByRole('spinbutton', { name: 'Pieces per set' }))
+    await user.type(screen.getByRole('spinbutton', { name: 'Pieces per set' }), '1')
+    expect(screen.getByRole('button', { name: 'Generate sets' })).toBeEnabled()
+  })
   it('explains infeasibility before generation', () => {
     render(<GenerateScreen scores={[makeScore()]} hasPerformance={false} onGenerated={vi.fn(() => Promise.resolve())} />)
     expect(screen.getByRole('alert')).toHaveTextContent('needs 24 eligible scores, but 1')

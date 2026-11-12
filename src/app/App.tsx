@@ -27,6 +27,7 @@ type AuthenticationState = 'checking' | 'required' | 'authenticated'
 export function App({ repository = browserRepository, authentication = cloudAuthentication }: { repository?: AppRepository; authentication?: AuthenticationClient }) {
   const { locale, t } = useI18n()
   const [scores, setScores] = useState<Score[]>([])
+  const [collections, setCollections] = useState<string[]>([])
   const [lastScan, setLastScan] = useState<FolderScan>()
   const [setLists, setSetLists] = useState<SavedSetList[]>([])
   const [savedSets, setSavedSets] = useState<SavedSet[]>([])
@@ -50,9 +51,10 @@ export function App({ repository = browserRepository, authentication = cloudAuth
   useEffect(() => {
     if (authenticationState !== 'authenticated') return
     setLoading(true)
-    void Promise.all([repository.listScores(), repository.getLastScan(), repository.getLastPerformance(), repository.listSetLists(), repository.listSavedSets()])
-      .then(([loadedScores, scan, savedPerformance, savedSetLists, loadedSavedSets]) => {
+    void Promise.all([repository.listScores(), repository.getLastScan(), repository.getLastPerformance(), repository.listSetLists(), repository.listSavedSets(), repository.listCollections()])
+      .then(([loadedScores, scan, savedPerformance, savedSetLists, loadedSavedSets, loadedCollections]) => {
         setScores(loadedScores)
+        setCollections(loadedCollections)
         setLastScan(scan)
         setSetLists(savedSetLists)
         setSavedSets(loadedSavedSets)
@@ -90,6 +92,7 @@ export function App({ repository = browserRepository, authentication = cloudAuth
       const scan = await repository.applyReconciliation(preview, decisions, new Date().toISOString(), createLocalId)
       setScores(await repository.listScores())
       setLastScan(scan)
+      setCollections(await repository.listCollections())
       setPreview(undefined)
       setPage('library')
     } catch (error) {
@@ -112,10 +115,22 @@ export function App({ repository = browserRepository, authentication = cloudAuth
   const renameCollection = async (previous: string, name: string) => {
     await repository.renameCollection(previous, name)
     setScores(await repository.listScores())
+    setCollections(await repository.listCollections())
     setSetLists(await repository.listSetLists())
     setSavedSets(await repository.listSavedSets())
     const performance = await repository.getLastPerformance()
     if (performance) setCurrentSetList((current) => current ? { ...current, performance } : current)
+  }
+
+  const createCollection = async (name: string) => {
+    await repository.createCollection(name)
+    setCollections(await repository.listCollections())
+  }
+
+  const assignCollection = async (ids: string[], name: string) => {
+    await repository.assignCollection(ids, name, new Date().toISOString())
+    setScores(await repository.listScores())
+    setCollections(await repository.listCollections())
   }
 
   const savePerformance = async (generated: GeneratedPerformance) => {
@@ -186,7 +201,11 @@ export function App({ repository = browserRepository, authentication = cloudAuth
       <InstallGuide />
       <UpdateBanner />
       <main id="main-content">
-        {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} /> : page === 'library' ? <LibraryScreen scores={scores} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onBulkSave={saveBulkConfiguration} onRenameCollection={renameCollection} onEditingChange={setEditingScore} /> : page === 'generate' ? <GenerateScreen scores={scores} hasPerformance={Boolean(currentSetList)} onGenerated={savePerformance} /> : page === 'performance' ? <PerformanceScreen scores={scores} setList={currentSetList} savedSetLists={setLists} savedSets={savedSets} onSave={saveSetList} onSaveSavedSet={saveReusableSet} onCreateProgram={createProgram} onCreateManualProgram={createManualProgram} onSelect={selectSetList} onImport={importSetList} onRegenerate={() => setPage('generate')} /> : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} />{authentication && <SignOutButton onLogout={async () => { await authentication.logout(); window.location.reload() }} />}</AboutScreen>}
+        {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} />
+          : page === 'library' ? <LibraryScreen scores={scores} collections={collections} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onBulkSave={saveBulkConfiguration} onRenameCollection={renameCollection} onCreateCollection={createCollection} onAssignCollection={assignCollection} onEditingChange={setEditingScore} />
+            : page === 'generate' ? <GenerateScreen scores={scores} collections={collections} hasPerformance={Boolean(currentSetList)} onGenerated={savePerformance} />
+              : page === 'performance' ? <PerformanceScreen scores={scores} setList={currentSetList} savedSetLists={setLists} savedSets={savedSets} onSave={saveSetList} onSaveSavedSet={saveReusableSet} onCreateProgram={createProgram} onCreateManualProgram={createManualProgram} onSelect={selectSetList} onImport={importSetList} onRegenerate={() => setPage('generate')} />
+                : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} />{authentication && <SignOutButton onLogout={async () => { await authentication.logout(); window.location.reload() }} />}</AboutScreen>}
       </main>
       {!preview && !editingScore && <nav className="bottom-nav" aria-label={t('primaryNavigation')}>{([['library', t('library')], ['generate', t('build')], ['performance', t('sets')], ['about', t('about')]] as const).map(([target, label]) => <button type="button" key={target} aria-current={page === target ? 'page' : undefined} onClick={() => setPage(target)}><UiIcon name={target === 'library' ? 'library' : target === 'generate' ? 'sparkles' : target === 'performance' ? 'sets' : 'info'} />{label}</button>)}</nav>}
     </div>
