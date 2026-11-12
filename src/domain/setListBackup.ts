@@ -14,6 +14,7 @@ export interface SetListBackup {
   exportedAt: string
   setList: {
     name: string
+    locked?: boolean
     generatedAt: string
     preset: Preset
     seed: number
@@ -61,6 +62,7 @@ export function createSetListBackup(saved: SavedSetList, exportedAt: string): Se
     exportedAt,
     setList: {
       name: saved.name,
+      ...(saved.locked === undefined ? {} : { locked: saved.locked }),
       generatedAt: saved.performance.generatedAt,
       preset: saved.performance.preset,
       seed: saved.performance.seed,
@@ -93,6 +95,7 @@ export function parseSetListBackupJson(source: string): SetListBackup {
   if (!isIsoDate(raw.exportedAt) || !isRecord(raw.setList)) throw new Error('This Piece Selector set-list file is malformed.')
 
   const { setList } = raw
+  if (setList.locked !== undefined && typeof setList.locked !== 'boolean') throw new Error('This Piece Selector set-list file is malformed.')
   if (typeof setList.name !== 'string' || setList.name.length > 120
     || !isIsoDate(setList.generatedAt)
     || (setList.preset !== '80s' && setList.preset !== 'mix')
@@ -133,6 +136,7 @@ export function parseSetListBackupJson(source: string): SetListBackup {
     exportedAt: raw.exportedAt,
     setList: {
       name: setList.name.trim(),
+      ...(setList.locked === undefined ? {} : { locked: setList.locked }),
       generatedAt: setList.generatedAt,
       preset: setList.preset,
       seed: Number(setList.seed),
@@ -148,6 +152,7 @@ export function restoreSetList(backup: SetListBackup, now: string, createId: () 
   return {
     id,
     name: backup.setList.name,
+    ...(backup.setList.locked === undefined ? {} : { locked: backup.setList.locked }),
     createdAt: now,
     updatedAt: now,
     performance: {

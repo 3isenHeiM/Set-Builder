@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
-import type { FolderScan, GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, SavedSet, SavedSetList, Score, StoredPerformance } from '../domain/types'
+import type { FolderScan, GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, SavedSet, SavedSetList, Score, StoredPerformance, TonightSelection } from '../domain/types'
 import type { CloudState } from './cloudState'
 import { collectionKey, collectionName } from '../domain/collections'
 
@@ -27,6 +27,7 @@ export class PieceSelectorDatabase extends Dexie {
   savedSetLists!: EntityTable<SavedSetList, 'id'>
   savedSets!: EntityTable<SavedSet, 'id'>
   cloudSync!: EntityTable<CloudSyncRecord, 'key'>
+  tonight!: EntityTable<TonightSelection, 'key'>
 
   constructor(name = DATABASE_NAME) {
     super(name)
@@ -161,6 +162,7 @@ export class PieceSelectorDatabase extends Dexie {
       await transaction.table('collections').bulkPut([...names].map(([key, name]) => ({ key, name })))
     })
     this.version(12).stores({}).upgrade((transaction: Transaction) => transaction.table<Score, string>('scores').toCollection().modify((score) => { score.drummerNotes ??= '' }))
+    this.version(13).stores({ tonight: 'key' })
   }
 }
 

@@ -19,6 +19,8 @@ import { readCachedState, readSyncRecord, replaceCachedState } from './cloudCach
 import { assignPiecesToCollection, collectionKey, collectionNames, createCollectionNames, pieceKey, renameCollectionData } from '../domain/collections'
 import type { PieceSelectorDatabase } from './database'
 import type { PerformanceRepository, ScoreRepository } from './repository'
+import { assertLockedProgramsUnchanged, assertSetListEditable, changeSetListLock } from '../domain/performanceLock'
+import { readTonight, saveTonight } from './tonight'
 
 export type CloudFetch = (input: string, init?: RequestInit) => Promise<Response>
 
@@ -180,6 +182,7 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
       await this.ready()
       if (!this.state) throw new Error('The library is unavailable.')
       const change = createChange(this.state)
+      assertLockedProgramsUnchanged(this.state.setLists, change.state.setLists, change.state.lastPerformance)
       await this.persist(change.state)
       return change.result
     })
@@ -275,16 +278,32 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
   }
 
   saveSetList(setList: SavedSetList): Promise<void> {
-    return this.change((state) => ({
-      result: undefined,
-      state: {
-        ...state,
-        lastPerformance: setList.performance,
-        setLists: [setList, ...state.setLists.filter((saved) => saved.id !== setList.id)]
-          .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
-      },
-    }))
+    return this.change((state) => {
+      assertSetListEditable(state.setLists.find((saved) => saved.id === setList.id))
+      return {
+        result: undefined,
+        state: {
+          ...state,
+          lastPerformance: setList.performance,
+          setLists: [setList, ...state.setLists.filter((saved) => saved.id !== setList.id)]
+            .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+        },
+      }
+    })
   }
+
+  setSetListLocked(id: string, locked: boolean, updatedAt: string): Promise<SavedSetList> {
+    return this.change((state) => {
+      const current = state.setLists.find((saved) => saved.id === id)
+      if (!current) throw new Error('This setlist no longer exists.')
+      const next = changeSetListLock(current, locked, updatedAt)
+      return { result: next, state: { ...state, setLists: state.setLists.map((saved) => saved.id === id ? next : saved) } }
+    })
+  }
+
+  getTonightSetList(): Promise<SavedSetList | undefined> { return readTonight(this.database) }
+  saveTonightSetList(setList: SavedSetList): Promise<void> { return saveTonight(this.database, setList) }
+  async clearTonightSetList(): Promise<void> { await this.database.tonight.delete('tonight') }
 
   async listSavedSets(): Promise<SavedSet[]> {
     await this.ready()

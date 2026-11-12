@@ -26,8 +26,9 @@ export function updateSavedDrummerNotes(data: { lastPerformance: GeneratedPerfor
     return sets.some((set, index) => set !== value.sets[index]) ? { ...value, sets } : value
   }
   return {
-    lastPerformance: data.lastPerformance ? performance(data.lastPerformance) : null,
+    lastPerformance: data.lastPerformance ? data.setLists.find((saved) => saved.id === data.lastPerformance?.id && saved.locked)?.performance ?? performance(data.lastPerformance) : null,
     setLists: data.setLists.map((saved) => {
+      if (saved.locked) return saved
       const next = performance(saved.performance)
       return next === saved.performance ? saved : { ...saved, performance: next, updatedAt }
     }),

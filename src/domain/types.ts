@@ -187,8 +187,14 @@ export interface StoredPerformance {
 
 export interface SavedSetList {
   id: string
+  locked?: boolean
   name: string
   createdAt: IsoTimestamp
   updatedAt: IsoTimestamp
   performance: GeneratedPerformance
+}
+
+export interface TonightSelection {
+  key: 'tonight'
+  setList: SavedSetList
 }

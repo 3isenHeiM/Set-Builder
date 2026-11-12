@@ -1,6 +1,24 @@
 export type Locale = 'en' | 'fr'
 
 const en = {
+  tonight: 'Tonight',
+  performanceMode: 'Performance mode',
+  locked: 'Locked',
+  lockSetlist: 'Lock setlist',
+  unlockSetlist: 'Unlock setlist',
+  confirmUnlock: 'Unlock this setlist for editing?',
+  lockedHelp: 'This setlist is protected from changes. Unlock it to edit.',
+  lockFailed: 'The setlist lock could not be saved.',
+  lockedSetlists: 'Locked setlists',
+  chooseLockedSetlist: 'Choose a locked setlist',
+  loadTonight: 'Load for tonight',
+  changeTonight: 'Change tonight’s setlist',
+  clearTonight: 'Clear tonight’s selection',
+  manageSetlists: 'Manage setlists',
+  tonightEmpty: 'Load a locked setlist to keep it ready during your performance.',
+  tonightHelp: 'Tonight keeps a fixed copy on this device and opens on launch, including offline. Load again to include later edits.',
+  noLockedSetlists: 'No locked setlists yet. Open a saved program in Sets and lock it first.',
+  tonightSaveFailed: 'Tonight’s selection could not be saved.',
   collapseSet: 'Collapse {{name}}',
   expandSet: 'Expand {{name}}',
   about: 'About',
@@ -317,6 +335,24 @@ const en = {
 type Copy = typeof en
 
 const fr: Copy = {
+  tonight: 'Ce soir',
+  performanceMode: 'Mode concert',
+  locked: 'Verrouillé',
+  lockSetlist: 'Verrouiller le programme',
+  unlockSetlist: 'Déverrouiller le programme',
+  confirmUnlock: 'Déverrouiller ce programme pour le modifier ?',
+  lockedHelp: 'Ce programme est protégé contre les modifications. Déverrouillez-le pour le modifier.',
+  lockFailed: 'Le verrouillage du programme n’a pas pu être enregistré.',
+  lockedSetlists: 'Programmes verrouillés',
+  chooseLockedSetlist: 'Choisir un programme verrouillé',
+  loadTonight: 'Charger pour ce soir',
+  changeTonight: 'Changer le programme de ce soir',
+  clearTonight: 'Retirer la sélection de ce soir',
+  manageSetlists: 'Gérer les programmes',
+  tonightEmpty: 'Chargez un programme verrouillé pour le retrouver facilement pendant le concert.',
+  tonightHelp: 'Ce soir conserve une copie fixe sur cet appareil et s’ouvre au lancement, même hors ligne. Rechargez le programme pour inclure les modifications ultérieures.',
+  noLockedSetlists: 'Aucun programme verrouillé. Ouvrez un programme enregistré dans Sets et verrouillez-le.',
+  tonightSaveFailed: 'La sélection de ce soir n’a pas pu être enregistrée.',
   collapseSet: 'Replier {{name}}',
   expandSet: 'Déplier {{name}}',
   about: 'À propos',
@@ -654,6 +690,10 @@ export function localizedKnownMessage(message: string, locale: Locale): string |
   if (locale === 'en') return message
   const t = (key: keyof Copy, values: Record<string, string | number> = {}) => interpolate(fr[key], values)
   const exact: Partial<Record<string, keyof Copy>> = {
+    'This setlist is locked. Unlock it before editing.': 'lockedHelp',
+    'Lock this setlist before loading it for tonight.': 'noLockedSetlists',
+    'The setlist lock could not be saved.': 'lockFailed',
+    'Tonight’s selection could not be saved.': 'tonightSaveFailed',
     'Drummer notes must be text of at most 2000 characters.': 'drummerNotesInvalid',
     'Sharing is unavailable. Try again online.': 'sharingUnavailable',
     'This shared setlist is unavailable.': 'sharedUnavailable',

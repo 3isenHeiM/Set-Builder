@@ -8,6 +8,8 @@ import { localizedError, localizedKnownMessage, useI18n } from '../../app/i18n'
 import { ShareSetList } from './ShareSetList'
 import { DrummerNotes } from './DrummerNotes'
 import { SetCard } from './SetCard'
+import { ReadOnlySetList } from './ReadOnlySetList'
+import { MovePieceControl } from './MovePieceControl'
 
 interface PerformanceScreenProps {
   scores: Score[]
@@ -21,15 +23,18 @@ interface PerformanceScreenProps {
   onSelect: (id: string) => Promise<void>
   onImport: (backup: SetListBackup) => Promise<void>
   onRegenerate: () => void
+  onLockChange?: (id: string, locked: boolean) => Promise<void>
+  onTonight?: (setList: SavedSetList) => Promise<void>
 }
 
 function downloadName(exportedAt: string): string {
   return `piece-selector-program-${exportedAt.slice(0, 10)}.json`
 }
 
-export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, onSave, onSaveSavedSet, onCreateProgram, onCreateManualProgram, onSelect, onImport, onRegenerate }: PerformanceScreenProps) {
+export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, onSave, onSaveSavedSet, onCreateProgram, onCreateManualProgram, onSelect, onImport, onRegenerate, onLockChange, onTonight }: PerformanceScreenProps) {
   const { locale, t } = useI18n()
   const fileInput = useRef<HTMLInputElement>(null)
+  const pendingNameSave = useRef<Promise<void>>(Promise.resolve())
   const [listName, setListName] = useState(setList?.name ?? '')
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
@@ -38,10 +43,12 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
   const [setNames, setSetNames] = useState<Record<string, string>>({})
   const [savedSetSelection, setSavedSetSelection] = useState('')
   const [starterSelection, setStarterSelection] = useState('')
+  const [confirmUnlock, setConfirmUnlock] = useState(false)
 
   useEffect(() => {
     setListName(setList?.name ?? '')
     setSetNames({})
+    setConfirmUnlock(false)
   }, [setList?.id, setList?.name])
 
   const save = async (next: SavedSetList) => {
@@ -49,7 +56,9 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
     setStatus('')
     setError('')
     try {
+      await pendingNameSave.current.catch(() => undefined)
       await onSave(next)
+      pendingNameSave.current = Promise.resolve()
       setStatus(t('saved'))
     } catch (caught) {
       setError(localizedError(caught, locale, t('setListSaveFailed')))
@@ -60,15 +69,34 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
 
   const saveSetName = (next: SavedSetList) => {
     setError('')
-    void onSave(next)
-      .then(() => setStatus(t('saved')))
-      .catch((caught: unknown) => setError(localizedError(caught, locale, t('setListSaveFailed'))))
+    const request = pendingNameSave.current.catch(() => undefined).then(() => onSave(next))
+    pendingNameSave.current = request
+    void request.then(() => setStatus(t('saved'))).catch((caught: unknown) => setError(localizedError(caught, locale, t('setListSaveFailed'))))
+  }
+
+  const changeLock = async (locked: boolean) => {
+    if (!setList || !onLockChange) return
+    setSaving(true)
+    setError('')
+    setStatus('')
+    try {
+      await pendingNameSave.current
+      if (locked) {
+        let next = renameSetList(setList, listName, new Date().toISOString())
+        next.performance.sets.forEach((set, index) => { next = renameSet(next, index, setNames[set.scores[0]?.id ?? String(set.number)] ?? set.name ?? '', next.updatedAt) })
+        if (next.name !== setList.name || JSON.stringify(next.performance) !== JSON.stringify(setList.performance)) await onSave(next)
+      }
+      await onLockChange(setList.id, locked)
+      setConfirmUnlock(false)
+    } catch (caught) { setError(localizedError(caught, locale, t('lockFailed'))) }
+    finally { setSaving(false) }
   }
 
   const select = async (id: string) => {
     setStatus('')
     setError('')
     try {
+      await pendingNameSave.current
       await onSelect(id)
     } catch (caught) {
       setError(localizedError(caught, locale, t('setListOpenFailed')))
@@ -82,6 +110,7 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
     setStatus('')
     setError('')
     try {
+      await pendingNameSave.current
       const nameKey = set.scores[0]?.id ?? String(set.number)
       const name = setNames[nameKey] ?? set.name
       const savedSet = await onSaveSavedSet({ ...set, ...(name === undefined ? {} : { name }) })
@@ -180,13 +209,27 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
   if (import.meta.env.DEV) assertSavedPerformanceValid(setList.performance)
   const availableScores = scores.filter((score) => canAddPiece(setList, score))
 
+  if (setList.locked) return <section className="screen-section performance" aria-labelledby="performance-title">
+    <div className="locked-badge"><UiIcon name="lock" />{t('locked')}</div>
+    <h1 id="performance-title">{setList.name || t('setsTitle')}</h1>
+    <label className="saved-list-picker"><span>{t('savedPrograms')}</span><select value={setList.id} disabled={saving} onChange={(event) => { void select(event.target.value) }}>{allSetLists.map((saved) => <option value={saved.id} key={saved.id}>{saved.name || t('setsTitle')}</option>)}</select></label>
+    <p className="notice">{t('lockedHelp')}</p>
+    {onTonight && <button type="button" className="primary-action" disabled={saving} onClick={() => { setSaving(true); setError(''); void onTonight(setList).catch((caught: unknown) => setError(localizedError(caught, locale, t('tonightSaveFailed')))).finally(() => setSaving(false)) }}><UiIcon name="moon" />{t('loadTonight')}</button>}
+    <ReadOnlySetList setList={setList} />
+    {onLockChange && <button type="button" className="secondary-action" aria-pressed="true" disabled={saving} onClick={() => setConfirmUnlock(true)}><UiIcon name="lock" />{t('unlockSetlist')}</button>}
+    {confirmUnlock && <div className="unlock-confirmation" role="group" aria-label={t('confirmUnlock')}><p>{t('confirmUnlock')}</p><button type="button" className="secondary-action" disabled={saving} onClick={() => setConfirmUnlock(false)}>{t('cancel')}</button><button type="button" className="primary-action" disabled={saving} onClick={() => { void changeLock(false) }}>{t('unlockSetlist')}</button></div>}
+    {error && <p className="error" role="alert">{error}</p>}
+  </section>
+
   return (
     <section className="screen-section performance" aria-labelledby="performance-title">
       <div className="eyebrow">{t('program')} · {setList.performance.preset === '80s' ? '80s' : t('mix')}</div>
       <h1 id="performance-title">{setList.name || t('setsTitle')}</h1>
 
-      <label className="saved-list-picker"><span>{t('savedPrograms')}</span><select value={setList.id} onChange={(event) => { void select(event.target.value) }}>{allSetLists.map((saved) => <option value={saved.id} key={saved.id}>{saved.name || t('setsTitle')} · {new Date(saved.createdAt).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' })}</option>)}</select></label>
-      <label className="set-list-name"><span>{t('programName')}</span><input type="text" value={listName} maxLength={120} placeholder={t('setsTitle')} onChange={(event) => setListName(event.target.value)} onBlur={() => { if (listName.trim() !== setList.name) saveSetName(renameSetList(setList, listName, new Date().toISOString())) }} /></label>
+      {onLockChange && <button type="button" className="secondary-action lock-setlist" aria-pressed="false" disabled={saving} onClick={() => { void changeLock(true) }}><UiIcon name="lock" />{t('lockSetlist')}</button>}
+
+      <label className="saved-list-picker"><span>{t('savedPrograms')}</span><select value={setList.id} disabled={saving} onChange={(event) => { void select(event.target.value) }}>{allSetLists.map((saved) => <option value={saved.id} key={saved.id}>{saved.name || t('setsTitle')} · {new Date(saved.createdAt).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' })}</option>)}</select></label>
+      <label className="set-list-name"><span>{t('programName')}</span><input type="text" value={listName} disabled={saving} maxLength={120} placeholder={t('setsTitle')} onChange={(event) => setListName(event.target.value)} onBlur={() => { if (listName.trim() !== setList.name) saveSetName(renameSetList(setList, listName, new Date().toISOString())) }} /></label>
       {composer}
       {manualBuilder}
 
@@ -207,14 +250,14 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
               </div>
             }
           >
-            <label className="set-name-editor"><span>{t('setName', { number: set.number })}</span><input id={`set-${set.number}`} type="text" value={setNames[set.scores[0]?.id ?? String(set.number)] ?? set.name ?? ''} maxLength={120} placeholder={`${t('set')} ${set.number}`} onChange={(event) => { const key = set.scores[0]?.id ?? String(set.number); setSetNames((current) => ({ ...current, [key]: event.target.value })) }} onBlur={(event) => { if (event.currentTarget.value.trim() !== (set.name ?? '')) saveSetName(renameSet(setList, setIndex, event.currentTarget.value, new Date().toISOString())) }} /></label>
+            <label className="set-name-editor"><span>{t('setName', { number: set.number })}</span><input id={`set-${set.number}`} type="text" disabled={saving} value={setNames[set.scores[0]?.id ?? String(set.number)] ?? set.name ?? ''} maxLength={120} placeholder={`${t('set')} ${set.number}`} onChange={(event) => { const key = set.scores[0]?.id ?? String(set.number); setSetNames((current) => ({ ...current, [key]: event.target.value })) }} onBlur={(event) => { if (event.currentTarget.value.trim() !== (set.name ?? '')) saveSetName(renameSet(setList, setIndex, event.currentTarget.value, new Date().toISOString())) }} /></label>
             <div className="set-card-toolbar"><span>{set.scores.length} {t(set.scores.length === 1 ? 'piece' : 'pieces')}</span><button type="button" disabled={saving} onClick={() => { void saveReusableSet(setIndex) }}>{set.savedSetId && savedSets.some((saved) => saved.id === set.savedSetId) ? t('updateSavedSet') : t('saveThisSet')}</button></div>
             <div className="order-override">
               <button type="button" aria-pressed={set.orderOverride === true} aria-describedby={`order-help-${set.number}`} disabled={saving} onClick={() => { void save(setOrderOverride(setList, setIndex, !set.orderOverride, new Date().toISOString())) }}>{t('overridePieceOrder', { number: set.number })}</button>
               <p id={`order-help-${set.number}`}>{t('overrideOrderHelp')}</p>
             </div>
             <ol>
-              {set.scores.map((score, scoreIndex) => <li key={score.id}><span className="position">{scoreIndex + 1}</span><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>{score.collection || 'General'}</small><small>{t('hotnessShort')}{score.hotness}{score.goesHigh ? ` · ${t('highPiece')}` : ''}{score.drumsIntro ? ` · ${t('drums')}` : ''}{scoreIndex === 0 ? ` · ${t('start')}` : ''}</small><DrummerNotes value={score.drummerNotes} />{setList.performance.sets.some((_, target) => canMoveBetweenSets(setList, setIndex, scoreIndex, target)) && <select aria-label={t('movePieceToSet', { title: score.title })} value="" disabled={saving} onChange={(event) => { if (event.target.value !== '') void save(moveBetweenSets(setList, setIndex, scoreIndex, Number(event.target.value), new Date().toISOString())) }}><option value="">{t('moveToSet')}</option>{setList.performance.sets.map((target, targetIndex) => canMoveBetweenSets(setList, setIndex, scoreIndex, targetIndex) && <option key={target.number} value={targetIndex}>{target.name || `${t('set')} ${target.number}`}</option>)}</select>}</span><span className="piece-order-controls">{scoreIndex > 0 && <><button type="button" aria-label={t('movePieceUp', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex - 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex - 1, new Date().toISOString())) }}><UiIcon name="up" /></button><button type="button" aria-label={t('movePieceDown', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex + 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex + 1, new Date().toISOString())) }}><UiIcon name="down" /></button></>}<button type="button" aria-label={t('removePiece', { title: score.title, number: set.number })} disabled={saving || removePiece(setList, setIndex, scoreIndex, '') === setList} onClick={() => { void save(removePiece(setList, setIndex, scoreIndex, new Date().toISOString())) }}><UiIcon name="minus" /></button></span></li>)}
+              {set.scores.map((score, scoreIndex) => <li key={score.id}><span className="position">{scoreIndex + 1}</span><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>{score.collection || 'General'}</small><small>{t('hotnessShort')}{score.hotness}{score.goesHigh ? ` · ${t('highPiece')}` : ''}{score.drumsIntro ? ` · ${t('drums')}` : ''}{scoreIndex === 0 ? ` · ${t('start')}` : ''}</small><DrummerNotes value={score.drummerNotes} /></span><span className="piece-order-controls"><MovePieceControl label={t('movePieceToSet', { title: score.title })} disabled={saving} destinations={setList.performance.sets.flatMap((target, targetIndex) => canMoveBetweenSets(setList, setIndex, scoreIndex, targetIndex) ? [{ index: targetIndex, name: target.name || `${t('set')} ${target.number}` }] : [])} onMove={(target) => { void save(moveBetweenSets(setList, setIndex, scoreIndex, target, new Date().toISOString())) }} />{scoreIndex > 0 && <><button type="button" aria-label={t('movePieceUp', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex - 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex - 1, new Date().toISOString())) }}><UiIcon name="up" /></button><button type="button" aria-label={t('movePieceDown', { title: score.title })} disabled={saving || !canMovePiece(set, scoreIndex, scoreIndex + 1)} onClick={() => { void save(movePiece(setList, setIndex, scoreIndex, scoreIndex + 1, new Date().toISOString())) }}><UiIcon name="down" /></button></>}<button type="button" aria-label={t('removePiece', { title: score.title, number: set.number })} disabled={saving || removePiece(setList, setIndex, scoreIndex, '') === setList} onClick={() => { void save(removePiece(setList, setIndex, scoreIndex, new Date().toISOString())) }}><UiIcon name="minus" /></button></span></li>)}
             </ol>
             <div className="set-piece-editor">
               <label><span>{t('addPiece')}</span><select value={pieceSelections[set.number] ?? ''} disabled={saving || availableScores.length === 0} onChange={(event) => setPieceSelections((current) => ({ ...current, [set.number]: event.target.value }))}><option value="">{availableScores.length === 0 ? t('noAvailablePieces') : t('choosePiece')}</option>{availableScores.map((score) => <option key={score.id} value={score.id}>{score.collection || 'General'} · {score.displayNumber} · {score.title}</option>)}</select></label>

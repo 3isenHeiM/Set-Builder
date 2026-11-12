@@ -1,6 +1,7 @@
 import { emptyCloudState, parseCloudState, type CloudState, type CloudStateEnvelope } from '../data/cloudState'
 import { AuthenticationUnavailable, assertAuthenticationConfigured, clearSessionCookie, createSessionCookie, hasValidSession, passwordMatches } from './auth'
 import { toSharedSetList } from '../domain/sharedSetList'
+import { assertLockedProgramsUnchanged } from '../domain/performanceLock'
 
 const STATE_PATH = '/api/state'
 const LOGIN_PATH = '/api/login'
@@ -152,8 +153,10 @@ async function storeState(request: Request, environment: WorkerEnvironment): Pro
     throw new InvalidStateRequest('Cloud state upload is malformed.')
   }
   let state: CloudState
+  const previous = (await readState(environment)).state
   try {
     state = parseCloudState(raw.state)
+    assertLockedProgramsUnchanged(previous.setLists, state.setLists, state.lastPerformance)
   } catch (error) {
     throw new InvalidStateRequest(error instanceof Error ? error.message : 'Cloud state upload is malformed.')
   }

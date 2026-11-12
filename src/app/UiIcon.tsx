@@ -1,7 +1,10 @@
-type UiIconName = 'library' | 'sparkles' | 'sets' | 'info' | 'music' | 'back' | 'close' | 'start' | 'heat' | 'drum' | 'high' | 'up' | 'down' | 'plus' | 'minus'
+type UiIconName = 'library' | 'sparkles' | 'sets' | 'info' | 'music' | 'back' | 'close' | 'start' | 'heat' | 'drum' | 'high' | 'up' | 'down' | 'plus' | 'minus' | 'lock' | 'moon' | 'move'
 
 export function UiIcon({ name, className = '' }: { name: UiIconName; className?: string }) {
-  const paths = name === 'library' ? <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h8M8 16h5" /></>
+  const paths = name === 'lock' ? <><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" /></>
+    : name === 'moon' ? <path d="M20 14a9 9 0 0 1-10-10 9 9 0 1 0 10 10Z" />
+    : name === 'move' ? <><path d="M4 7h13m-4-4 4 4-4 4M20 17H7m4-4-4 4 4 4" /></>
+    : name === 'library' ? <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h8M8 16h5" /></>
     : name === 'sparkles' ? <><path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3Z" /><path d="m18 14 .8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8L18 14Z" /></>
       : name === 'sets' ? <><path d="M7 6h13M7 12h13M7 18h13" /><path d="M4 6h.01M4 12h.01M4 18h.01" /></>
         : name === 'info' ? <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>

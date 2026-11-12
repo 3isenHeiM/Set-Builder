@@ -232,8 +232,10 @@ function readSetList(value: unknown): SavedSetList {
   const id = idValue(value.id)
   const performance = readPerformance(value.performance, true)
   if (performance.id !== id) throw new Error('Cloud state contains an inconsistent saved set list.')
+  if (value.locked !== undefined && typeof value.locked !== 'boolean') throw new Error('Cloud state contains an invalid setlist lock.')
   return {
     id,
+    ...(value.locked === undefined ? {} : { locked: value.locked }),
     name: stringValue(value.name, 120),
     createdAt: timestampValue(value.createdAt),
     updatedAt: timestampValue(value.updatedAt),

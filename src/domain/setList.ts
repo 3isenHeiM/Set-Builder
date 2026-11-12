@@ -44,10 +44,12 @@ function updated(setList: SavedSetList, updatedAt: string): SavedSetList {
 }
 
 export function renameSetList(setList: SavedSetList, name: string, updatedAt: string): SavedSetList {
+  if (setList.locked) return setList
   return updated({ ...setList, name: name.trim() }, updatedAt)
 }
 
 export function renameSet(setList: SavedSetList, setIndex: number, name: string, updatedAt: string): SavedSetList {
+  if (setList.locked) return setList
   return updated({
     ...setList,
     performance: {
@@ -58,11 +60,13 @@ export function renameSet(setList: SavedSetList, setIndex: number, name: string,
 }
 
 export function linkSavedSet(setList: SavedSetList, setIndex: number, savedSet: SavedSet, updatedAt: string): SavedSetList {
+  if (setList.locked) return setList
   const sets = setList.performance.sets.map((set, index) => index === setIndex ? { ...set, name: savedSet.name, savedSetId: savedSet.id } : set)
   return updated({ ...setList, performance: { ...setList.performance, sets } }, updatedAt)
 }
 
 export function moveSet(setList: SavedSetList, from: number, to: number, updatedAt: string): SavedSetList {
+  if (setList.locked) return setList
   const sets = moved(setList.performance.sets, from, to).map((set, index) => ({ ...set, number: index + 1 }))
   return updated({ ...setList, performance: { ...setList.performance, sets } }, updatedAt)
 }
@@ -72,6 +76,7 @@ export function canMovePiece(set: PerformanceSet, from: number, to: number): boo
 }
 
 export function setOrderOverride(setList: SavedSetList, setIndex: number, enabled: boolean, updatedAt: string): SavedSetList {
+  if (setList.locked) return setList
   const target = setList.performance.sets[setIndex]
   if (!target) return setList
   const [starter, ...remaining] = target.scores
@@ -82,6 +87,7 @@ export function setOrderOverride(setList: SavedSetList, setIndex: number, enable
 }
 
 export function movePiece(setList: SavedSetList, setIndex: number, from: number, to: number, updatedAt: string): SavedSetList {
+  if (setList.locked) return setList
   const target = setList.performance.sets[setIndex]
   if (!target || !canMovePiece(target, from, to)) return setList
   const sets = setList.performance.sets.map((set, index) => index === setIndex ? { ...set, scores: moved(set.scores, from, to) } : set)
@@ -89,10 +95,11 @@ export function movePiece(setList: SavedSetList, setIndex: number, from: number,
 }
 
 export function canAddPiece(setList: SavedSetList, score: Score): boolean {
-  return snapshot(score) !== undefined && !setList.performance.sets.some((set) => set.scores.some((candidate) => candidate.id === score.id || pieceKey(candidate) === pieceKey(score)))
+  return !setList.locked && snapshot(score) !== undefined && !setList.performance.sets.some((set) => set.scores.some((candidate) => candidate.id === score.id || pieceKey(candidate) === pieceKey(score)))
 }
 
 export function addPiece(setList: SavedSetList, setIndex: number, score: Score, updatedAt: string): SavedSetList {
+  if (setList.locked) return setList
   const target = setList.performance.sets[setIndex]
   const candidate = snapshot(score)
   if (!target || !candidate || !canAddPiece(setList, score) || target.scores.length >= MAX_SCORES_PER_SET) return setList
@@ -107,6 +114,7 @@ export function addPiece(setList: SavedSetList, setIndex: number, score: Score, 
 }
 
 export function removePiece(setList: SavedSetList, setIndex: number, scoreIndex: number, updatedAt: string): SavedSetList {
+  if (setList.locked) return setList
   const target = setList.performance.sets[setIndex]
   if (!target || scoreIndex < 0 || target.scores.length <= MIN_SCORES_PER_SET || scoreIndex >= target.scores.length) return setList
   const scores = target.scores.filter((_score, index) => index !== scoreIndex)
@@ -116,6 +124,7 @@ export function removePiece(setList: SavedSetList, setIndex: number, scoreIndex:
 }
 
 export function canMoveBetweenSets(setList: SavedSetList, from: number, scoreIndex: number, to: number): boolean {
+  if (setList.locked) return false
   const source = setList.performance.sets[from]
   const destination = setList.performance.sets[to]
   const score = source?.scores[scoreIndex]
@@ -124,6 +133,7 @@ export function canMoveBetweenSets(setList: SavedSetList, from: number, scoreInd
 }
 
 export function moveBetweenSets(setList: SavedSetList, from: number, scoreIndex: number, to: number, updatedAt: string): SavedSetList {
+  if (setList.locked) return setList
   if (!canMoveBetweenSets(setList, from, scoreIndex, to)) return setList
   const source = setList.performance.sets[from]!
   const destination = setList.performance.sets[to]!
@@ -136,6 +146,7 @@ export function moveBetweenSets(setList: SavedSetList, from: number, scoreIndex:
 }
 
 export function addNewSet(setList: SavedSetList, starter: Score, updatedAt: string): SavedSetList {
+  if (setList.locked) return setList
   const candidate = snapshot(starter)
   if (!candidate?.canStart || !canAddPiece(setList, starter) || setList.performance.sets.length >= MAX_SETS) return setList
   const sets = [...setList.performance.sets, { number: setList.performance.sets.length + 1, scores: [candidate] }]
@@ -194,12 +205,14 @@ export function createProgramFromSavedSet(savedSet: SavedSet, now: string, id: s
 }
 
 export function addSavedSetToProgram(setList: SavedSetList, savedSet: SavedSet, updatedAt: string): SavedSetList {
+  if (setList.locked) return setList
   if (!canAddSavedSet(setList.performance, savedSet)) return setList
   const sets = [...setList.performance.sets, { number: setList.performance.sets.length + 1, name: savedSet.name, savedSetId: savedSet.id, ...(savedSet.orderOverride === undefined ? {} : { orderOverride: savedSet.orderOverride }), scores: [...savedSet.scores] }]
   return updated({ ...setList, performance: { ...setList.performance, setCount: sets.length, sets } }, updatedAt)
 }
 
 export function removeSetFromProgram(setList: SavedSetList, setIndex: number, updatedAt: string): SavedSetList {
+  if (setList.locked) return setList
   if (setList.performance.sets.length <= 1 || setIndex < 0 || setIndex >= setList.performance.sets.length) return setList
   const sets = setList.performance.sets.filter((_set, index) => index !== setIndex).map((set, index) => ({ ...set, number: index + 1 }))
   return updated({ ...setList, performance: { ...setList.performance, setCount: sets.length, sets } }, updatedAt)

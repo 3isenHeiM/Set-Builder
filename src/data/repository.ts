@@ -16,6 +16,8 @@ import { PieceSelectorDatabase } from './database'
 import { applyBulkConfiguration, configurationStatus } from '../domain/configuration'
 import { readDrummerNotes, updateSavedDrummerNotes } from '../domain/drummerNotes'
 import { assignPiecesToCollection, collectionKey, collectionNames, comparePieces, createCollectionNames, pieceKey, renameCollectionData } from '../domain/collections'
+import { assertLockedProgramsUnchanged, assertSetListEditable, changeSetListLock } from '../domain/performanceLock'
+import { readTonight, saveTonight } from './tonight'
 
 export interface ScoreRepository {
   listCollections: () => Promise<string[]>
@@ -38,6 +40,10 @@ export interface ScoreRepository {
 }
 
 export interface PerformanceRepository {
+  getTonightSetList: () => Promise<SavedSetList | undefined>
+  saveTonightSetList: (setList: SavedSetList) => Promise<void>
+  clearTonightSetList: () => Promise<void>
+  setSetListLocked: (id: string, locked: boolean, updatedAt: string) => Promise<SavedSetList>
   saveLastPerformance: (performance: GeneratedPerformance) => Promise<void>
   getLastPerformance: () => Promise<GeneratedPerformance | undefined>
   listSetLists: () => Promise<SavedSetList[]>
@@ -171,7 +177,11 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
   }
 
   async saveLastPerformance(performance: GeneratedPerformance): Promise<void> {
-    await this.database.performances.put({ key: 'last', performance })
+    await this.database.transaction('rw', this.database.performances, this.database.savedSetLists, async () => {
+      const lists = await this.listSetLists()
+      assertLockedProgramsUnchanged(lists, lists, performance)
+      await this.database.performances.put({ key: 'last', performance })
+    })
   }
 
   async getLastPerformance(): Promise<GeneratedPerformance | undefined> {
@@ -184,10 +194,25 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
 
   async saveSetList(setList: SavedSetList): Promise<void> {
     await this.database.transaction('rw', this.database.savedSetLists, this.database.performances, async () => {
+      assertSetListEditable(await this.database.savedSetLists.get(setList.id))
       await this.database.savedSetLists.put(setList)
       await this.database.performances.put({ key: 'last', performance: setList.performance })
     })
   }
+
+  async setSetListLocked(id: string, locked: boolean, updatedAt: string): Promise<SavedSetList> {
+    return this.database.transaction('rw', this.database.savedSetLists, async () => {
+      const current = await this.database.savedSetLists.get(id)
+      if (!current) throw new Error('This setlist no longer exists.')
+      const next = changeSetListLock(current, locked, updatedAt)
+      await this.database.savedSetLists.put(next)
+      return next
+    })
+  }
+
+  getTonightSetList(): Promise<SavedSetList | undefined> { return readTonight(this.database) }
+  saveTonightSetList(setList: SavedSetList): Promise<void> { return saveTonight(this.database, setList) }
+  async clearTonightSetList(): Promise<void> { await this.database.tonight.delete('tonight') }
 
   async listSavedSets(): Promise<SavedSet[]> {
     return this.database.savedSets.orderBy('updatedAt').reverse().toArray()

@@ -1,4 +1,9 @@
-import type { GeneratedPerformance, Score } from '../domain/types'
+import type { GeneratedPerformance, SavedSetList, Score } from '../domain/types'
+
+export function makeSetList(overrides: Partial<SavedSetList> = {}): SavedSetList {
+  const performance = overrides.performance ?? makePerformance()
+  return { id: performance.id, name: 'Evening', createdAt: performance.generatedAt, updatedAt: performance.generatedAt, performance, ...overrides }
+}
 
 export function makeScore(overrides: Partial<Score> = {}): Score {
   return {
