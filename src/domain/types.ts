@@ -5,6 +5,17 @@ export type Hotness = 1 | 2 | 3
 export type Preset = '80s' | 'mix'
 export type PieceCode = number | string
 
+export type TempoBeat = 'half' | 'quarter' | 'eighth' | 'dotted-half' | 'dotted-quarter' | 'dotted-eighth'
+export type TimeSignature = '2/2' | '3/2' | '2/4' | '3/4' | '4/4' | '5/4' | '6/4' | '7/4' | '3/8' | '5/8' | '6/8' | '7/8' | '9/8' | '12/8'
+
+export interface DrummerTiming {
+  bpm: number | null
+  beat: TempoBeat
+  measure: TimeSignature | null
+  /** Pickup length in beats. */
+  anacrusis: number | null
+}
+
 export interface Score {
   id: string
   scoreNumber: PieceCode
@@ -19,6 +30,7 @@ export interface Score {
   hotness: Hotness | null
   drumsIntro: boolean | null
   drummerNotes?: string
+  drummerTiming?: DrummerTiming
   goesHigh: boolean | null
   enabled: boolean
   tags: string[]
@@ -32,13 +44,14 @@ export interface ScoreConfiguration {
   hotness: Hotness | null
   drumsIntro: boolean | null
   drummerNotes?: string
+  drummerTiming?: DrummerTiming
   goesHigh: boolean | null
   enabled: boolean
   /** Accepted for legacy settings clients; current configuration uses collections. */
   in80s?: boolean
 }
 
-export type BulkConfiguration = Partial<Omit<ScoreConfiguration, 'in80s' | 'drummerNotes'>>
+export type BulkConfiguration = Partial<Omit<ScoreConfiguration, 'in80s' | 'drummerNotes' | 'drummerTiming'>>
 
 export type MalformedReason =
   | 'not-mscz'
@@ -150,6 +163,7 @@ export interface PerformanceScoreSnapshot {
   hotness: Hotness
   drumsIntro: boolean
   drummerNotes?: string
+  drummerTiming?: DrummerTiming
   goesHigh: boolean
   canStart: boolean
 }

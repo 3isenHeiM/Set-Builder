@@ -38,7 +38,7 @@ describe('drummer notes', () => {
   it('round-trips settings notes and preserves existing notes when an older backup omits them', () => {
     const score = makeScore({ drummerNotes: note })
     const backup = createSettingsBackup([score], now)
-    expect(backup.version).toBe(5)
+    expect(backup.version).toBe(6)
     const parsed = parseSettingsBackupJson(JSON.stringify(backup))
     expect(applySettingsBackup([makeScore()], parsed, now).scores[0]?.drummerNotes).toBe(note)
     const old = { ...backup, version: 4, pieces: backup.pieces.map((piece) => { const { drummerNotes: omitted, ...settings } = piece.settings; void omitted; return { ...piece, settings } }) }
@@ -51,7 +51,7 @@ describe('drummer notes', () => {
     const performance = generatePerformance([makeScore({ drummerNotes: note })], { preset: 'mix', setCount: 1, scoresPerSet: 1, seed: 1 }, { now, createId: () => 'new' })
     const saved = { id: performance.id, name: 'Event', createdAt: now, updatedAt: now, performance }
     const backup = createSetListBackup(saved, now)
-    expect(backup.version).toBe(3)
+    expect(backup.version).toBe(4)
     const restored = restoreSetList(parseSetListBackupJson(JSON.stringify(backup)), now, () => crypto.randomUUID())
     expect(restored.performance.sets[0]?.scores[0]?.drummerNotes).toBe(note)
     expect(toSharedSetList(restored).sets[0]?.scores[0]?.drummerNotes).toBe(note)

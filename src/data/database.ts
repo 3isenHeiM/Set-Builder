@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
 import type { FolderScan, GeneratedPerformance, PerformanceScoreSnapshot, PerformanceSet, SavedSet, SavedSetList, Score, StoredPerformance, TonightSelection } from '../domain/types'
 import type { CloudState } from './cloudState'
+import { emptyDrummerTiming } from '../domain/drummerNotes'
 import { collectionKey, collectionName } from '../domain/collections'
 
 export const DATABASE_NAME = 'piece-selector'
@@ -163,6 +164,7 @@ export class PieceSelectorDatabase extends Dexie {
     })
     this.version(12).stores({}).upgrade((transaction: Transaction) => transaction.table<Score, string>('scores').toCollection().modify((score) => { score.drummerNotes ??= '' }))
     this.version(13).stores({ tonight: 'key' })
+    this.version(14).stores({}).upgrade((transaction: Transaction) => transaction.table<Score, string>('scores').toCollection().modify((score) => { score.drummerTiming ??= emptyDrummerTiming() }))
   }
 }
 

@@ -15,7 +15,7 @@ export function ReadOnlySetList({ setList }: { setList: SavedSetList }) {
     {setList.performance.sets.map((set) => <SetCard key={set.number} number={set.number} title={set.name ?? ''} count={set.scores.length}>
       <ol>{set.scores.map((score, index) => <li key={entryKey(score)}>
         <span className="position">{index + 1}</span><span className="score-number">{score.displayNumber}</span>
-        <span className="score-copy"><span className="piece-title"><strong>{score.title}</strong>{occurrences(score) > 1 && <RepeatWarning title={score.title} />}</span><small>{score.collection || 'General'}</small><small>{t('hotnessShort')}{score.hotness}{score.goesHigh ? ` · ${t('highPiece')}` : ''}{score.drumsIntro ? ` · ${t('drums')}` : ''}{index === 0 ? ` · ${t('start')}` : ''}</small><DrummerNotes value={score.drummerNotes} /></span>
+        <span className="score-copy"><span className="piece-title"><strong>{score.title}</strong>{occurrences(score) > 1 && <RepeatWarning title={score.title} />}</span><small>{score.collection || 'General'}</small>{(score.goesHigh || score.drumsIntro || index === 0) && <small>{[score.goesHigh && t('highPiece'), score.drumsIntro && t('drums'), index === 0 && t('start')].filter(Boolean).join(' · ')}</small>}<DrummerNotes value={score.drummerNotes} timing={score.drummerTiming} /></span>
       </li>)}</ol>
     </SetCard>)}
   </div>

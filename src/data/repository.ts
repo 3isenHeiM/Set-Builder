@@ -14,7 +14,7 @@ import type {
 } from '../domain/types'
 import { PieceSelectorDatabase } from './database'
 import { applyBulkConfiguration, configurationStatus } from '../domain/configuration'
-import { readDrummerNotes, updateSavedDrummerNotes } from '../domain/drummerNotes'
+import { readDrummerNotes, readDrummerNotesInput, readDrummerTiming, updateSavedDrummerNotes } from '../domain/drummerNotes'
 import { assignPiecesToCollection, collectionKey, collectionNames, comparePieces, createCollectionNames, pieceKey, renameCollectionData } from '../domain/collections'
 import { assertLockedProgramsUnchanged, assertSetListEditable, changeSetListLock } from '../domain/performanceLock'
 import { readTonight, saveTonight } from './tonight'
@@ -116,14 +116,18 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
         canStart: configuration.canStart,
         hotness: configuration.hotness,
         drumsIntro: configuration.drumsIntro,
-        drummerNotes: configuration.drummerNotes === undefined ? readDrummerNotes(score.drummerNotes) : readDrummerNotes(configuration.drummerNotes),
+        drummerNotes: configuration.drummerNotes === undefined ? readDrummerNotes(score.drummerNotes) : readDrummerNotesInput(configuration.drummerNotes, score.drummerNotes),
+        ...(configuration.drummerTiming === undefined ? {} : { drummerTiming: readDrummerTiming(configuration.drummerTiming) }),
         goesHigh: configuration.goesHigh,
         enabled: configuration.enabled,
         tags: configuration.in80s === undefined ? score.tags : configuration.in80s ? ['80s'] : [],
         configuration: configurationStatus(configuration),
         updatedAt,
       })
-      if (configuration.drummerNotes !== undefined) await this.updateSavedNotes([{ ...score, drummerNotes: readDrummerNotes(configuration.drummerNotes) }], updatedAt)
+      if (configuration.drummerNotes !== undefined || configuration.drummerTiming !== undefined) {
+        const updated = await this.database.scores.get(id)
+        if (updated) await this.updateSavedNotes([updated], updatedAt)
+      }
     })
   }
 
@@ -171,7 +175,7 @@ export class PieceSelectorRepository implements ScoreRepository, PerformanceRepo
       const existing = await this.database.scores.toArray()
       const result = applySettingsBackup(existing, backup, updatedAt)
       await this.database.scores.bulkPut(result.scores)
-      const noteKeys = new Set(backup.pieces.filter((piece) => piece.settings.drummerNotes !== undefined).map(pieceKey))
+      const noteKeys = new Set(backup.pieces.filter((piece) => piece.settings.drummerNotes !== undefined || piece.settings.drummerTiming !== undefined).map(pieceKey))
       await this.updateSavedNotes(result.scores.filter((score) => noteKeys.has(pieceKey(score))), updatedAt)
       return result.report
     })

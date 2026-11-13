@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.3.2] - 2026-11-13
+
+*v2.3.2: Prod-ready*
+
+### Added
+
+- Share locked programs directly and choose a personal **Drummer notes** view on the same public setlist link, with structured tempo, measure, pickup, and custom text hidden by default and remembered per browser (fixes [#16](https://github.com/3isenHeiM/Set-Builder/issues/16)).
+
+### Changed
+
+- Configure drummer notes with tempo and beat-unit, measure, and optional pickup dropdowns, a music-notation preview, and a 100-character custom note. Preserve older notes and frozen program copies; include the structured fields in backups and shared views (fixes [#15](https://github.com/3isenHeiM/Set-Builder/issues/15)).
+- Remove the H1–H3 / I1–I3 hotness labels from editable, locked, Tonight, and shared setlists to reduce visual clutter (fixes [#11](https://github.com/3isenHeiM/Set-Builder/issues/11)).
+- Upgrade IndexedDB to version 14, cloud state to version 5, settings backups to version 6, and setlist backups to version 4 while preserving older notes and saved programs. Deploy the updated Worker and app together; this release needs no new D1 SQL migration.
+
 ## [2.3.1] - 2026-11-13
 
 *No more single use piece*
@@ -123,7 +137,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Initial mobile-first offline PWA for importing and re-aligning `.mscz` filename metadata, configuring pieces, generating valid performances, saving the latest performance, and backing up piece settings.
 
-[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.1...HEAD
+[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.2...HEAD
+[2.3.2]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.1...v2.3.2
 [2.3.1]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/3isenHeiM/Set-Builder/compare/v2.2.1...v2.3.0
 [2.2.1]: https://github.com/3isenHeiM/Set-Builder/compare/v2.2.0...v2.2.1

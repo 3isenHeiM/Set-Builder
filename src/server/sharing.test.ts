@@ -74,6 +74,20 @@ describe('read-only setlist sharing', () => {
     for (const privateField of ['Private filename', 'score-1', 'firstImportedAt', 'fileName', 'relativePath', 'seed']) expect(JSON.stringify(body)).not.toContain(privateField)
   })
 
+  it('shares and revokes a locked program while retaining its lock and snapshot', async () => {
+    const { control, view, database } = await setup()
+    database.state.setLists = database.state.setLists.map((list) => ({ ...list, locked: true }))
+    const frozen = structuredClone(database.state)
+    const created = await control('POST')
+    expect(created.status).toBe(200)
+    const { token } = await created.json() as { token: string }
+    expect((await view(token)).status).toBe(200)
+    expect(database.state).toEqual(frozen)
+    expect((await control('DELETE')).status).toBe(204)
+    expect((await view(token)).status).toBe(404)
+    expect(database.state).toEqual(frozen)
+  })
+
   it('reflects saved updates, revokes immediately, and rotates the token when re-shared', async () => {
     const { control, view, database, env, headers } = await setup()
     const { token } = await (await control('POST')).json() as { token: string }

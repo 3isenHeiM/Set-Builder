@@ -1,3 +1,4 @@
+import { emptyDrummerTiming } from '../domain/drummerNotes'
 import Dexie from 'dexie'
 import { makeScore, makeSetList } from '../test/fixtures'
 import { PieceSelectorDatabase } from './database'
@@ -46,7 +47,7 @@ describe('locked programs and tonight persistence', () => {
     legacy.close()
     const database = new PieceSelectorDatabase(name)
     const repository = new PieceSelectorRepository(database)
-    expect(await repository.listScores()).toEqual([makeScore()])
+    expect(await repository.listScores()).toEqual([makeScore({ drummerTiming: emptyDrummerTiming() })])
     expect(await repository.listSetLists()).toEqual([saved])
     expect(await repository.getTonightSetList()).toBeUndefined()
     const locked = await repository.setSetListLocked(saved.id, true, saved.updatedAt)

@@ -5,6 +5,7 @@ import type { SavedSetList } from '../../domain/types'
 import { makeSetList } from '../../test/fixtures'
 import { PerformanceScreen } from './PerformanceScreen'
 import { TonightScreen } from './TonightScreen'
+import { SharingClient } from '../../data/sharing'
 
 function Editor({ initial = makeSetList(), fail = false }: { initial?: SavedSetList; fail?: boolean }) {
   const [saved, setSaved] = useState(initial)
@@ -26,6 +27,29 @@ describe('performance lock controls', () => {
     await user.click(screen.getByRole('button', { name: 'Unlock setlist' }))
     await user.click(within(screen.getByRole('group', { name: 'Unlock this setlist for editing?' })).getByRole('button', { name: 'Unlock setlist' }))
     expect(await screen.findByRole('textbox', { name: 'Program name' })).toBeVisible()
+  })
+
+  it('shares, copies, and revokes a locked program without unlocking or editing it', async () => {
+    const user = userEvent.setup()
+    const saved = makeSetList({ locked: true })
+    const original = structuredClone(saved)
+    const create = vi.spyOn(SharingClient.prototype, 'create').mockResolvedValue('a'.repeat(64))
+    const revoke = vi.spyOn(SharingClient.prototype, 'revoke').mockResolvedValue(undefined)
+    const copy = vi.spyOn(navigator.clipboard, 'writeText')
+    const onSave = vi.fn(() => Promise.resolve())
+    const onLockChange = vi.fn(() => Promise.resolve())
+    render(<PerformanceScreen scores={[]} setList={saved} savedSetLists={[saved]} savedSets={[]} onSave={onSave} onLockChange={onLockChange} onSaveSavedSet={vi.fn()} onCreateProgram={vi.fn()} onSelect={vi.fn()} onImport={vi.fn()} onRegenerate={vi.fn()} />)
+    expect(create).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Share read-only link' }))
+    expect(await screen.findByLabelText('Read-only link')).toHaveAttribute('readonly')
+    await user.click(screen.getByRole('button', { name: 'Copy link' }))
+    expect(copy).toHaveBeenCalledWith(`${window.location.origin}/share/${'a'.repeat(64)}`)
+    await user.click(screen.getByRole('button', { name: 'Stop sharing' }))
+    expect(revoke).toHaveBeenCalledWith(saved.id)
+    expect(screen.getByRole('button', { name: 'Unlock setlist', pressed: true })).toBeVisible()
+    expect(onSave).not.toHaveBeenCalled()
+    expect(onLockChange).not.toHaveBeenCalled()
+    expect(saved).toEqual(original)
   })
 
   it('saves draft names before locking', async () => {

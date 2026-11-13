@@ -119,7 +119,7 @@ export function App({ repository = browserRepository, authentication = cloudAuth
   const saveConfiguration = async (id: string, configuration: ScoreConfiguration) => {
     await repository.saveConfiguration(id, configuration, new Date().toISOString())
     setScores(await repository.listScores())
-    if (configuration.drummerNotes !== undefined) await refreshSavedNotes()
+    if (configuration.drummerNotes !== undefined || configuration.drummerTiming !== undefined) await refreshSavedNotes()
   }
 
   const refreshSavedNotes = async () => {
