@@ -34,6 +34,7 @@ function snapshot(score: Score): PerformanceScoreSnapshot | undefined {
     hotness: score.hotness,
     drumsIntro: score.drumsIntro,
     ...(score.drummerNotes ? { drummerNotes: score.drummerNotes } : {}),
+    ...(score.drummerTiming === undefined ? {} : { drummerTiming: { ...score.drummerTiming } }),
     goesHigh: score.goesHigh,
     canStart: score.canStart,
   }

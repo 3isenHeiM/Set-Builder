@@ -1,6 +1,6 @@
 import { MAX_SCORES_PER_SET, MAX_SETS } from './generator'
-import type { Hotness, SavedSetList } from './types'
-import { readDrummerNotes } from './drummerNotes'
+import type { Hotness, SavedSetList, DrummerTiming } from './types'
+import { readDrummerNotes, readDrummerTiming } from './drummerNotes'
 
 export interface SharedPiece {
   displayNumber: string
@@ -8,6 +8,7 @@ export interface SharedPiece {
   collection: string
   drumsIntro: boolean
   drummerNotes?: string
+  drummerTiming?: DrummerTiming
   hotness?: Hotness
   goesHigh?: boolean
   canStart?: boolean
@@ -30,6 +31,7 @@ export function toSharedSetList(saved: SavedSetList): SharedSetList {
     sets: saved.performance.sets.map((set) => ({ name: set.name ?? '', scores: set.scores.map((score) => ({
       displayNumber: score.displayNumber, title: score.title, collection: score.collection ?? 'General', drumsIntro: score.drumsIntro,
       drummerNotes: readDrummerNotes(score.drummerNotes),
+      ...(score.drummerTiming === undefined ? {} : { drummerTiming: readDrummerTiming(score.drummerTiming) }),
       hotness: score.hotness, goesHigh: score.goesHigh, canStart: score.canStart,
     })) })),
   }
@@ -55,7 +57,7 @@ export function parseSharedSetList(value: unknown): SharedSetList {
       if (!record(score) || typeof score.drumsIntro !== 'boolean') throw new Error('This shared setlist is unavailable.')
       if (score.hotness !== undefined && score.hotness !== 1 && score.hotness !== 2 && score.hotness !== 3) throw new Error('This shared setlist is unavailable.')
       if ((score.goesHigh !== undefined && typeof score.goesHigh !== 'boolean') || (score.canStart !== undefined && typeof score.canStart !== 'boolean')) throw new Error('This shared setlist is unavailable.')
-      return { displayNumber: text(score.displayNumber, 100), title: text(score.title, 500), collection: text(score.collection, 120), drumsIntro: score.drumsIntro, drummerNotes: readDrummerNotes(score.drummerNotes), ...(score.hotness === undefined ? {} : { hotness: score.hotness }), ...(score.goesHigh === undefined ? {} : { goesHigh: score.goesHigh }), ...(score.canStart === undefined ? {} : { canStart: score.canStart }) }
+      return { displayNumber: text(score.displayNumber, 100), title: text(score.title, 500), collection: text(score.collection, 120), drumsIntro: score.drumsIntro, drummerNotes: readDrummerNotes(score.drummerNotes), ...(score.drummerTiming === undefined ? {} : { drummerTiming: readDrummerTiming(score.drummerTiming) }), ...(score.hotness === undefined ? {} : { hotness: score.hotness }), ...(score.goesHigh === undefined ? {} : { goesHigh: score.goesHigh }), ...(score.canStart === undefined ? {} : { canStart: score.canStart }) }
     }) }
   }) }
 }

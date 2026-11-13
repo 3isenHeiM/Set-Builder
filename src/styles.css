@@ -446,3 +446,25 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
 .tonight-picker, .unlock-confirmation { display: grid; gap: 12px; padding: 15px; background: var(--paper); border: 1px solid var(--border); border-radius: 14px; }
 .tonight-picker p, .unlock-confirmation p { margin-bottom: 0; }
 .tonight-picker label { display: grid; gap: 6px; }
+
+
+.drummer-editor { min-width: 0; margin: 0; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--paper); }
+.drummer-editor legend { padding: 0 6px; color: var(--forest); font-weight: 800; }
+.drummer-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; margin-bottom: 14px; }
+.drummer-fields label { display: grid; align-content: start; gap: 6px; min-width: 0; font-size: 14px; font-weight: 650; }
+.drummer-fields label > span { min-height: 38px; }
+.drummer-fields small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+.drummer-fields select { min-width: 0; width: 100%; min-height: 48px; cursor: pointer; }
+.drummer-editor .notes-field { margin-top: 14px; }
+.drummer-editor .notes-field textarea { min-height: 82px; }
+.notes-caption { display: flex; justify-content: space-between; gap: 14px; margin-top: 7px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.notes-caption > :last-child { flex: 0 0 auto; }
+.music-timing { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; line-height: 1.2; }
+.tempo-mark { display: inline-flex; align-items: center; gap: 3px; color: var(--ink); white-space: nowrap; font-size: 21px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.beat-symbol { display: block; flex: 0 0 auto; width: 29px; height: 36px; overflow: visible; }
+.time-signature { display: inline-grid; gap: 0; justify-items: center; font-family: Georgia, serif; font-weight: 800; font-size: 22px; line-height: .85; color: var(--ink); }
+.pickup-mark { display: inline-flex; flex-wrap: wrap; gap: 4px; color: var(--muted); font-size: 13px; }
+.pickup-mark b { color: var(--ink); }
+.drummer-notes > .drummer-notes-content { display: grid; gap: 6px; white-space: normal; }
+.drummer-custom-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (min-width: 768px) { .drummer-fields { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

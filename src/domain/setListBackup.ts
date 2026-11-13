@@ -1,10 +1,10 @@
 import { MAX_SCORES_PER_SET, MAX_SETS } from './generator'
 import { readCollection, matchesDisplay, pieceKey, validCode } from './collections'
-import { readDrummerNotes } from './drummerNotes'
+import { readDrummerNotes, readDrummerTiming } from './drummerNotes'
 import type { Hotness, PerformanceScoreSnapshot, Preset, SavedSetList } from './types'
 
 export const SET_LIST_BACKUP_FORMAT = 'piece-selector-set-list'
-export const SET_LIST_BACKUP_VERSION = 3
+export const SET_LIST_BACKUP_VERSION = 4
 
 type SetListBackupScore = Omit<PerformanceScoreSnapshot, 'id'>
 
@@ -50,6 +50,7 @@ function readScore(value: unknown): SetListBackupScore {
     hotness: Number(value.hotness) as Hotness,
     drumsIntro: value.drumsIntro,
     ...(value.drummerNotes === undefined ? {} : { drummerNotes: readDrummerNotes(value.drummerNotes) }),
+    ...(value.drummerTiming === undefined ? {} : { drummerTiming: readDrummerTiming(value.drummerTiming) }),
     goesHigh: value.goesHigh,
     canStart: value.canStart,
   }
@@ -91,7 +92,7 @@ export function parseSetListBackupJson(source: string): SetListBackup {
     throw new Error('Set-list file is not valid JSON.')
   }
   if (!isRecord(raw) || raw.format !== SET_LIST_BACKUP_FORMAT) throw new Error('This is not a Piece Selector set-list file.')
-  if (raw.version !== 1 && raw.version !== 2 && raw.version !== SET_LIST_BACKUP_VERSION) throw new Error('This set-list file version is not supported.')
+  if (raw.version !== 1 && raw.version !== 2 && raw.version !== 3 && raw.version !== SET_LIST_BACKUP_VERSION) throw new Error('This set-list file version is not supported.')
   if (!isIsoDate(raw.exportedAt) || !isRecord(raw.setList)) throw new Error('This Piece Selector set-list file is malformed.')
 
   const { setList } = raw

@@ -10,7 +10,7 @@ export function ReadOnlySetList({ setList }: { setList: SavedSetList }) {
     {setList.performance.sets.map((set) => <SetCard key={set.number} number={set.number} title={set.name ?? ''} count={set.scores.length}>
       <ol>{set.scores.map((score, index) => <li key={score.id}>
         <span className="position">{index + 1}</span><span className="score-number">{score.displayNumber}</span>
-        <span className="score-copy"><strong>{score.title}</strong><small>{score.collection || 'General'}</small><small>{t('hotnessShort')}{score.hotness}{score.goesHigh ? ` · ${t('highPiece')}` : ''}{score.drumsIntro ? ` · ${t('drums')}` : ''}{index === 0 ? ` · ${t('start')}` : ''}</small><DrummerNotes value={score.drummerNotes} /></span>
+        <span className="score-copy"><strong>{score.title}</strong><small>{score.collection || 'General'}</small><small>{t('hotnessShort')}{score.hotness}{score.goesHigh ? ` · ${t('highPiece')}` : ''}{score.drumsIntro ? ` · ${t('drums')}` : ''}{index === 0 ? ` · ${t('start')}` : ''}</small><DrummerNotes value={score.drummerNotes} timing={score.drummerTiming} /></span>
       </li>)}</ol>
     </SetCard>)}
   </div>

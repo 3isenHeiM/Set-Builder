@@ -2,7 +2,7 @@ import { configurationStatus } from '../domain/configuration'
 import { MAX_SCORES_PER_SET, MAX_SETS, MIN_SCORES_PER_SET, MIN_SETS, assertPerformanceValid } from '../domain/generator'
 import { assertSavedPerformanceValid, assertSavedSetValid } from '../domain/setList'
 import { readCollection, collectionNames, comparePieces, matchesDisplay, pieceKey, validCode } from '../domain/collections'
-import { readDrummerNotes } from '../domain/drummerNotes'
+import { readDrummerNotes, readDrummerTiming } from '../domain/drummerNotes'
 import type {
   FolderScan,
   FolderScanSummary,
@@ -16,7 +16,7 @@ import type {
 } from '../domain/types'
 
 export const CLOUD_STATE_FORMAT = 'piece-selector-cloud-state'
-export const CLOUD_STATE_VERSION = 4
+export const CLOUD_STATE_VERSION = 5
 
 export interface CloudState {
   format: typeof CLOUD_STATE_FORMAT
@@ -140,6 +140,7 @@ function readScore(value: unknown): Score {
     hotness,
     drumsIntro,
     drummerNotes: readDrummerNotes(value.drummerNotes),
+    ...(value.drummerTiming === undefined ? {} : { drummerTiming: readDrummerTiming(value.drummerTiming) }),
     goesHigh,
     enabled,
     tags: normalizedTags,
@@ -170,6 +171,7 @@ function readPerformanceScore(value: unknown): PerformanceScoreSnapshot {
     hotness: hotnessValue(value.hotness, false),
     drumsIntro: value.drumsIntro,
     ...(value.drummerNotes === undefined ? {} : { drummerNotes: readDrummerNotes(value.drummerNotes) }),
+    ...(value.drummerTiming === undefined ? {} : { drummerTiming: readDrummerTiming(value.drummerTiming) }),
     goesHigh: value.goesHigh,
     canStart: value.canStart,
   }
@@ -260,7 +262,7 @@ function readSavedSet(value: unknown): SavedSet {
 }
 
 export function parseCloudState(value: unknown): CloudState {
-  if (!isRecord(value) || value.format !== CLOUD_STATE_FORMAT || (value.version !== 1 && value.version !== 2 && value.version !== 3 && value.version !== CLOUD_STATE_VERSION)
+  if (!isRecord(value) || value.format !== CLOUD_STATE_FORMAT || (value.version !== 1 && value.version !== 2 && value.version !== 3 && value.version !== 4 && value.version !== CLOUD_STATE_VERSION)
     || !Array.isArray(value.scores) || value.scores.length > 20_000
     || !Array.isArray(value.setLists) || value.setLists.length > 2_000) {
     throw new Error('The cloud library is malformed or unsupported.')

@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Share a live, read-only mirror of a saved setlist, including its piece metrics, warnings, and notes, without requiring viewers to sign in; revoke access with **Stop sharing** (fixes [#7](https://github.com/3isenHeiM/Set-Builder/issues/7)).
 - Add optional multiline drummer notes to pieces, retain them in backups, and update those notes in existing sets, programs, and shared views (fixes [#8](https://github.com/3isenHeiM/Set-Builder/issues/8)).
 
+### Changed
+
+- Configure drummer notes with tempo and beat-unit, measure, and optional pickup dropdowns, a music-notation preview, and a 100-character custom note. Preserve older notes and frozen program copies; include the structured fields in backups and shared views (fixes [#15](https://github.com/3isenHeiM/Set-Builder/issues/15)).
+
 ## [2.2.1] - 2026-11-12
 
 ### Added

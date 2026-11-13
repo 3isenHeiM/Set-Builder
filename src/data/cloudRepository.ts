@@ -1,5 +1,5 @@
 import { applyBulkConfiguration, configurationStatus } from '../domain/configuration'
-import { readDrummerNotes, updateSavedDrummerNotes } from '../domain/drummerNotes'
+import { readDrummerNotes, readDrummerNotesInput, readDrummerTiming, updateSavedDrummerNotes } from '../domain/drummerNotes'
 import { applyReconciliation as applyReconciliationToScores } from '../domain/reconciliation'
 import { applySettingsBackup } from '../domain/settingsBackup'
 import type { SettingsBackup, SettingsImportReport } from '../domain/settingsBackup'
@@ -216,14 +216,15 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
         canStart: configuration.canStart,
         hotness: configuration.hotness,
         drumsIntro: configuration.drumsIntro,
-        drummerNotes: configuration.drummerNotes === undefined ? readDrummerNotes(current.drummerNotes) : readDrummerNotes(configuration.drummerNotes),
+        drummerNotes: configuration.drummerNotes === undefined ? readDrummerNotes(current.drummerNotes) : readDrummerNotesInput(configuration.drummerNotes, current.drummerNotes),
+        ...(configuration.drummerTiming === undefined ? {} : { drummerTiming: readDrummerTiming(configuration.drummerTiming) }),
         goesHigh: configuration.goesHigh,
         enabled: configuration.enabled,
         tags: configuration.in80s === undefined ? current.tags : configuration.in80s ? ['80s'] : [],
         configuration: configurationStatus(configuration),
         updatedAt,
       }
-      const notes = configuration.drummerNotes === undefined ? {} : updateSavedDrummerNotes(state, [updated], updatedAt)
+      const notes = configuration.drummerNotes === undefined && configuration.drummerTiming === undefined ? {} : updateSavedDrummerNotes(state, [updated], updatedAt)
       return { result: undefined, state: { ...state, ...notes, scores: state.scores.map((score) => score.id === id ? updated : score) } }
     })
   }
@@ -257,7 +258,7 @@ export class CloudRepository implements ScoreRepository, PerformanceRepository {
   importSettings(backup: SettingsBackup, updatedAt: string): Promise<SettingsImportReport> {
     return this.change((state) => {
       const imported = applySettingsBackup(state.scores, backup, updatedAt)
-      const noteKeys = new Set(backup.pieces.filter((piece) => piece.settings.drummerNotes !== undefined).map(pieceKey))
+      const noteKeys = new Set(backup.pieces.filter((piece) => piece.settings.drummerNotes !== undefined || piece.settings.drummerTiming !== undefined).map(pieceKey))
       const notes = updateSavedDrummerNotes(state, imported.scores.filter((score) => noteKeys.has(pieceKey(score))), updatedAt)
       return { result: imported.report, state: { ...state, ...notes, scores: imported.scores } }
     })

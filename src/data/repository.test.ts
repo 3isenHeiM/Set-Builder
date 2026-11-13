@@ -1,3 +1,4 @@
+import { emptyDrummerTiming } from '../domain/drummerNotes'
 import Dexie from 'dexie'
 import { buildFolderSnapshot } from '../domain/filename'
 import { classifyReconciliation } from '../domain/reconciliation'
@@ -183,7 +184,7 @@ describe('IndexedDB persistence', () => {
     firstDatabase.close()
 
     const secondDatabase = new PieceSelectorDatabase(name)
-    expect(await secondDatabase.scores.get(original.id)).toEqual({ ...original, tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, enabled: false, updatedAt: 'restored' })
+    expect(await secondDatabase.scores.get(original.id)).toEqual({ ...original, drummerTiming: emptyDrummerTiming(), tags: ['80s'], canStart: false, hotness: 3, drumsIntro: true, enabled: false, updatedAt: 'restored' })
     expect(report).toMatchObject({ matched: 1, titleMismatches: [{ backupName: 'Old name', currentName: 'Renamed locally' }] })
     secondDatabase.close()
   })

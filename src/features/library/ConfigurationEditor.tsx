@@ -4,7 +4,8 @@ import { UiIcon } from '../../app/UiIcon'
 import { localizedError, useI18n } from '../../app/i18n'
 import { configurationStatus } from '../../domain/configuration'
 import { DeletePiece } from './DeletePiece'
-import { MAX_DRUMMER_NOTES_LENGTH } from '../../domain/drummerNotes'
+import { DrummerNotesEditor } from './DrummerNotesEditor'
+import { readDrummerTiming, drummerTimingEqual, MAX_DRUMMER_NOTES_LENGTH } from '../../domain/drummerNotes'
 
 function configurationFromScore(score: Score): ScoreConfiguration {
   return {
@@ -12,6 +13,7 @@ function configurationFromScore(score: Score): ScoreConfiguration {
     hotness: score.hotness,
     drumsIntro: score.drumsIntro,
     drummerNotes: score.drummerNotes ?? '',
+    drummerTiming: readDrummerTiming(score.drummerTiming),
     goesHigh: score.goesHigh,
     enabled: score.enabled,
   }
@@ -46,19 +48,21 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
   const [draft, setDraft] = useState(() => configurationFromScore(score))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
-  const valid = configurationStatus(draft) === 'complete'
+  const notesValid = (draft.drummerNotes ?? '').length <= MAX_DRUMMER_NOTES_LENGTH || draft.drummerNotes === score.drummerNotes
+  const valid = configurationStatus(draft) === 'complete' && notesValid
+  const notesChanged = (draft.drummerNotes ?? '') !== (score.drummerNotes ?? '') || !drummerTimingEqual(draft.drummerTiming, score.drummerTiming)
   const hotnessLabels: Record<Hotness, string> = { 1: t('low'), 2: t('medium'), 3: t('high') }
 
   useEffect(() => {
-    if ((draft.drummerNotes ?? '') === (score.drummerNotes ?? '')) return
+    if (!notesChanged) return
     const preventLoss = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
     window.addEventListener('beforeunload', preventLoss)
     return () => window.removeEventListener('beforeunload', preventLoss)
-  }, [draft.drummerNotes, score.drummerNotes])
+  }, [notesChanged])
 
   const change = (configuration: ScoreConfiguration) => {
     setDraft(configuration)
-    if (onDraftChange) void onDraftChange(configuration).catch((error: unknown) => setMessage(localizedError(error, locale, t('saveFailed'))))
+    if (onDraftChange && ((configuration.drummerNotes ?? '').length <= MAX_DRUMMER_NOTES_LENGTH || configuration.drummerNotes === score.drummerNotes)) void onDraftChange(configuration).catch((error: unknown) => setMessage(localizedError(error, locale, t('saveFailed'))))
   }
 
   const save = async () => {
@@ -77,7 +81,7 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
   const close = async () => {
     setSaving(true)
     setMessage('')
-    try { if (onDraftChange && (draft.drummerNotes ?? '') !== (score.drummerNotes ?? '')) await onDraftChange(draft); onClose() } catch (error) { setMessage(localizedError(error, locale, t('scoreSaveFailed'))) } finally { setSaving(false) }
+    try { if (!notesValid) throw new Error('Custom drummer notes must be text of at most 100 characters.'); if (onDraftChange && notesChanged) await onDraftChange(draft); onClose() } catch (error) { setMessage(localizedError(error, locale, t('scoreSaveFailed'))) } finally { setSaving(false) }
   }
 
   return (
@@ -115,16 +119,14 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
         </fieldset>
       </div>
 
-      <label className="notes-field"><span><strong>{t('drummerNotes')}</strong><small>{t('optional')}</small></span>
-        <textarea rows={4} maxLength={MAX_DRUMMER_NOTES_LENGTH} value={draft.drummerNotes ?? ''} placeholder={t('drummerNotesPlaceholder')} onChange={(event) => setDraft({ ...draft, drummerNotes: event.target.value })} onBlur={() => { if ((draft.drummerNotes ?? '') !== (score.drummerNotes ?? '')) change(draft) }} />
-        <small>{(draft.drummerNotes ?? '').length}/{MAX_DRUMMER_NOTES_LENGTH}</small>
-      </label>
+      <DrummerNotesEditor timing={readDrummerTiming(draft.drummerTiming)} text={draft.drummerNotes ?? ''} legacyText={score.drummerNotes ?? ''} onTimingChange={(drummerTiming) => change({ ...draft, drummerTiming })} onTextChange={(drummerNotes) => setDraft({ ...draft, drummerNotes })} onTextBlur={() => { if (notesChanged && notesValid) change(draft) }} />
+      {!notesValid && <p className="error" role="status">{t('customDrummerNoteInvalid')}</p>}
 
       <div className="preference-stack">
         <label className="toggle-row toggle-enabled"><span className="toggle-copy"><strong>{t('enabled')}</strong><small>{t('includeGeneratedSets')}</small></span><input role="switch" type="checkbox" checked={draft.enabled} onChange={(event) => change({ ...draft, enabled: event.target.checked })} /><span className="switch-control" aria-hidden="true"><span /></span></label>
       </div>
 
-      {!valid && <p className="notice" role="status">{t('completeFourFields')}</p>}
+      {configurationStatus(draft) !== 'complete' && <p className="notice" role="status">{t('completeFourFields')}</p>}
       {message && <p className={message === t('saved') ? 'success' : 'error'} role="status">{message}</p>}
       <button type="button" className="primary-action sticky-action" onClick={() => void save()} disabled={saving || !valid}>{saving ? t('saving') : saveLabel}</button>
       {onDelete && <DeletePiece title={score.title} onDelete={onDelete} />}
