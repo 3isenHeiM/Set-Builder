@@ -220,6 +220,7 @@ export function PerformanceScreen({ scores, setList, savedSetLists, savedSets, o
     <label className="saved-list-picker"><span>{t('savedPrograms')}</span><select value={setList.id} disabled={saving} onChange={(event) => { void select(event.target.value) }}>{allSetLists.map((saved) => <option value={saved.id} key={saved.id}>{saved.name || t('setsTitle')}</option>)}</select></label>
     <p className="notice">{t('lockedHelp')}</p>
     {onTonight && <button type="button" className="primary-action" disabled={saving} onClick={() => { setSaving(true); setError(''); void onTonight(setList).catch((caught: unknown) => setError(localizedError(caught, locale, t('tonightSaveFailed')))).finally(() => setSaving(false)) }}><UiIcon name="moon" />{t('loadTonight')}</button>}
+    <ShareSetList key={setList.id} id={setList.id} />
     <ReadOnlySetList setList={setList} />
     {onLockChange && <button type="button" className="secondary-action" aria-pressed="true" disabled={saving} onClick={() => setConfirmUnlock(true)}><UiIcon name="lock" />{t('unlockSetlist')}</button>}
     {confirmUnlock && <div className="unlock-confirmation" role="group" aria-label={t('confirmUnlock')}><p>{t('confirmUnlock')}</p><button type="button" className="secondary-action" disabled={saving} onClick={() => setConfirmUnlock(false)}>{t('cancel')}</button><button type="button" className="primary-action" disabled={saving} onClick={() => { void changeLock(false) }}>{t('unlockSetlist')}</button></div>}

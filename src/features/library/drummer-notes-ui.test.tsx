@@ -5,6 +5,8 @@ import { ConfigurationEditor } from './ConfigurationEditor'
 import { SharedSetListScreen } from '../performance/SharedSetListScreen'
 import { SharingClient } from '../../data/sharing'
 
+beforeEach(() => localStorage.removeItem('piece-selector-shared-drummer-notes'))
+
 describe('drummer notes UI', () => {
   it('saves optional multiline notes without making them a readiness requirement', async () => {
     const user = userEvent.setup()
@@ -40,7 +42,9 @@ describe('drummer notes UI', () => {
     const note = '<script>not executable</script>\nSnare on beat 4'
     const client = new SharingClient(() => Promise.resolve(Response.json({ name: 'Event', updatedAt: '2026-11-12T20:00:00Z', sets: [{ name: 'Opening', scores: [{ title: 'Bells', displayNumber: 'A', collection: 'Christmas', drumsIntro: true, drummerNotes: note, drummerTiming: { bpm: 144, beat: 'quarter', measure: '4/4', anacrusis: null } }] }] })))
     const { container } = render(<SharedSetListScreen token={'a'.repeat(64)} client={client} />)
-    const visible = await screen.findByRole('note', { name: 'Drummer notes' })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('switch', { name: 'Drummer notes' }))
+    const visible = screen.getByRole('note', { name: 'Drummer notes' })
     expect(visible).toHaveTextContent('not executable')
     expect(screen.getByRole('img', { name: 'Tempo: 144 Quarter note per minute' })).toBeVisible()
     expect(screen.getByRole('img', { name: 'Measure: 4/4' })).toBeVisible()

@@ -468,3 +468,10 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
 .drummer-notes > .drummer-notes-content { display: grid; gap: 6px; white-space: normal; }
 .drummer-custom-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (min-width: 768px) { .drummer-fields { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.shared-view-controls { position: sticky; top: max(8px, env(safe-area-inset-top)); z-index: 4; min-width: 0; background: var(--paper); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 4px 16px #00000012; }
+.shared-drummer-toggle { justify-content: space-between; gap: 16px; margin: 0; }
+.shared-drummer-toggle .toggle-copy { min-width: 0; flex: 1; }
+.shared-drummer-toggle strong { display: flex; align-items: center; gap: 7px; color: var(--forest); }
+.shared-drummer-toggle small { line-height: 1.4; }
+.shared-drummer-toggle input:checked + .switch-control { background: var(--forest-light); }

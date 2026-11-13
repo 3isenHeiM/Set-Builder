@@ -7,6 +7,7 @@ import { AppEntry } from '../../app/AppEntry'
 import { repository } from '../../data/client'
 
 const token = 'a'.repeat(64)
+beforeEach(() => localStorage.removeItem('piece-selector-shared-drummer-notes'))
 const shared = { name: 'Evening', updatedAt: '2026-11-12T17:00:00Z', warnings: ['Keep the ending short'], sets: [{ name: 'Opening', scores: [{ displayNumber: 'A', title: 'Bells', collection: 'Christmas', drumsIntro: true, hotness: 3 as const, goesHigh: true, canStart: true, drummerNotes: 'Four bar count-in' }] }] }
 
 describe('setlist sharing UI', () => {
@@ -34,6 +35,8 @@ describe('setlist sharing UI', () => {
     expect(screen.getByText('Bells')).toBeVisible()
     expect(screen.getByText('Read only')).toBeVisible()
     expect(screen.getByText('Keep the ending short')).toBeVisible()
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('switch', { name: 'Drummer notes' }))
     expect(screen.getByRole('note')).toHaveTextContent('Four bar count-in')
     expect(screen.getByText('High · Drums · Start')).toBeVisible()
     expect(screen.queryByText(/^[HI][123](?:\s|$)/)).not.toBeInTheDocument()
@@ -43,6 +46,8 @@ describe('setlist sharing UI', () => {
     fetchRequest.mockImplementation(() => Promise.resolve(Response.json({ ...shared, name: 'Updated program' })))
     await user.click(screen.getByRole('button', { name: 'Refresh setlist' }))
     expect(await screen.findByRole('heading', { name: 'Updated program' })).toBeVisible()
+    expect(screen.getByRole('switch', { name: 'Drummer notes' })).toBeChecked()
+    expect(screen.getByRole('note')).toHaveTextContent('Four bar count-in')
     fetchRequest.mockImplementation(() => Promise.resolve(new Response(null, { status: 404 })))
     fireEvent.focus(window)
     expect(await screen.findByRole('heading', { name: 'Setlist unavailable' })).toBeVisible()
