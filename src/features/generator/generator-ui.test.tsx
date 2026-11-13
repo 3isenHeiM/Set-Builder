@@ -67,6 +67,7 @@ describe('performance UI', () => {
     render(<PerformanceScreen scores={[]} setList={setList} savedSetLists={[setList]} savedSets={[]} onSave={vi.fn(() => Promise.resolve())} onSaveSavedSet={vi.fn(() => Promise.reject(new Error('unused')))} onCreateProgram={vi.fn(() => Promise.reject(new Error('unused')))} onSelect={vi.fn(() => Promise.resolve())} onImport={vi.fn(() => Promise.resolve())} onRegenerate={vi.fn()} />)
     expect(screen.getByRole('heading', { name: 'Parade' })).toBeVisible()
     expect(screen.getByText('Take On Me')).toBeVisible()
-    expect(screen.getByText(/^H2 · Start$/)).toBeVisible()
+    expect(screen.getByText('Start', { exact: true })).toBeVisible()
+    expect(screen.queryByText(/^[HI][123](?:\s|$)/)).not.toBeInTheDocument()
   })
 })

@@ -67,6 +67,8 @@ Every generated performance becomes a saved set list containing independent scor
 
 Arrow controls reorder whole sets and pieces. By default, the starter remains first and goes-high pieces stay near the beginning. Enable **Override piece order** on an individual set to move goes-high pieces anywhere after its starter. Turning the override off restores goes-high pieces immediately after the starter while preserving relative order within each group. The override and exact piece order persist in saved programs, reusable sets, and set-list exports/imports. Generation still applies all musical rules, and pieces remain unique across the program. Later folder alignment does not rewrite this historical output.
 
+Setlist rows omit the H1–H3 / I1–I3 hotness labels for easier reading during a performance. Starter, goes-high, and drums-intro cues and drummer notes remain visible. Hotness is still configurable in the Library and used for generation.
+
 ## Locking and Tonight
 
 In **Sets**, use **Lock setlist** to protect the entire saved program. Locking saves pending names first and replaces all editing controls with a read-only setlist. Unlocking requires a separate confirmation in Sets. Locked programs keep their original piece order, names, collection labels, and drummer notes even when the library changes. Locks persist in the local database, existing cloud storage, and set-list JSON exports/imports. Older programs remain unlocked by default. The compact arrows control beside each piece opens the native **Move to set** picker without occupying the title column.
@@ -75,7 +77,7 @@ The **Tonight** tab loads only locked programs. It keeps an independent, fixed c
 
 ## Read-only setlist sharing
 
-On the Sets page, open a saved program and choose **Share read-only link**, then **Copy link**. Anyone with the link can view that program without the band password. The link mirrors the latest saved program: its title, set names and sizes, piece order, collections, hotness, goes-high and drums-intro markers, starting pieces, warnings, and drummer notes. It refreshes every 30 seconds while visible and supports manual refresh. **Stop sharing** immediately revokes future reads; creating another link after stopping generates a different token. Sharing requires an online connection. The shared page has no editing controls or private-app navigation, and the public API accepts read requests only. It never exposes the rest of the library, filenames, or internal IDs.
+On the Sets page, open a saved program and choose **Share read-only link**, then **Copy link**. Anyone with the link can view that program without the band password. The link mirrors the latest saved program: its title, set names and sizes, piece order, collections, goes-high and drums-intro markers, starting pieces, warnings, and drummer notes. It refreshes every 30 seconds while visible and supports manual refresh. **Stop sharing** immediately revokes future reads; creating another link after stopping generates a different token. Sharing requires an online connection. The shared page has no editing controls or private-app navigation, and the public API accepts read requests only. It never exposes the rest of the library, filenames, or internal IDs.
 
 Existing deployments must apply `migrations/0002_setlist_shares.sql` once before using sharing. In the Cloudflare D1 Console, execute:
 
