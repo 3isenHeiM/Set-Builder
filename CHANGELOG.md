@@ -49,6 +49,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Upgrade existing local databases without losing library settings or saved programs. Tonight's selection stays on its device, is cleared on sign-out, and must be reloaded to include later source-program edits.
 - When deploying this release, apply the new D1 migration `0002_setlist_shares.sql` to enable setlist sharing.
 
+### Fixed
+
+- Show Library drummer details on shared links when a saved setlist has absent or blank timing. Preserve existing saved notation and text, and keep locked programs unchanged (fixes [#16](https://github.com/3isenHeiM/Set-Builder/issues/16)).
+
 ## [2.2.1] - 2026-11-12
 
 ### Added

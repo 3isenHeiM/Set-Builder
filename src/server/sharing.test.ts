@@ -3,6 +3,10 @@ import { handleRequest, type WorkerEnvironment } from './worker'
 import { createSessionCookie } from './auth'
 import { emptyCloudState } from '../data/cloudState'
 import { makePerformance, makeScore } from '../test/fixtures'
+import type { DrummerTiming } from '../domain/types'
+import { emptyDrummerTiming } from '../domain/drummerNotes'
+
+const timing: DrummerTiming = { bpm: 144, beat: 'quarter', measure: '4/4', anacrusis: 1.5 }
 
 class SharingD1 {
   readonly shares = new Map<string, string>()
@@ -86,6 +90,21 @@ describe('read-only setlist sharing', () => {
     expect((await control('DELETE')).status).toBe(204)
     expect((await view(token)).status).toBe(404)
     expect(database.state).toEqual(frozen)
+  })
+
+  it.each([{ locked: false }, { locked: true }, { locked: true, timing: emptyDrummerTiming() }])('includes library details absent or blank in a shared snapshot (%j)', async ({ locked, timing: savedTiming }) => {
+    const { control, view, database } = await setup()
+    database.state.scores = [makeScore({ drummerTiming: timing, drummerNotes: 'Quiet verse' }), makeScore({ id: 'private', scoreNumber: 2, displayNumber: '02', drummerNotes: 'Unshared piece notes' })]
+    database.state.setLists = database.state.setLists.map((list) => ({ ...list, locked }))
+    if (savedTiming) database.state.setLists[0]!.performance.sets[0]!.scores[0]!.drummerTiming = savedTiming
+    const original = structuredClone(database.state)
+    const { token } = await (await control('POST')).json() as { token: string }
+    const response = await view(token)
+    expect(response.status).toBe(200)
+    const body: unknown = await response.json()
+    expect(body).toMatchObject({ sets: [{ scores: [{ drummerTiming: timing, drummerNotes: 'Quiet verse' }] }] })
+    expect(JSON.stringify(body)).not.toContain('Unshared piece notes')
+    expect(database.state).toEqual(original)
   })
 
   it('reflects saved updates, revokes immediately, and rotates the token when re-shared', async () => {
