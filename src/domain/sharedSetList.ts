@@ -1,6 +1,7 @@
 import { MAX_SCORES_PER_SET, MAX_SETS } from './generator'
-import type { Hotness, SavedSetList, DrummerTiming } from './types'
+import type { Hotness, SavedSetList, DrummerTiming, Score } from './types'
 import { readDrummerNotes, readDrummerTiming } from './drummerNotes'
+import { pieceKey } from './collections'
 
 export interface SharedPiece {
   displayNumber: string
@@ -22,18 +23,28 @@ export interface SharedSetList {
   sets: Array<{ name: string; scores: SharedPiece[] }>
 }
 
-export function toSharedSetList(saved: SavedSetList): SharedSetList {
+export function toSharedSetList(saved: SavedSetList, library: readonly Score[] = []): SharedSetList {
+  const byId = new Map(library.map((piece) => [piece.id, piece]))
+  const byKey = new Map(library.map((piece) => [pieceKey(piece), piece]))
   return {
     name: saved.name,
     updatedAt: saved.updatedAt,
     generatedAt: saved.performance.generatedAt,
     warnings: [...saved.performance.warnings],
-    sets: saved.performance.sets.map((set) => ({ name: set.name ?? '', scores: set.scores.map((score) => ({
-      displayNumber: score.displayNumber, title: score.title, collection: score.collection ?? 'General', drumsIntro: score.drumsIntro,
-      drummerNotes: readDrummerNotes(score.drummerNotes),
-      ...(score.drummerTiming === undefined ? {} : { drummerTiming: readDrummerTiming(score.drummerTiming) }),
-      hotness: score.hotness, goesHigh: score.goesHigh, canStart: score.canStart,
-    })) })),
+    sets: saved.performance.sets.map((set) => ({ name: set.name ?? '', scores: set.scores.map((score) => {
+      const piece = byId.get(score.id) ?? byKey.get(pieceKey(score))
+      // Legacy or unconfigured snapshots can lack the Library's timing. Existing
+      // notation still wins; this fallback never changes the stored program.
+      const savedTiming = score.drummerTiming
+      const hasSavedTiming = savedTiming && (savedTiming.bpm !== null || savedTiming.measure !== null || savedTiming.anacrusis !== null)
+      const timing = hasSavedTiming ? savedTiming : piece?.drummerTiming ?? savedTiming
+      return {
+        displayNumber: score.displayNumber, title: score.title, collection: score.collection ?? 'General', drumsIntro: score.drumsIntro,
+        drummerNotes: readDrummerNotes(score.drummerNotes ?? piece?.drummerNotes),
+        ...(timing === undefined ? {} : { drummerTiming: readDrummerTiming(timing) }),
+        hotness: score.hotness, goesHigh: score.goesHigh, canStart: score.canStart,
+      }
+    }) })),
   }
 }
 

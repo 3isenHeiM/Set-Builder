@@ -182,8 +182,9 @@ export async function handleRequest(request: Request, environment: WorkerEnviron
     if (publicShare?.[1]) {
       if (request.method !== 'GET') return json({ error: 'Method not allowed.' }, 405, { allow: 'GET' })
       const share = await environment.DB.prepare('SELECT set_list_id FROM setlist_shares WHERE token = ?').bind(publicShare[1]).first<{ set_list_id: string }>()
-      const saved = share ? (await readState(environment)).state.setLists.find((list) => list.id === share.set_list_id) : undefined
-      return saved ? json(toSharedSetList(saved), 200, { 'x-robots-tag': 'noindex, nofollow', 'referrer-policy': 'no-referrer' }) : json({ error: 'This shared setlist is unavailable.' }, 404)
+      const state = share ? (await readState(environment)).state : undefined
+      const saved = state?.setLists.find((list) => list.id === share?.set_list_id)
+      return saved ? json(toSharedSetList(saved, state?.scores), 200, { 'x-robots-tag': 'noindex, nofollow', 'referrer-policy': 'no-referrer' }) : json({ error: 'This shared setlist is unavailable.' }, 404)
     }
     assertAuthenticationConfigured(environment)
     if (url.pathname === TURNSTILE_CONFIGURATION_PATH) {

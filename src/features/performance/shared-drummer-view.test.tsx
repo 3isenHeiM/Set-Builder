@@ -2,6 +2,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SharingClient } from '../../data/sharing'
 import { SharedSetListScreen } from './SharedSetListScreen'
+import { toSharedSetList } from '../../domain/sharedSetList'
+import { makeScore, makeSetList } from '../../test/fixtures'
+import { emptyDrummerTiming } from '../../domain/drummerNotes'
 
 const token = 'b'.repeat(64)
 const preference = 'piece-selector-shared-drummer-notes'
@@ -10,6 +13,20 @@ const snapshot = { name: 'Parade', updatedAt: '2026-11-13T10:00:00Z', sets: [{ n
 beforeEach(() => localStorage.removeItem(preference))
 
 describe('personal drummer view on shared links', () => {
+  it.each([undefined, emptyDrummerTiming()])('shows library timing for a locked setlist with absent or blank timing (%j)', async (savedTiming) => {
+    const user = userEvent.setup()
+    const saved = makeSetList({ locked: true })
+    if (savedTiming) saved.performance.sets[0]!.scores[0]!.drummerTiming = savedTiming
+    const shared = toSharedSetList(saved, [makeScore({ drummerTiming: { bpm: 120, beat: 'half', measure: '6/8', anacrusis: 0.5 } })])
+    const fetchRequest = vi.fn(() => Promise.resolve(Response.json(shared)))
+    render(<SharedSetListScreen token={token} client={new SharingClient(fetchRequest)} />)
+    await user.click(await screen.findByRole('switch', { name: 'Drummer notes' }))
+    expect(screen.getByRole('img', { name: 'Tempo: 120 Half note per minute' })).toBeVisible()
+    expect(screen.getByRole('img', { name: 'Measure: 6/8' })).toBeVisible()
+    expect(screen.getByRole('note')).toHaveTextContent('Pickup ½ beats')
+    expect(saved.performance.sets[0]?.scores[0]?.drummerTiming).toEqual(savedTiming)
+  })
+
   it('starts clean and toggles all structured notes without changing the link or making write requests', async () => {
     const user = userEvent.setup()
     const fetchRequest = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(() => Promise.resolve(Response.json(snapshot)))
