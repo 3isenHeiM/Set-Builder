@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.3.3] - 2026-11-16
+
+*More improvements*
+
+### Added
+
+- Show the release version beneath the About heading in English and French, including offline, using the package version as the shared source (fixes [#18](https://github.com/3isenHeiM/Set-Builder/issues/18)).
+- Offer the remembered **Drummer notes** switch in Tonight as well as shared links, showing tempo, measure, pickup, and custom text from the fixed performance copy without modifying it, including offline (fixes [#17](https://github.com/3isenHeiM/Set-Builder/issues/17)).
+- Add OpenGraph and card previews to the app and shared links, with metadata in the initial HTML and a bundled preview image. Active shared previews include only the program name and set/piece counts; missing or revoked links return generic unavailable previews. Deploy the updated Worker, assets, and routing configuration together; no new D1 migration is needed (fixes [#17](https://github.com/3isenHeiM/Set-Builder/issues/17)).
+
+### Fixed
+
+- Keep the bottom tabs in a separate viewport row while the page content scrolls, reset content to the top when switching tabs, and keep Build and Save actions reachable in shorter viewports (fixes [#17](https://github.com/3isenHeiM/Set-Builder/issues/17)).
+
 ## [2.3.2] - 2026-11-13
 
 *v2.3.2: Prod-ready*
@@ -141,7 +155,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Initial mobile-first offline PWA for importing and re-aligning `.mscz` filename metadata, configuring pieces, generating valid performances, saving the latest performance, and backing up piece settings.
 
-[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.2...HEAD
+[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.3...HEAD
+[2.3.3]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.2...v2.3.3
 [2.3.2]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.1...v2.3.2
 [2.3.1]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/3isenHeiM/Set-Builder/compare/v2.2.1...v2.3.0

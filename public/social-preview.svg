@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f5f6fb"/>
+  <rect width="1200" height="12" fill="#f2b263"/>
+  <circle cx="98" cy="107" r="35" fill="#f2b263"/>
+  <path d="M96 118V86L114 81V111M96 94L114 89" fill="none" stroke="#353665" stroke-width="4" stroke-linejoin="round"/>
+  <ellipse cx="90" cy="119" rx="7" ry="5" transform="rotate(-20 90 119)" fill="#353665"/>
+  <ellipse cx="108" cy="112" rx="7" ry="5" transform="rotate(-20 108 112)" fill="#353665"/>
+  <g font-family="DejaVu Sans, sans-serif">
+    <text x="155" y="119" font-size="34" font-weight="bold" fill="#353665">Piece Selector</text>
+    <text x="64" y="265" font-size="68" font-weight="bold" letter-spacing="-3" fill="#353665">Build your sets.</text>
+    <text x="64" y="350" font-size="68" font-weight="bold" letter-spacing="-3" fill="#353665">Follow the</text>
+    <text x="64" y="432" font-size="68" font-weight="bold" letter-spacing="-3" fill="#353665">performance.</text>
+    <text x="68" y="543" font-size="23" fill="#566075">Your street band. Ready for tonight.</text>
+    <rect x="811" y="165" width="324" height="330" rx="24" fill="#e3e5ef"/>
+    <rect x="799" y="153" width="324" height="330" rx="24" fill="#ffffff" stroke="#dce0ea" stroke-width="2"/>
+    <path d="M823 153H1099Q1123 153 1123 177V226H799V177Q799 153 823 153" fill="#353665"/>
+    <text x="826" y="198" font-size="22" font-weight="bold" fill="#ffffff">TONIGHT’S SET</text>
+    <g fill="#353665" font-size="23" font-weight="bold">
+      <text x="827" y="280">01</text><text x="827" y="354">02</text><text x="827" y="428">03</text>
+    </g>
+    <g fill="#dce0ea"><rect x="882" y="263" width="195" height="12" rx="6"/><rect x="882" y="337" width="150" height="12" rx="6"/><rect x="882" y="411" width="180" height="12" rx="6"/></g>
+    <g fill="#fff0db"><rect x="882" y="288" width="114" height="9" rx="4"/><rect x="882" y="362" width="114" height="9" rx="4"/><rect x="882" y="436" width="114" height="9" rx="4"/></g>
+  </g>
+</svg>

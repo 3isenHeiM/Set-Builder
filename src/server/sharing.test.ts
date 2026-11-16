@@ -5,6 +5,7 @@ import { emptyCloudState } from '../data/cloudState'
 import { makePerformance, makeScore } from '../test/fixtures'
 import type { DrummerTiming } from '../domain/types'
 import { emptyDrummerTiming } from '../domain/drummerNotes'
+import appHtml from '../../index.html?raw'
 
 const timing: DrummerTiming = { bpm: 144, beat: 'quarter', measure: '4/4', anacrusis: 1.5 }
 
@@ -48,6 +49,93 @@ async function setup() {
   const view = (token: string, method = 'GET') => handleRequest(new Request(`https://example.com/api/shared/${token}`, { method }), env)
   return { database, env, headers, control, view }
 }
+
+async function previewSetup() {
+  const fixture = await setup()
+  fixture.env.ASSETS.fetch = vi.fn(() => Promise.resolve(new Response(appHtml, { headers: { 'content-type': 'text/html; charset=utf-8', etag: '"old-template"', 'last-modified': 'yesterday' } })))
+  const page = (path = '/', method = 'GET') => handleRequest(new Request(`https://preview.example${path}`, { method, headers: { 'if-none-match': '"old-template"' } }), fixture.env)
+  return { ...fixture, page }
+}
+
+describe('OpenGraph HTML previews', () => {
+  it('serves complete origin-specific app metadata before JavaScript without reading private state', async () => {
+    const { database, env, page } = await previewSetup()
+    const privateRead = vi.spyOn(database, 'prepare')
+    const response = await page('/?secret=do-not-repeat')
+    const html = await response.text()
+    expect(response.status).toBe(200)
+    expect(html).toContain('<title>Piece Selector</title>')
+    expect(html).toContain('property="og:url" content="https://preview.example/"')
+    expect(html).toContain('property="og:image" content="https://preview.example/social-preview.png"')
+    expect(html).not.toContain('do-not-repeat')
+    expect(html).toContain('property="og:type" content="website"')
+    expect(html).toContain('property="og:image:width" content="1200"')
+    expect(html.match(/property="og:title"/g)).toHaveLength(1)
+    expect(privateRead).not.toHaveBeenCalled()
+    const request = vi.mocked(env.ASSETS.fetch).mock.calls[0]![0]
+    expect(request.url).toBe('https://preview.example/')
+    expect(request.headers.has('if-none-match')).toBe(false)
+  })
+
+  it('escapes setlist names and describes only the selected program in anonymous preview HTML', async () => {
+    const { database, control, page } = await previewSetup()
+    database.state.setLists[0]!.name = '"><script>alert(1)</script> & $& parade'
+    database.state.scores[0]!.drummerNotes = 'Private musical instructions'
+    const frozen = structuredClone(database.state)
+    const { token } = await (await control('POST')).json() as { token: string }
+    const response = await page(`/share/${token}/?secret=not-a-canonical`)
+    const html = await response.text()
+    expect(html).toContain('&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt; &amp; $&amp; parade · Piece Selector')
+    expect(html).not.toContain('<script>alert(1)')
+    expect(html).toContain('1 set · 1 piece.')
+    expect(html).toContain(`property="og:url" content="https://preview.example/share/${token}"`)
+    for (const privateText of ['Private filename', 'Private musical instructions', 'score-1', 'not-a-canonical']) expect(html).not.toContain(privateText)
+    expect(html).toContain('src="/src/main.tsx"')
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer')
+    expect(response.headers.get('x-robots-tag')).toContain('noindex')
+    expect(response.headers.has('etag')).toBe(false)
+    expect(response.headers.has('last-modified')).toBe(false)
+    expect(database.state).toEqual(frozen)
+  })
+
+  it('updates previews on the same link and stops exposing the name after revocation', async () => {
+    const { database, control, page } = await previewSetup()
+    const { token } = await (await control('POST')).json() as { token: string }
+    expect(await (await page(`/share/${token}`)).text()).toContain('Evening · Piece Selector')
+    database.state.setLists[0]!.name = 'Updated parade'
+    expect(await (await page(`/share/${token}`)).text()).toContain('Updated parade · Piece Selector')
+    const head = await page(`/share/${token}`, 'HEAD')
+    expect(head.status).toBe(200)
+    expect(await head.text()).toBe('')
+    expect(head.headers.get('content-type')).toContain('text/html')
+    await control('DELETE')
+    const revoked = await page(`/share/${token}`)
+    expect(revoked.status).toBe(404)
+    const html = await revoked.text()
+    expect(html).toContain('Setlist unavailable · Piece Selector')
+    expect(html).not.toContain('Updated parade')
+  })
+
+  it('returns safe unavailable HTML for invalid links and storage failures', async () => {
+    const { database, page } = await previewSetup()
+    const read = vi.spyOn(database, 'prepare').mockImplementation(() => { throw new Error('Private backend error') })
+    const invalid = await page('/share/invalid')
+    expect(invalid.status).toBe(404)
+    expect(read).not.toHaveBeenCalled()
+    const failed = await page(`/share/${'a'.repeat(64)}`)
+    expect(failed.status).toBe(503)
+    expect(await failed.text()).not.toContain('Private backend error')
+  })
+
+  it('passes image and bundle requests through without rewriting them', async () => {
+    const { env } = await previewSetup()
+    env.ASSETS.fetch = vi.fn(() => Promise.resolve(new Response('image bytes', { headers: { 'content-type': 'image/png' } })))
+    const response = await handleRequest(new Request('https://preview.example/social-preview.png'), env)
+    expect(response.headers.get('content-type')).toBe('image/png')
+    expect(await response.text()).toBe('image bytes')
+  })
+})
 
 describe('read-only setlist sharing', () => {
   it('requires an authenticated same-origin owner to create or revoke links', async () => {

@@ -7,12 +7,14 @@ import { makeSetList } from '../test/fixtures'
 import { App } from './App'
 
 describe('tonight navigation and launch', () => {
+  beforeEach(() => localStorage.removeItem('piece-selector-shared-drummer-notes'))
   it('loads a locked program from Tonight and opens it after relaunch', async () => {
     const user = userEvent.setup()
     const name = `tonight-app-${crypto.randomUUID()}`
     const database = new PieceSelectorDatabase(name)
     const repository = new PieceSelectorRepository(database)
     const saved = makeSetList({ locked: true })
+    Object.assign(saved.performance.sets[0]!.scores[0]!, { drummerTiming: { bpm: 120, beat: 'half', measure: '4/4', anacrusis: null } })
     await repository.saveSetList(saved)
     const { unmount } = render(<App repository={repository} />)
     await screen.findByRole('heading', { name: 'Evening' })
@@ -20,6 +22,7 @@ describe('tonight navigation and launch', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Locked setlists' }), saved.id)
     await user.click(screen.getByRole('button', { name: 'Load for tonight' }))
     await screen.findByRole('button', { name: 'Change tonight’s setlist' })
+    await user.click(screen.getByRole('switch', { name: 'Drummer notes' }))
     unmount()
     database.close()
     const reopened = new PieceSelectorDatabase(name)
@@ -28,6 +31,8 @@ describe('tonight navigation and launch', () => {
     render(<App repository={offline} authentication={{ hasSession: () => Promise.reject(new TypeError('offline')), loadTurnstileSiteKey: () => new Promise(() => undefined), login: () => Promise.resolve(), logout: () => Promise.resolve() }} />)
     expect(await screen.findByRole('heading', { name: 'Tonight' })).toBeVisible()
     expect(screen.getByText('Take On Me')).toBeVisible()
+    expect(screen.getByRole('switch', { name: 'Drummer notes' })).toBeChecked()
+    expect(screen.getByRole('img', { name: 'Tempo: 120 Half note per minute' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Tonight' })).toHaveAttribute('aria-current', 'page')
     expect(screen.queryByRole('button', { name: 'Unlock setlist' })).not.toBeInTheDocument()
     reopened.close()

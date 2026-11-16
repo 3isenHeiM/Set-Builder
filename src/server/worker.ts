@@ -1,7 +1,8 @@
 import { emptyCloudState, parseCloudState, type CloudState, type CloudStateEnvelope } from '../data/cloudState'
 import { AuthenticationUnavailable, assertAuthenticationConfigured, clearSessionCookie, createSessionCookie, hasValidSession, passwordMatches } from './auth'
-import { toSharedSetList } from '../domain/sharedSetList'
+import { toSharedSetList, type SharedSetList } from '../domain/sharedSetList'
 import { assertLockedProgramsUnchanged } from '../domain/performanceLock'
+import { appPreview, sharedPreview, withPagePreview } from './openGraph'
 
 const STATE_PATH = '/api/state'
 const LOGIN_PATH = '/api/login'
@@ -138,6 +139,14 @@ async function readState(environment: WorkerEnvironment): Promise<CloudStateEnve
   return { revision: stored.revision, state: parseCloudState(JSON.parse(stored.state_json) as unknown) }
 }
 
+async function readSharedSetList(token: string, environment: WorkerEnvironment): Promise<SharedSetList | undefined> {
+  const share = await environment.DB.prepare('SELECT set_list_id FROM setlist_shares WHERE token = ?').bind(token).first<{ set_list_id: string }>()
+  if (!share) return undefined
+  const { state } = await readState(environment)
+  const saved = state.setLists.find((list) => list.id === share.set_list_id)
+  return saved ? toSharedSetList(saved, state.scores) : undefined
+}
+
 async function storeState(request: Request, environment: WorkerEnvironment): Promise<CloudStateEnvelope> {
   const claimedLength = Number(request.headers.get('content-length') ?? 0)
   if (claimedLength > MAX_STATE_BYTES) throw new InvalidStateRequest('Cloud state is too large.')
@@ -177,14 +186,29 @@ async function storeState(request: Request, environment: WorkerEnvironment): Pro
 export async function handleRequest(request: Request, environment: WorkerEnvironment, fetchRequest: FetchRequest = fetch): Promise<Response> {
   const url = new URL(request.url)
   try {
-    if (!url.pathname.startsWith('/api/')) return environment.ASSETS.fetch(request)
+    if (!url.pathname.startsWith('/api/')) {
+      const isSharedPage = url.pathname === '/share' || url.pathname.startsWith('/share/')
+      if (['GET', 'HEAD'].includes(request.method) && (isSharedPage || url.pathname === '/' || url.pathname === '/index.html')) {
+        let preview = appPreview(url.origin)
+        let status = 200
+        if (isSharedPage) {
+          const token = /^\/share\/([a-f0-9]{64})\/?$/.exec(url.pathname)?.[1]
+          let saved: SharedSetList | undefined
+          try { saved = token ? await readSharedSetList(token, environment) : undefined; status = saved ? 200 : 404 }
+          catch { status = 503 }
+          preview = sharedPreview(`${url.origin}${url.pathname.replace(/\/$/, '')}`, saved)
+        }
+        // Request the root asset explicitly: link-preview crawlers are not SPA navigations.
+        const asset = await environment.ASSETS.fetch(new Request(new URL('/', url), { method: 'GET' }))
+        return withPagePreview(asset, preview, request.method === 'HEAD', status)
+      }
+      return environment.ASSETS.fetch(request)
+    }
     const publicShare = /^\/api\/shared\/([a-f0-9]{64})$/.exec(url.pathname)
     if (publicShare?.[1]) {
       if (request.method !== 'GET') return json({ error: 'Method not allowed.' }, 405, { allow: 'GET' })
-      const share = await environment.DB.prepare('SELECT set_list_id FROM setlist_shares WHERE token = ?').bind(publicShare[1]).first<{ set_list_id: string }>()
-      const state = share ? (await readState(environment)).state : undefined
-      const saved = state?.setLists.find((list) => list.id === share?.set_list_id)
-      return saved ? json(toSharedSetList(saved, state?.scores), 200, { 'x-robots-tag': 'noindex, nofollow', 'referrer-policy': 'no-referrer' }) : json({ error: 'This shared setlist is unavailable.' }, 404)
+      const saved = await readSharedSetList(publicShare[1], environment)
+      return saved ? json(saved, 200, { 'x-robots-tag': 'noindex, nofollow', 'referrer-policy': 'no-referrer' }) : json({ error: 'This shared setlist is unavailable.' }, 404)
     }
     assertAuthenticationConfigured(environment)
     if (url.pathname === TURNSTILE_CONFIGURATION_PATH) {

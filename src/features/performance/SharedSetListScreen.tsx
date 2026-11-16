@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { sharing, type SharingClient } from '../../data/sharing'
 import type { SharedSetList } from '../../domain/sharedSetList'
 import { UiIcon } from '../../app/UiIcon'
@@ -7,12 +7,12 @@ import { DrummerNotes } from './DrummerNotes'
 import { pieceOccurrenceCounts, sharedSetKeys } from '../../domain/performanceEntries'
 import { RepeatWarning } from './RepeatWarning'
 import { SetCard } from './SetCard'
-import { readDrummerNotesPreference, saveDrummerNotesPreference } from './sharedViewPreference'
+import { DrummerViewToggle } from './DrummerViewToggle'
+import { useDrummerView } from './useDrummerView'
 
 export function SharedSetListScreen({ token, client = sharing }: { token: string; client?: SharingClient }) {
   const { locale, t } = useI18n()
-  const [showDrummerNotes, setShowDrummerNotes] = useState(readDrummerNotesPreference)
-  const drummerHelpId = useId()
+  const [showDrummerNotes, setShowDrummerNotes] = useDrummerView()
   const [saved, setSaved] = useState<SharedSetList>()
   const [failed, setFailed] = useState(false)
   const [attempt, setAttempt] = useState(0)
@@ -41,13 +41,7 @@ export function SharedSetListScreen({ token, client = sharing }: { token: string
         <h1 className="shared-title">{saved.name || t('setsTitle')}</h1>
         <p className="secondary">{t('sharedUpdated')} <time dateTime={saved.updatedAt}>{new Date(saved.updatedAt).toLocaleString(locale)}</time></p>
         {saved.generatedAt && <p className="secondary"><time dateTime={saved.generatedAt}>{new Date(saved.generatedAt).toLocaleString(locale)}</time></p>}
-        <div className="shared-view-controls">
-          <label className="toggle-row shared-drummer-toggle">
-            <span className="toggle-copy"><strong><UiIcon name="drum" />{t('drummerNotes')}</strong><small id={drummerHelpId}>{t('sharedDrummerNotesHelp')}</small></span>
-            <input type="checkbox" role="switch" aria-label={t('drummerNotes')} aria-describedby={drummerHelpId} checked={showDrummerNotes} onChange={(event) => { setShowDrummerNotes(event.target.checked); saveDrummerNotesPreference(event.target.checked) }} />
-            <span className="switch-control" aria-hidden="true"><span /></span>
-          </label>
-        </div>
+        <DrummerViewToggle enabled={showDrummerNotes} onChange={setShowDrummerNotes} />
         {saved.warnings?.map((warning) => <p className="notice" role="status" key={warning}>{localizedKnownMessage(warning, locale) ?? warning}</p>)}
         {pieces.some((piece) => occurrences(piece) > 1) && <p className="repeat-hint">{t('repeatedPieceHelp')}</p>}
         {saved.sets.map((set, index) => <SetCard key={setKeys[index]} number={index + 1} title={set.name} count={set.scores.length}>
