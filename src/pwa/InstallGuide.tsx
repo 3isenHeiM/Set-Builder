@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { UiIcon } from '../app/UiIcon'
 import { useI18n } from '../app/i18n'
+import { version } from '../../package.json'
 
 const DISMISS_KEY = 'piece-selector-install-guide-dismissed'
 
@@ -26,6 +27,7 @@ export function AboutScreen({ children }: { children?: ReactNode }) {
   return (
     <section className="screen-section" aria-labelledby="about-title">
       <h1 id="about-title">{t('about')}</h1>
+      <p className="release-version">{t('appVersion', { version })}</p>
       <div className="info-card"><h2>{t('install')}</h2><p>{t('installInstructions')}</p></div>
       <div className="info-card"><h2>{t('onDevice')}</h2><p>{t('onDeviceDetails')}</p></div>
       {children}

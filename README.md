@@ -2,6 +2,8 @@
 
 Piece Selector is a mobile-first, authenticated set builder for a street band. It turns a manually selected scores folder into a configurable library, synchronizes it through Cloudflare D1, and generates complete performances with distinct pieces and a valid starter at the beginning of every set.
 
+The **About** tab shows the installed app’s release version below its heading. The label reads `package.json` at build time and works offline. Release preparation must keep `package.json` and the root package metadata in `package-lock.json` aligned with the release number; dependency versions are independent. After a PWA update is applied, the label reflects the newly loaded app.
+
 ## What it reads
 
 Only the metadata exposed by the file picker is used: filename and, where available, relative path. The app never calls a content-reading method on a selected MuseScore file, and it does not keep the selected `File` or `FileList` after the scan. Accepted filenames and relative paths are synchronized to the password-protected D1 library; MuseScore contents are never uploaded.

@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Show the release version on the About screen, using the package version as its shared source (fixes [#18](https://github.com/3isenHeiM/Set-Builder/issues/18)).
 - Add the remembered **Drummer notes** switch to Tonight, including offline performance viewing, and OpenGraph/card previews for the app and active shared setlists (fixes [#17](https://github.com/3isenHeiM/Set-Builder/issues/17)).
 - Share locked programs directly and choose a personal **Drummer notes** view on the same public setlist link, with structured tempo, measure, pickup, and custom text hidden by default and remembered per browser (fixes [#16](https://github.com/3isenHeiM/Set-Builder/issues/16)).
 - Fold or expand individual sets by tapping their ribbons in editable and shared read-only programs, with keyboard support and visible state indicators (fixes [#12](https://github.com/3isenHeiM/Set-Builder/issues/12)).

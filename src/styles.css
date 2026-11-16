@@ -300,6 +300,7 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
 .set-list-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .info-card { padding: 16px; background: var(--paper); border: 1px solid var(--border); border-radius: 16px; }
 .info-card h2 { margin-bottom: 8px; font-size: 19px; }
+.release-version { margin: -4px 0 4px; color: var(--muted); font-size: 14px; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .info-card p { margin-bottom: 0; color: #405048; line-height: 1.55; }
 .settings-backup { display: grid; gap: 14px; }
 .settings-backup h2, .settings-backup p { margin-bottom: 0; }
