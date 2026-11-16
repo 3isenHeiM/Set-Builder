@@ -9,7 +9,7 @@ required = [ "AUTH_PASSWORD_HASH", "SESSION_SIGNING_KEY", "TURNSTILE_SECRET_KEY"
 [assets]
 directory = "./dist/"
 binding = "ASSETS"
-run_worker_first = [ "/api/*" ]
+run_worker_first = [ "/api/*", "/", "/index.html", "/share", "/share/*" ]
 not_found_handling = "single-page-application"
 
 [[d1_databases]]

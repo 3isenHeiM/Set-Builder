@@ -3,6 +3,8 @@ import { localizedError, useI18n } from '../../app/i18n'
 import { UiIcon } from '../../app/UiIcon'
 import type { SavedSetList } from '../../domain/types'
 import { ReadOnlySetList } from './ReadOnlySetList'
+import { DrummerViewToggle } from './DrummerViewToggle'
+import { useDrummerView } from './useDrummerView'
 
 interface TonightScreenProps {
   setList: SavedSetList | undefined
@@ -14,6 +16,7 @@ interface TonightScreenProps {
 
 export function TonightScreen({ setList, savedSetLists, onLoad, onClear, onManage }: TonightScreenProps) {
   const { locale, t } = useI18n()
+  const [showDrummerNotes, setShowDrummerNotes] = useDrummerView()
   const [selected, setSelected] = useState('')
   const [choosing, setChoosing] = useState(!setList)
   const [saving, setSaving] = useState(false)
@@ -33,7 +36,8 @@ export function TonightScreen({ setList, savedSetLists, onLoad, onClear, onManag
     <h1 id="tonight-title">{t('tonight')}</h1>
     {setList ? <>
       <div className="tonight-heading"><h2>{setList.name || t('setsTitle')}</h2><span className="locked-badge"><UiIcon name="lock" />{t('locked')}</span></div>
-      <ReadOnlySetList setList={setList} />
+      <DrummerViewToggle enabled={showDrummerNotes} onChange={setShowDrummerNotes} />
+      <ReadOnlySetList setList={setList} showDrummerNotes={showDrummerNotes} />
       <button type="button" className="secondary-action" disabled={saving} aria-expanded={choosing} onClick={() => setChoosing((value) => !value)}>{t('changeTonight')}</button>
     </> : <p className="notice">{t('tonightEmpty')}</p>}
     {choosing && <div className="tonight-picker">

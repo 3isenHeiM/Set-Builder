@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { classifyReconciliation } from '../domain/reconciliation'
 import { createProgramFromSavedSet, createProgramFromStarter } from '../domain/setList'
 import type { SettingsBackup } from '../domain/settingsBackup'
@@ -42,6 +42,9 @@ export function App({ repository = browserRepository, authentication = cloudAuth
   const [loadError, setLoadError] = useState('')
   const [authenticationState, setAuthenticationState] = useState<AuthenticationState>(authentication ? 'checking' : 'authenticated')
   const [editingScore, setEditingScore] = useState(false)
+  const scrollArea = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { if (scrollArea.current) scrollArea.current.scrollTop = 0 }, [page])
 
   useEffect(() => {
     if (!authentication) return
@@ -242,7 +245,8 @@ export function App({ repository = browserRepository, authentication = cloudAuth
   if (loadError) return <main id="main-content" className="loading-screen"><h1>Piece Selector</h1><p className="error" role="alert">{loadError}</p></main>
 
   return (
-    <div className="app-shell">
+    <div className="app-shell private-app-shell">
+      <div className="app-scroll" ref={scrollArea}>
       <a className="skip-link" href="#main-content">{t('skipToContent')}</a>
       <header className="app-header"><span className="app-logo" aria-hidden="true"><UiIcon name="music" /></span><strong>Piece Selector</strong></header>
       <InstallGuide />
@@ -255,6 +259,7 @@ export function App({ repository = browserRepository, authentication = cloudAuth
                 : page === 'tonight' ? <TonightScreen setList={tonight} savedSetLists={setLists} onLoad={loadTonight} onClear={clearTonight} onManage={() => setPage('performance')} />
                 : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} />{authentication && <SignOutButton onLogout={async () => { await authentication.logout(); window.location.reload() }} />}</AboutScreen>}
       </main>
+      </div>
       {!preview && !editingScore && <nav className="bottom-nav" aria-label={t('primaryNavigation')}>{([['library', t('library')], ['generate', t('build')], ['performance', t('sets')], ['tonight', t('tonight')], ['about', t('about')]] as const).map(([target, label]) => <button type="button" key={target} aria-current={page === target ? 'page' : undefined} onClick={() => setPage(target)}><UiIcon name={target === 'library' ? 'library' : target === 'generate' ? 'sparkles' : target === 'performance' ? 'sets' : target === 'tonight' ? 'moon' : 'info'} />{label}</button>)}</nav>}
     </div>
   )
