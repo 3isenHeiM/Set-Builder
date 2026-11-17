@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.3.4] - 2026-11-17
+
+*We're starting to be good here*
+
+### Added
+
+- Swipe right across piece details to use Back, saving pending drummer notes before leaving and retaining the draft if saving fails (fixes [#19](https://github.com/3isenHeiM/Set-Builder/issues/19)).
+- Show actual set and piece totals for the loaded Tonight copy, keeping the summary and drummer switch together near the top while scrolling (fixes [#9](https://github.com/3isenHeiM/Set-Builder/issues/9)).
+
+### Changed
+
+- Remove Start, High, and Drums cues from editable, locked, Tonight, and shared piece rows to emphasize order, number, title, and collection while retaining drummer notes (fixes [#11](https://github.com/3isenHeiM/Set-Builder/issues/11)).
+
+### Fixed
+
+- Restore the Library's scroll position, search, filters, and piece focus when returning from details with Back, a swipe, or Save; open details at the top (fixes [#19](https://github.com/3isenHeiM/Set-Builder/issues/19)).
+- Fill absent or blank drummer timing in older Tonight copies from the matching Library piece, including its offline cache. Preserve saved notation, explicitly cleared text, and stored locked/Tonight records (refs [#9](https://github.com/3isenHeiM/Set-Builder/issues/9)).
+
 ## [2.3.3] - 2026-11-16
 
 *More improvements*
@@ -155,7 +173,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Initial mobile-first offline PWA for importing and re-aligning `.mscz` filename metadata, configuring pieces, generating valid performances, saving the latest performance, and backing up piece settings.
 
-[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.3...HEAD
+[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.4...HEAD
+[2.3.4]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.3...v2.3.4
 [2.3.3]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.2...v2.3.3
 [2.3.2]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.1...v2.3.2
 [2.3.1]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.0...v2.3.1

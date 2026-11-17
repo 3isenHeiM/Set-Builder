@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { makeSetList } from '../../test/fixtures'
+import { makeScore, makeSetList } from '../../test/fixtures'
 import { TonightScreen } from './TonightScreen'
 
 const preference = 'piece-selector-shared-drummer-notes'
@@ -32,6 +32,37 @@ describe('Tonight drummer view', () => {
     await user.click(screen.getByRole('switch', { name: 'Drummer notes' }))
     expect(screen.queryByRole('note')).not.toBeInTheDocument()
     expect(screen.getAllByRole('img', { name: warning })).toHaveLength(2)
+    expect(saved).toEqual(frozen)
+    for (const action of Object.values(actions)) expect(action).not.toHaveBeenCalled()
+  })
+
+  it('shows missing details when the cached Library arrives after the toggle is enabled', async () => {
+    const saved = makeSetList({ locked: true })
+    const frozen = structuredClone(saved)
+    const actions = { onLoad: vi.fn(), onClear: vi.fn(), onManage: vi.fn(), savedSetLists: [saved] }
+    const { rerender } = render(<TonightScreen setList={saved} {...actions} />)
+    await userEvent.setup().click(screen.getByRole('switch', { name: 'Drummer notes' }))
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+    const library = [makeScore({ drummerNotes: 'Quiet verse', drummerTiming: { bpm: 120, beat: 'half', measure: '4/4', anacrusis: 0.5 } })]
+    rerender(<TonightScreen setList={saved} libraryScores={library} {...actions} />)
+    expect(screen.getByRole('img', { name: 'Tempo: 120 Half note per minute' })).toBeVisible()
+    expect(screen.getByRole('note')).toHaveTextContent('Pickup ½ beatsQuiet verse')
+    expect(saved).toEqual(frozen)
+    expect(actions.onLoad).not.toHaveBeenCalled()
+  })
+
+  it.each(['Quiet verse', ''])('retains saved timing and saved text %j over newer Library notes', async (text) => {
+    const { saved, actions } = fixture()
+    saved.performance.sets[0]!.scores[0]!.drummerNotes = text
+    const frozen = structuredClone(saved)
+    const library = [makeScore({ drummerNotes: 'New Library note', drummerTiming: { bpm: 200, beat: 'half', measure: '4/4', anacrusis: null } })]
+    render(<TonightScreen setList={saved} libraryScores={library} savedSetLists={[saved]} {...actions} />)
+    await userEvent.setup().click(screen.getByRole('switch', { name: 'Drummer notes' }))
+    expect(screen.getByRole('img', { name: 'Tempo: 144 Quarter note per minute' })).toBeVisible()
+    expect(screen.getByRole('img', { name: 'Measure: 6/8' })).toBeVisible()
+    expect(screen.getByRole('note')).toHaveTextContent('Pickup 1½ beats')
+    expect(screen.queryByText('New Library note')).not.toBeInTheDocument()
+    expect(screen.getByRole('note').querySelector('.drummer-custom-text')?.textContent ?? '').toBe(text)
     expect(saved).toEqual(frozen)
     for (const action of Object.values(actions)) expect(action).not.toHaveBeenCalled()
   })

@@ -44,6 +44,22 @@ export function readDrummerNotes(value: unknown): string {
   return value
 }
 
+export function createDrummerNotesResolver(library: readonly Score[]) {
+  const byId = new Map(library.map((piece) => [piece.id, piece]))
+  const byKey = new Map(library.map((piece) => [pieceKey(piece), piece]))
+  return (snapshot: PerformanceScoreSnapshot) => {
+    const piece = byId.get(snapshot.id) ?? byKey.get(pieceKey(snapshot))
+    // Keep saved notation; fill absent/blank timing for older read-only copies.
+    const saved = snapshot.drummerTiming
+    const hasTiming = saved && (saved.bpm !== null || saved.measure !== null || saved.anacrusis !== null)
+    const timing = hasTiming ? saved : piece?.drummerTiming ?? saved
+    return {
+      drummerNotes: readDrummerNotes(snapshot.drummerNotes ?? piece?.drummerNotes),
+      ...(timing === undefined ? {} : { drummerTiming: readDrummerTiming(timing) }),
+    }
+  }
+}
+
 export function updateSavedDrummerNotes(data: { lastPerformance: GeneratedPerformance | null; setLists: SavedSetList[]; savedSets: SavedSet[] }, pieces: readonly Score[], updatedAt: string) {
   const byId = new Map(pieces.map((piece) => [piece.id, piece]))
   const byKey = new Map(pieces.map((piece) => [pieceKey(piece), piece]))

@@ -443,6 +443,8 @@ input[type="search"], input[type="number"], select, .set-list-name input { width
 .tonight-screen > .eyebrow { display: flex; align-items: center; gap: 7px; }
 .tonight-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .tonight-heading h2 { margin: 0; font-size: 26px; overflow-wrap: anywhere; }
+.tonight-controls { position: sticky; top: calc(8px + env(safe-area-inset-top)); z-index: 4; display: grid; gap: 8px; min-width: 0; background: var(--cream); border-radius: 14px; }
+.tonight-controls > .program-summary, .tonight-controls > .shared-view-controls { position: static; }
 .tonight-screen .score-copy strong { font-size: 20px; line-height: 1.25; }
 .tonight-screen .score-number { font-size: 18px; }
 .tonight-screen .set-card li { min-height: 76px; padding-block: 12px; }
