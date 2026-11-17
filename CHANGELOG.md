@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Remove Start, High, and Drums cues from piece rows in editable, locked, Tonight, and shared setlists to emphasize piece order, titles, and collections (fixes reopened [#11](https://github.com/3isenHeiM/Set-Builder/issues/11)).
 - Remove the H1–H3 / I1–I3 hotness labels from editable, locked, Tonight, and shared setlists to reduce visual clutter (fixes [#11](https://github.com/3isenHeiM/Set-Builder/issues/11)).
 - Configure drummer notes with tempo and beat-unit, measure, and optional pickup dropdowns, a music-notation preview, and a 100-character custom note. Preserve older notes and frozen program copies; include the structured fields in backups and shared views (fixes [#15](https://github.com/3isenHeiM/Set-Builder/issues/15)).
 
