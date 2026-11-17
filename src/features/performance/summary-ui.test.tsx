@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { makePerformance, makeScore, makeSetList } from '../../test/fixtures'
 import type { SavedSetList } from '../../domain/types'
 import { PerformanceScreen } from './PerformanceScreen'
+import { TonightScreen } from './TonightScreen'
 
 function program(): SavedSetList {
   const first = makePerformance().sets[0]!.scores[0]!
@@ -52,5 +53,38 @@ describe('program summary', () => {
     render(<Editor initial={{ ...program(), locked: true }} />)
     expect(screen.getByRole('status', { name: 'Program summary' })).toHaveTextContent('2 sets · 3 pieces')
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+})
+
+describe('Tonight program summary', () => {
+  it.each([
+    ['en-US', 'Program summary', '2 sets · 3 pieces', '1 set · 1 piece'],
+    ['fr-BE', 'Résumé du programme', '2 sets · 3 morceaux', '1 set · 1 morceau'],
+  ])('counts the loaded snapshot in %s and updates when it is replaced', (language, label, plural, singular) => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue(language)
+    const loaded = { ...program(), locked: true }
+    const frozen = structuredClone(loaded)
+    const catalog = { ...loaded, performance: makePerformance({ sets: [] }) }
+    const actions = { savedSetLists: [catalog], onLoad: vi.fn(), onClear: vi.fn(), onManage: vi.fn() }
+    const { rerender } = render(<TonightScreen setList={loaded} {...actions} />)
+    expect(screen.getByRole('status', { name: label })).toHaveTextContent(plural)
+    expect(screen.getByRole('status', { name: label })).toHaveAttribute('aria-live', 'polite')
+    expect(loaded).toEqual(frozen)
+    rerender(<TonightScreen setList={makeSetList({ locked: true })} {...actions} />)
+    expect(screen.getByRole('status', { name: label })).toHaveTextContent(singular)
+    for (const action of [actions.onLoad, actions.onClear, actions.onManage]) expect(action).not.toHaveBeenCalled()
+  })
+
+  it('shows totals only while a Tonight setlist is loaded, including an empty loaded program', () => {
+    const loaded = { ...program(), locked: true }
+    const actions = { savedSetLists: [loaded], onLoad: vi.fn(), onClear: vi.fn(), onManage: vi.fn() }
+    const { rerender } = render(<TonightScreen setList={undefined} {...actions} />)
+    expect(screen.queryByRole('status', { name: 'Program summary' })).not.toBeInTheDocument()
+    rerender(<TonightScreen setList={loaded} {...actions} />)
+    expect(screen.getByRole('status', { name: 'Program summary' })).toHaveTextContent('2 sets · 3 pieces')
+    rerender(<TonightScreen setList={makeSetList({ locked: true, performance: makePerformance({ sets: [] }) })} {...actions} />)
+    expect(screen.getByRole('status', { name: 'Program summary' })).toHaveTextContent('0 sets · 0 pieces')
+    rerender(<TonightScreen setList={undefined} {...actions} />)
+    expect(screen.queryByRole('status', { name: 'Program summary' })).not.toBeInTheDocument()
   })
 })

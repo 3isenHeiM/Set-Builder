@@ -5,6 +5,7 @@ import type { SavedSetList } from '../../domain/types'
 import { ReadOnlySetList } from './ReadOnlySetList'
 import { DrummerViewToggle } from './DrummerViewToggle'
 import { useDrummerView } from './useDrummerView'
+import { ProgramSummary } from './ProgramSummary'
 
 interface TonightScreenProps {
   setList: SavedSetList | undefined
@@ -36,7 +37,10 @@ export function TonightScreen({ setList, savedSetLists, onLoad, onClear, onManag
     <h1 id="tonight-title">{t('tonight')}</h1>
     {setList ? <>
       <div className="tonight-heading"><h2>{setList.name || t('setsTitle')}</h2><span className="locked-badge"><UiIcon name="lock" />{t('locked')}</span></div>
-      <DrummerViewToggle enabled={showDrummerNotes} onChange={setShowDrummerNotes} />
+      <div className="tonight-controls">
+        <ProgramSummary setCount={setList.performance.sets.length} pieceCount={setList.performance.sets.reduce((total, set) => total + set.scores.length, 0)} />
+        <DrummerViewToggle enabled={showDrummerNotes} onChange={setShowDrummerNotes} />
+      </div>
       <ReadOnlySetList setList={setList} showDrummerNotes={showDrummerNotes} />
       <button type="button" className="secondary-action" disabled={saving} aria-expanded={choosing} onClick={() => setChoosing((value) => !value)}>{t('changeTonight')}</button>
     </> : <p className="notice">{t('tonightEmpty')}</p>}

@@ -79,7 +79,7 @@ In **Sets**, use **Lock setlist** to protect the entire saved program. Locking s
 
 The **Tonight** tab loads only locked programs. It keeps an independent, fixed copy on this device and opens automatically at the next launch, including offline. Its large piece titles, numbers, notes, and folding sets are available without editing controls. The local copy can open before the rest of the library finishes loading. Use **Change tonight’s setlist** to load another locked program, reload later edits, or clear the selection. Unlocking or editing the source program does not change Tonight’s copy. Normal app closure preserves it; signing out clears it with the private device cache. Tonight’s selection is not synchronized to other devices.
 
-Tonight offers the same **Drummer notes** switch as shared links, initially off and remembered in the browser. It shows tempo, measure, optional pickup, and custom text from Tonight’s fixed copy, including offline, without editing that copy. The app’s bottom tabs occupy their own viewport row; the header and page content scroll above them.
+When a setlist is loaded, Tonight shows the number of sets and total pieces from its fixed copy below the setlist name. The summary and **Drummer notes** switch stay together near the top while scrolling. Tonight offers the same switch as shared links, initially off and remembered in the browser. It shows tempo, measure, optional pickup, and custom text from Tonight’s fixed copy, including offline, without editing that copy. The app’s bottom tabs occupy their own viewport row; the header and page content scroll above them.
 
 ## Read-only setlist sharing
 
