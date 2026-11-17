@@ -1,13 +1,39 @@
 import Dexie from 'dexie'
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PieceSelectorDatabase } from '../data/database'
 import { PieceSelectorRepository } from '../data/repository'
-import { makeSetList } from '../test/fixtures'
+import { CloudRepository, CloudStateTransport } from '../data/cloudRepository'
+import { makeScore, makeSetList } from '../test/fixtures'
+import { emptyDrummerTiming } from '../domain/drummerNotes'
 import { App } from './App'
 
 describe('tonight navigation and launch', () => {
   beforeEach(() => localStorage.removeItem('piece-selector-shared-drummer-notes'))
+  it.each([{ savedTiming: undefined, offline: false }, { savedTiming: emptyDrummerTiming(), offline: true }])('shows Library details when toggled on for an older Tonight copy (%j)', async ({ savedTiming, offline }) => {
+    const name = `tonight-missing-notes-${crypto.randomUUID()}`
+    const database = new PieceSelectorDatabase(name)
+    const local = new PieceSelectorRepository(database)
+    const repository = offline ? new CloudRepository(database, new CloudStateTransport(() => Promise.reject(new TypeError('offline')))) : local
+    const saved = makeSetList({ locked: true })
+    if (savedTiming) saved.performance.sets[0]!.scores[0]!.drummerTiming = savedTiming
+    const frozen = structuredClone(saved)
+    await database.scores.put(makeScore({ drummerTiming: { bpm: 144, beat: 'quarter', measure: '6/8', anacrusis: 1.5 }, drummerNotes: 'Quiet verse' }))
+    await local.saveSetList(saved)
+    await local.saveTonightSetList(saved)
+    try {
+      render(<App repository={repository} />)
+      await screen.findByRole('heading', { name: 'Tonight' })
+      expect(screen.queryByRole('note')).not.toBeInTheDocument()
+      await userEvent.setup().click(screen.getByRole('switch', { name: 'Drummer notes' }))
+      expect(await screen.findByRole('img', { name: 'Tempo: 144 Quarter note per minute' })).toBeVisible()
+      expect(screen.getByRole('img', { name: 'Measure: 6/8' })).toBeVisible()
+      expect(screen.getByRole('note')).toHaveTextContent('Pickup 1½ beatsQuiet verse')
+      expect(await repository.getTonightSetList()).toEqual(frozen)
+      expect((await repository.listSetLists())[0]).toEqual(frozen)
+    } finally { cleanup(); database.close(); await Dexie.delete(name) }
+  })
+
   it('loads a locked program from Tonight and opens it after relaunch', async () => {
     const user = userEvent.setup()
     const name = `tonight-app-${crypto.randomUUID()}`

@@ -266,7 +266,7 @@ export function App({ repository = browserRepository, authentication = cloudAuth
           : page === 'library' ? <LibraryScreen scores={scores} collections={collections} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onBulkSave={saveBulkConfiguration} onRenameCollection={renameCollection} onCreateCollection={createCollection} onAssignCollection={assignCollection} onDelete={deleteScore} onEditingChange={changePieceEditing} />
             : page === 'generate' ? <GenerateScreen scores={scores} collections={collections} hasPerformance={Boolean(currentSetList)} onGenerated={savePerformance} />
               : page === 'performance' ? <PerformanceScreen scores={scores} setList={currentSetList} savedSetLists={setLists} savedSets={savedSets} onSave={saveSetList} onSaveSavedSet={saveReusableSet} onCreateProgram={createProgram} onCreateManualProgram={createManualProgram} onSelect={selectSetList} onImport={importSetList} onRegenerate={() => setPage('generate')} onLockChange={setListLock} onTonight={loadTonight} />
-                : page === 'tonight' ? <TonightScreen setList={tonight} savedSetLists={setLists} onLoad={loadTonight} onClear={clearTonight} onManage={() => setPage('performance')} />
+                : page === 'tonight' ? <TonightScreen setList={tonight} savedSetLists={setLists} libraryScores={scores} onLoad={loadTonight} onClear={clearTonight} onManage={() => setPage('performance')} />
                 : <AboutScreen><SettingsBackupPanel scores={scores} onImport={importSettings} />{authentication && <SignOutButton onLogout={async () => { await authentication.logout(); window.location.reload() }} />}</AboutScreen>}
       </main>
       </div>

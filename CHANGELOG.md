@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- Display missing drummer details from the Library when Tonight's toggle is enabled for an older locked copy, preserving existing saved notation, cleared notes, and frozen storage.
 - Show set and piece totals on Tonight when a setlist is loaded, keeping the summary and drummer switch visible together while scrolling (fixes reopened [#9](https://github.com/3isenHeiM/Set-Builder/issues/9)).
 - Restore the Library's scroll position, filters, and piece focus after leaving details with Back, a swipe, or Save (fixes [#19](https://github.com/3isenHeiM/Set-Builder/issues/19)).
 - Keep the mobile tab bar in a separate viewport row while the content scrolls, including after viewport resizing (fixes [#17](https://github.com/3isenHeiM/Set-Builder/issues/17)).
