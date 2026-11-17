@@ -57,6 +57,8 @@ On iPhone with Safari 18.4 or newer, tap the folder action, navigate inside the 
 
 ## Configuration and generation
 
+Open a piece from the Library to edit its details. Swipe right across the heading or other non-interactive space to go **Back**, or use the Back button. Both save pending drummer notes before leaving; a failed save keeps the editor and draft open. Back, swipe, and **Save score** return to the same Library scroll position, search, and filters, with focus on the piece you opened. Each detail page opens at the top. Swipes starting on controls or selected text are ignored, and vertical scrolling remains available.
+
 To delete a piece, open its details, choose **Delete piece**, and confirm **Delete permanently**. Its library entry and settings are removed, while saved sets and programs retain their independent copies. Re-importing the filename creates a new piece requiring configuration. Deletion also works offline and synchronizes on reconnection.
 
 New scores start active, enabled, and pending. `can start`, hotness 1–3, drums intro, and goes high must each have an explicit value before an enabled score becomes complete; a disabled score may leave these values unset. Collections replace the separate **80s repertoire** option. Create an **80s** collection if you want to group that repertoire. Missing, disabled, and pending scores cannot be generated.

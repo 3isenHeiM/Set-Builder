@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
 import type { BulkConfiguration, FolderScan, Score, ScoreConfiguration } from '../../domain/types'
 import { CollectionImport } from '../import/CollectionImport'
 import { collectionKey, collectionName, collectionNames, DEFAULT_COLLECTION } from '../../domain/collections'
@@ -56,6 +56,8 @@ export function LibraryScreen({ scores, lastScan, onFolder, onSave, onBulkSave, 
   const [bulkEditing, setBulkEditing] = useState(false)
   const press = useRef<{ timer: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null)
   const suppressClick = useRef(false)
+  const rowButtons = useRef(new Map<string, HTMLButtonElement>())
+  const returnFocus = useRef<string | null>(null)
   const clearPress = () => { if (press.current) clearTimeout(press.current.timer); press.current = null }
   useEffect(() => () => clearPress(), [])
   const toggle = (id: string) => setSelected((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next })
@@ -70,6 +72,13 @@ export function LibraryScreen({ scores, lastScan, onFolder, onSave, onBulkSave, 
   const pending = scores.filter((score) => score.availability === 'active' && score.configuration === 'pending')
   const activeEditorId = queue?.[queueIndex] ?? editing
   const activeEditor = scores.find((score) => score.id === activeEditorId)
+
+  useLayoutEffect(() => {
+    if (!activeEditor && returnFocus.current) {
+      rowButtons.current.get(returnFocus.current)?.focus({ preventScroll: true })
+      returnFocus.current = null
+    }
+  }, [activeEditor])
 
   const filtered = useMemo(() => scores.filter((score) => {
     const text = `${score.displayNumber} ${score.title} ${score.relativePath}`.toLocaleLowerCase()
@@ -122,7 +131,7 @@ export function LibraryScreen({ scores, lastScan, onFolder, onSave, onBulkSave, 
       <label className="search-label"><span>{t('search')}</span><input type="search" value={query} placeholder={t('numberTitlePath')} onChange={(event) => setQuery(event.target.value)} /></label>
       <label className="filter-label"><span>{t('filter')}</span><select value={filter} onChange={(event) => setFilter(readFilter(event.target.value))}><option value="all">{t('allScores')}</option><option value="pending">{t('pending')}</option><option value="active">{t('active')}</option><option value="missing">{t('missing')}</option><option value="disabled">{t('disabled')}</option></select></label>
       <ul className="score-list" aria-live="polite">
-        {filtered.map((score) => <li key={score.id}><button type="button" className={`score-row ${selected.has(score.id) ? 'selected' : ''}`} aria-pressed={selecting ? selected.has(score.id) : undefined} onPointerDown={(event) => startPress(event, score.id)} onPointerMove={(event) => { if (press.current && Math.hypot(event.clientX - press.current.x, event.clientY - press.current.y) > 10) clearPress() }} onPointerUp={clearPress} onPointerCancel={clearPress} onContextMenu={(event) => event.preventDefault()} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return } if (selecting) toggle(score.id); else { setEditing(score.id); onEditingChange?.(true) } }}><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>{collectionName(score.collection)}</small><small>{score.availability === 'missing' ? t('missing') : !score.enabled ? t('disabled') : score.configuration === 'pending' ? t('setupNeeded') : t('ready')}</small></span>{selecting ? <span className="selection-indicator" aria-hidden="true">{selected.has(score.id) ? '✓' : ''}</span> : <span className={`status-dot ${score.availability} ${score.configuration}`} aria-hidden="true" />}</button></li>)}
+        {filtered.map((score) => <li key={score.id}><button type="button" ref={(button) => { if (button) rowButtons.current.set(score.id, button); else rowButtons.current.delete(score.id) }} className={`score-row ${selected.has(score.id) ? 'selected' : ''}`} aria-pressed={selecting ? selected.has(score.id) : undefined} onPointerDown={(event) => startPress(event, score.id)} onPointerMove={(event) => { if (press.current && Math.hypot(event.clientX - press.current.x, event.clientY - press.current.y) > 10) clearPress() }} onPointerUp={clearPress} onPointerCancel={clearPress} onContextMenu={(event) => event.preventDefault()} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return } if (selecting) toggle(score.id); else { returnFocus.current = score.id; setEditing(score.id); onEditingChange?.(true) } }}><span className="score-number">{score.displayNumber}</span><span className="score-copy"><strong>{score.title}</strong><small>{collectionName(score.collection)}</small><small>{score.availability === 'missing' ? t('missing') : !score.enabled ? t('disabled') : score.configuration === 'pending' ? t('setupNeeded') : t('ready')}</small></span>{selecting ? <span className="selection-indicator" aria-hidden="true">{selected.has(score.id) ? '✓' : ''}</span> : <span className={`status-dot ${score.availability} ${score.configuration}`} aria-hidden="true" />}</button></li>)}
       </ul>
       {filtered.length === 0 && <p className="notice">{t('noMatches')}</p>}
     </section>

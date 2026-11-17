@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Swipe right on a piece's detail page to use the existing Back action, saving pending notes before returning and keeping drafts open if saving fails (fixes [#19](https://github.com/3isenHeiM/Set-Builder/issues/19)).
 - Show the release version on the About screen, using the package version as its shared source (fixes [#18](https://github.com/3isenHeiM/Set-Builder/issues/18)).
 - Add the remembered **Drummer notes** switch to Tonight, including offline performance viewing, and OpenGraph/card previews for the app and active shared setlists (fixes [#17](https://github.com/3isenHeiM/Set-Builder/issues/17)).
 - Share locked programs directly and choose a personal **Drummer notes** view on the same public setlist link, with structured tempo, measure, pickup, and custom text hidden by default and remembered per browser (fixes [#16](https://github.com/3isenHeiM/Set-Builder/issues/16)).
@@ -23,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- Restore the Library's scroll position, filters, and piece focus after leaving details with Back, a swipe, or Save (fixes [#19](https://github.com/3isenHeiM/Set-Builder/issues/19)).
 - Keep the mobile tab bar in a separate viewport row while the content scrolls, including after viewport resizing (fixes [#17](https://github.com/3isenHeiM/Set-Builder/issues/17)).
 - Show Library drummer details on shared links when a saved setlist has absent or blank timing. Preserve existing saved notation and text, and keep locked programs unchanged (fixes [#16](https://github.com/3isenHeiM/Set-Builder/issues/16)).
 

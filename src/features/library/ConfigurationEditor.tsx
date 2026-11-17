@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Hotness, Score, ScoreConfiguration } from '../../domain/types'
 import { UiIcon } from '../../app/UiIcon'
 import { localizedError, useI18n } from '../../app/i18n'
@@ -6,6 +6,7 @@ import { configurationStatus } from '../../domain/configuration'
 import { DeletePiece } from './DeletePiece'
 import { DrummerNotesEditor } from './DrummerNotesEditor'
 import { readDrummerTiming, drummerTimingEqual, MAX_DRUMMER_NOTES_LENGTH } from '../../domain/drummerNotes'
+import { useSwipeBack } from './useSwipeBack'
 
 function configurationFromScore(score: Score): ScoreConfiguration {
   return {
@@ -48,6 +49,7 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
   const [draft, setDraft] = useState(() => configurationFromScore(score))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const closing = useRef(false)
   const notesValid = (draft.drummerNotes ?? '').length <= MAX_DRUMMER_NOTES_LENGTH || draft.drummerNotes === score.drummerNotes
   const valid = configurationStatus(draft) === 'complete' && notesValid
   const notesChanged = (draft.drummerNotes ?? '') !== (score.drummerNotes ?? '') || !drummerTimingEqual(draft.drummerTiming, score.drummerTiming)
@@ -66,6 +68,7 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
   }
 
   const save = async () => {
+    if (saving || closing.current) return
     setSaving(true)
     setMessage('')
     try {
@@ -79,13 +82,16 @@ export function ConfigurationEditor({ score, saveLabel = 'Save score', progress,
   }
 
   const close = async () => {
+    if (saving || closing.current) return
+    closing.current = true
     setSaving(true)
     setMessage('')
-    try { if (!notesValid) throw new Error('Custom drummer notes must be text of at most 100 characters.'); if (onDraftChange && notesChanged) await onDraftChange(draft); onClose() } catch (error) { setMessage(localizedError(error, locale, t('scoreSaveFailed'))) } finally { setSaving(false) }
+    try { if (!notesValid) throw new Error('Custom drummer notes must be text of at most 100 characters.'); if (onDraftChange && notesChanged) await onDraftChange(draft); onClose() } catch (error) { setMessage(localizedError(error, locale, t('scoreSaveFailed'))) } finally { closing.current = false; setSaving(false) }
   }
+  const swipeBack = useSwipeBack(() => { void close() }, !saving)
 
   return (
-    <section className="editor-panel" aria-labelledby="edit-score-title">
+    <section className="editor-panel" aria-labelledby="edit-score-title" {...swipeBack}>
       {progress && <div className="progress-label" aria-live="polite">{progress}</div>}
       <button type="button" className="text-button icon-text" disabled={saving} onClick={() => void close()}><UiIcon name="back" />{t('back')}</button>
       <div className="score-heading">

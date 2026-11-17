@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { classifyReconciliation } from '../domain/reconciliation'
 import { createProgramFromSavedSet, createProgramFromStarter } from '../domain/setList'
 import type { SettingsBackup } from '../domain/settingsBackup'
@@ -43,6 +43,16 @@ export function App({ repository = browserRepository, authentication = cloudAuth
   const [authenticationState, setAuthenticationState] = useState<AuthenticationState>(authentication ? 'checking' : 'authenticated')
   const [editingScore, setEditingScore] = useState(false)
   const scrollArea = useRef<HTMLDivElement>(null)
+  const libraryScrollPosition = useRef(0)
+
+  const changePieceEditing = (editing: boolean) => {
+    if (editing && !editingScore) libraryScrollPosition.current = scrollArea.current?.scrollTop ?? 0
+    setEditingScore(editing)
+  }
+
+  useLayoutEffect(() => {
+    if (scrollArea.current) scrollArea.current.scrollTop = editingScore ? 0 : libraryScrollPosition.current
+  }, [editingScore])
 
   useEffect(() => { if (scrollArea.current) scrollArea.current.scrollTop = 0 }, [page])
 
@@ -253,7 +263,7 @@ export function App({ repository = browserRepository, authentication = cloudAuth
       <UpdateBanner />
       <main id="main-content">
         {preview ? <ReconciliationPreview plan={preview} applying={applying} error={previewError} onApply={apply} onCancel={() => { setPreview(undefined); setPreviewError('') }} />
-          : page === 'library' ? <LibraryScreen scores={scores} collections={collections} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onBulkSave={saveBulkConfiguration} onRenameCollection={renameCollection} onCreateCollection={createCollection} onAssignCollection={assignCollection} onDelete={deleteScore} onEditingChange={setEditingScore} />
+          : page === 'library' ? <LibraryScreen scores={scores} collections={collections} lastScan={lastScan} onFolder={rescan} onSave={saveConfiguration} onBulkSave={saveBulkConfiguration} onRenameCollection={renameCollection} onCreateCollection={createCollection} onAssignCollection={assignCollection} onDelete={deleteScore} onEditingChange={changePieceEditing} />
             : page === 'generate' ? <GenerateScreen scores={scores} collections={collections} hasPerformance={Boolean(currentSetList)} onGenerated={savePerformance} />
               : page === 'performance' ? <PerformanceScreen scores={scores} setList={currentSetList} savedSetLists={setLists} savedSets={savedSets} onSave={saveSetList} onSaveSavedSet={saveReusableSet} onCreateProgram={createProgram} onCreateManualProgram={createManualProgram} onSelect={selectSetList} onImport={importSetList} onRegenerate={() => setPage('generate')} onLockChange={setListLock} onTonight={loadTonight} />
                 : page === 'tonight' ? <TonightScreen setList={tonight} savedSetLists={setLists} onLoad={loadTonight} onClear={clearTonight} onManage={() => setPage('performance')} />
