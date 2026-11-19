@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Browse Library pieces in compact, expandable collection groups, with counts and prominent search, collection, and status filters. Keep browsing controls reachable while scrolling and retain the view when returning from piece details (fixes [#20](https://github.com/3isenHeiM/Set-Builder/issues/20)).
 - Swipe right on a piece's detail page to use the existing Back action, saving pending notes before returning and keeping drafts open if saving fails (fixes [#19](https://github.com/3isenHeiM/Set-Builder/issues/19)).
 - Show the release version on the About screen, using the package version as its shared source (fixes [#18](https://github.com/3isenHeiM/Set-Builder/issues/18)).
 - Add the remembered **Drummer notes** switch to Tonight, including offline performance viewing, and OpenGraph/card previews for the app and active shared setlists (fixes [#17](https://github.com/3isenHeiM/Set-Builder/issues/17)).
