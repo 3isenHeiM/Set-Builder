@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.3.5] - 2026-11-19
+
+*First PROD-prod release*
+
+### Added
+
+- Browse Library pieces in compact, expandable collection groups, with counts and prominent search, collection, and status filters. Keep browsing controls reachable while scrolling and retain the view when returning from piece details (fixes [#20](https://github.com/3isenHeiM/Set-Builder/issues/20)).
+
+### Changed
+
+- Match the PWA and Apple Home Screen icons to the webpage’s round gold badge and indigo music note, with consistent proportions and safe padding for maskable icons.
+
 ## [2.3.4] - 2026-11-17
 
 *We're starting to be good here*
@@ -173,7 +185,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Initial mobile-first offline PWA for importing and re-aligning `.mscz` filename metadata, configuring pieces, generating valid performances, saving the latest performance, and backing up piece settings.
 
-[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.4...HEAD
+[Unreleased]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.5...HEAD
+[2.3.5]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.4...v2.3.5
 [2.3.4]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.3...v2.3.4
 [2.3.3]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.2...v2.3.3
 [2.3.2]: https://github.com/3isenHeiM/Set-Builder/compare/v2.3.1...v2.3.2

@@ -1,6 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Piece Selector icon">
-  <rect width="24" height="24" fill="#f2b263"/>
-  <g fill="none" stroke="#353665" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Piece Selector icon">
+  <!-- Match the header's 32px round badge, 19px note, and -6 degree tilt.
+       Scale the badge to 80% so it fits the maskable icon's safe circle. -->
+  <rect width="32" height="32" fill="#353665"/>
+  <circle cx="16" cy="16" r="12.8" fill="#f2b263"/>
+  <g transform="rotate(-6 16 16) translate(8.4 8.4) scale(0.6333333333)" fill="none" stroke="#353665" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <path d="M9 18V5l10-2v13"/>
     <circle cx="6" cy="18" r="3"/>
     <circle cx="16" cy="16" r="3"/>

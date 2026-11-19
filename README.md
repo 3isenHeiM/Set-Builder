@@ -39,13 +39,19 @@ The repository-owned scripts are:
 - `npm run db:migrate:local` — apply D1 migrations to Wrangler's local database.
 - `npm run preview:cf` — apply local D1 migrations and serve the already-built Worker locally. Authentication fails closed until its authentication and Turnstile bindings are supplied.
 
+## Browsing the Library
+
+When the Library contains several collections, it opens with compact collection groups and piece counts. Tap a collection heading to expand or collapse its pieces. A single collection opens directly. Search, the collection picker, and the status filter stay near the top while scrolling. Choosing a collection, searching, or applying a status filter shows matching pieces immediately; **Clear filters** returns to collection browsing.
+
+Expanded groups, search, filters, and the Library scroll position are retained when returning from a piece's details. Selection works across groups, with a selected count on each affected group. Open **Manage library** for collection creation, renaming, imports, and re-alignment.
+
 ## Import and manual re-alignment
 
-In the Library, tap **New collection**, enter a name (for example **Christmas**), and tap **Create collection**. The collection is saved immediately, even while empty, and **Import pieces** opens with it selected. Choose the folder or files, review the preview, then apply the import. You can also choose an existing collection or type a new name directly in **Import pieces**. **Add pieces** is the default: importing a partial folder adds or updates its pieces without marking absent pieces missing. Existing libraries belong to **General** automatically.
+In the Library, open **Manage library**, tap **New collection**, enter a name (for example **Christmas**), and tap **Create collection**. The collection is saved immediately, even while empty, and **Import pieces** opens with it selected. Choose the folder or files, review the preview, then apply the import. You can also choose an existing collection or type a new name directly in **Import pieces**. **Add pieces** is the default: importing a partial folder adds or updates its pieces without marking absent pieces missing. Existing libraries belong to **General** automatically.
 
 For a full folder comparison, choose **Re-align collection** and select its complete folder. Only absent pieces in that collection are marked missing. Other collections are never affected. Filter the Library or the Build screen by collection; **All collections** retains the existing Mix behavior of including every eligible piece.
 
-To rename a collection, select it in the Library's Collection filter, tap **Rename collection**, and save the new name. Piece IDs, settings, and saved programs are preserved; a name already used by another collection is rejected.
+To rename a collection, select it in the Library's Collection filter, open **Manage library**, tap **Rename collection**, and save the new name. Piece IDs, settings, and saved programs are preserved; a name already used by another collection is rejected.
 
 Tap **Select pieces** (or hold a piece), select one or more pieces, and choose **Move to collection**. Choose the destination and tap **Move pieces** to save the entire selection together. **Remove from collection** returns selected pieces to **General**; it keeps the pieces, settings, and saved programs. If an identifier already exists in the destination, the whole move is rejected without changing any pieces. Empty collections remain available for later imports. **Edit settings** applies only the chosen settings to selected pieces.
 

@@ -169,7 +169,11 @@ describe('signed-cookie Cloudflare Worker', () => {
     const database = new MemoryD1()
     const env = await environment(database)
     const cookie = await signIn(env)
-    const tampered = `${cookie.slice(0, -1)}x`
+    // The final base64url character can differ only in unused padding bits.
+    // Change the first signature character so a signed byte always changes.
+    const signatureStart = cookie.lastIndexOf('.') + 1
+    const replacement = cookie[signatureStart] === 'A' ? 'B' : 'A'
+    const tampered = `${cookie.slice(0, signatureStart)}${replacement}${cookie.slice(signatureStart + 1)}`
     expect((await handleRequest(new Request('https://example.com/api/state', { headers: { cookie: tampered } }), env)).status).toBe(401)
 
     const invalid = { ...emptyCloudState(), scores: [makeScore({ canStart: null })] }
